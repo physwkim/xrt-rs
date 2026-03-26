@@ -1,0 +1,22 @@
+[package]
+name = "xrt-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "PyO3 bindings for xrt-rs"
+
+[lib]
+name = "xrt_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+xrt-core = { workspace = true }
+xrt-math = { workspace = true }
+xrt-materials = { workspace = true }
+xrt-oes = { workspace = true }
+xrt-sources = { workspace = true }
+xrt-waves = { workspace = true }
+xrt-pytte = { workspace = true }
+ndarray = { workspace = true }
+num-complex = { workspace = true }
+thiserror = { workspace = true }

@@ -1,0 +1,15 @@
+[package]
+name = "xrt-oes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Optical elements: surface intersection, reflection, Fresnel/Snell"
+
+[dependencies]
+xrt-core = { workspace = true }
+xrt-math = { workspace = true }
+xrt-materials = { workspace = true }
+ndarray = { workspace = true }
+num-complex = { workspace = true }
+rayon = { workspace = true }
+thiserror = { workspace = true }

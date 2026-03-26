@@ -1,0 +1,49 @@
+[workspace]
+members = [
+    "crates/xrt-core",
+    "crates/xrt-math",
+    "crates/xrt-materials",
+    "crates/xrt-oes",
+    "crates/xrt-sources",
+    "crates/xrt-waves",
+    "crates/xrt-pytte",
+    "crates/xrt-gpu",
+    "crates/xrt-python",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+# Core numeric
+ndarray = "0.16"
+num-complex = "0.4"
+num-traits = "0.2"
+
+# Parallelism
+rayon = "1"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+
+# Testing
+approx = "0.5"
+proptest = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Internal crates
+xrt-core = { path = "crates/xrt-core" }
+xrt-math = { path = "crates/xrt-math" }
+xrt-materials = { path = "crates/xrt-materials" }
+xrt-oes = { path = "crates/xrt-oes" }
+xrt-sources = { path = "crates/xrt-sources" }
+xrt-waves = { path = "crates/xrt-waves" }
+xrt-pytte = { path = "crates/xrt-pytte" }
+xrt-gpu = { path = "crates/xrt-gpu" }
