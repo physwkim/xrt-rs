@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-29T12:44:18.674207+00:00",
+  "generated_at": "2026-03-29T13:43:01.461396+00:00",
   "domain": "tt_rocking_curve",
   "crystal": "si111",
   "energy_ev": 10000.0,

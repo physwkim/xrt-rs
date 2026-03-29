@@ -56,3 +56,67 @@ class TestSourcesCross:
         # All energies should be the requested value
         for ev in e:
             assert abs(ev - tc["energy_ev"]) < 1e-6
+
+    def test_direction_unit_vectors(self, xrt_rs):
+        rs = xrt_rs
+        data = load_fixture("sources.json")
+        tc = data["test_cases"][0]
+
+        result = rs.geometric_source_shine(
+            tc["nrays"],
+            tc["energy_ev"],
+            tc["dx_mm"],
+            tc["dz_mm"],
+            tc["dxprime_rad"],
+            tc["dzprime_rad"],
+        )
+
+        a = result["a"]
+        b = result["b"]
+        c = result["c"]
+
+        tol = 1e-12
+        for i in range(len(a)):
+            norm_sq = a[i] ** 2 + b[i] ** 2 + c[i] ** 2
+            assert abs(norm_sq - 1.0) < tol, (
+                f"ray[{i}]: |dir|² = {norm_sq}, expected 1.0"
+            )
+
+    def test_divergence_sigma(self, xrt_rs):
+        rs = xrt_rs
+        data = load_fixture("sources.json")
+        tc = data["test_cases"][0]
+
+        result = rs.geometric_source_shine(
+            tc["nrays"],
+            tc["energy_ev"],
+            tc["dx_mm"],
+            tc["dz_mm"],
+            tc["dxprime_rad"],
+            tc["dzprime_rad"],
+        )
+
+        a = result["a"]
+        b = result["b"]
+        c = result["c"]
+        n = len(a)
+
+        # Compute angular divergence: atan2(a, b) ≈ a/b for small angles
+        dx_angles = [math.atan2(a[i], b[i]) for i in range(n)]
+        dz_angles = [math.atan2(c[i], b[i]) for i in range(n)]
+
+        mean_dx = sum(dx_angles) / n
+        mean_dz = sum(dz_angles) / n
+        std_dx = math.sqrt(sum((v - mean_dx) ** 2 for v in dx_angles) / n)
+        std_dz = math.sqrt(sum((v - mean_dz) ** 2 for v in dz_angles) / n)
+
+        tol_rel = 0.1  # 10% tolerance for statistical test
+        exp_dx = tc["expected_dxprime_sigma_rad"]
+        exp_dz = tc["expected_dzprime_sigma_rad"]
+
+        assert abs(std_dx - exp_dx) / exp_dx < tol_rel, (
+            f"std(dx_angle) = {std_dx:.6e}, expected {exp_dx:.6e}"
+        )
+        assert abs(std_dz - exp_dz) / exp_dz < tol_rel, (
+            f"std(dz_angle) = {std_dz:.6e}, expected {exp_dz:.6e}"
+        )

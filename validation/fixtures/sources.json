@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-29T12:44:18.674935+00:00",
+  "generated_at": "2026-03-29T13:43:01.462218+00:00",
   "domain": "sources",
   "test_cases": [
     {
@@ -16,7 +16,10 @@
       "expected_sigma_x": 0.1,
       "expected_mean_z": 0.0,
       "expected_sigma_z": 0.05,
-      "tolerance_rel": 0.1
+      "tolerance_rel": 0.1,
+      "expected_unit_vector": true,
+      "expected_dxprime_sigma_rad": 0.0001,
+      "expected_dzprime_sigma_rad": 5e-05
     }
   ]
 }

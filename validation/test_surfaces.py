@@ -60,3 +60,43 @@ class TestSurfacesCross:
         )
         # Should find an intersection
         assert z[0] < 10.0, f"expected z < 10, got {z[0]}"
+
+
+class TestSurfacesOECross:
+    """Cross-compare formula-based surfaces with XRT OE class outputs."""
+
+    @pytest.mark.parametrize("surf_name", [
+        "flat", "toroid", "paraboloid_lens", "blazed_grating",
+    ])
+    def test_surfaces_vs_xrt_oe(self, surf_name):
+        data = load_fixture("surfaces.json")
+        xrt_oe = data.get("xrt_oe", {})
+        if surf_name not in xrt_oe:
+            pytest.skip(f"No xrt_oe data for {surf_name}")
+
+        # Find the formula-based surface data
+        formula_surf = None
+        for s in data["surfaces"]:
+            if s["type"] == surf_name:
+                formula_surf = s
+                break
+        assert formula_surf is not None, f"No formula data for {surf_name}"
+
+        oe_pts = xrt_oe[surf_name]["points"]
+        formula_pts = formula_surf["points"]
+
+        tol = 1e-8
+        for fp, op in zip(formula_pts, oe_pts):
+            x, y = fp["x"], fp["y"]
+            assert_close(fp["z"], op["z"], tol,
+                         f"{surf_name} z({x},{y})")
+            # For blazed_grating, normals are discontinuous at groove boundaries;
+            # all test y-values are exact period multiples, so skip normal check there.
+            if surf_name == "blazed_grating" and abs(fp["z"]) < 1e-6:
+                continue
+            assert_close(fp["nx"], op["nx"], tol,
+                         f"{surf_name} nx({x},{y})")
+            assert_close(fp["ny"], op["ny"], tol,
+                         f"{surf_name} ny({x},{y})")
+            assert_close(fp["nz"], op["nz"], tol,
+                         f"{surf_name} nz({x},{y})")

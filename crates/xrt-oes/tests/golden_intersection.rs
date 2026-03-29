@@ -78,3 +78,92 @@ fn golden_intersection_paraboloid_lens() {
         1e-10,
     );
 }
+
+fn test_surface_numerical<S: Surface>(
+    surface: &S,
+    fix: &serde_json::Value,
+    surf_name: &str,
+    tol: f64,
+) {
+    let rays = fix["rays"].as_array().unwrap();
+    let intersections = fix["surfaces"][surf_name]["intersections"]
+        .as_array()
+        .unwrap();
+    let config = RootFindConfig::default();
+
+    for (i, (ray, expected)) in rays.iter().zip(intersections.iter()).enumerate() {
+        if expected.is_null() {
+            continue;
+        }
+        let x0 = ray["x"].as_f64().unwrap();
+        let y0 = ray["y"].as_f64().unwrap();
+        let z0 = ray["z"].as_f64().unwrap();
+        let a = ray["a"].as_f64().unwrap();
+        let b = ray["b"].as_f64().unwrap();
+        let c = ray["c"].as_f64().unwrap();
+        let t1 = ray["t1"].as_f64().unwrap();
+        let t2 = ray["t2"].as_f64().unwrap();
+
+        let result =
+            find_intersection_surface(surface, t1, t2, x0, y0, z0, a, b, c, 1, &config);
+        assert!(
+            result.converged,
+            "{surf_name} ray{i}: did not converge"
+        );
+
+        let exp_t = expected["t"].as_f64().unwrap();
+        let exp_x = expected["x"].as_f64().unwrap();
+        let exp_y = expected["y"].as_f64().unwrap();
+        let exp_z = expected["z"].as_f64().unwrap();
+
+        assert!(
+            (result.t - exp_t).abs() < tol,
+            "{surf_name} ray{i} t: {:.10e} != {exp_t:.10e}",
+            result.t
+        );
+        assert!(
+            (result.x - exp_x).abs() < tol,
+            "{surf_name} ray{i} x: {:.10e} != {exp_x:.10e}",
+            result.x
+        );
+        assert!(
+            (result.y - exp_y).abs() < tol,
+            "{surf_name} ray{i} y: {:.10e} != {exp_y:.10e}",
+            result.y
+        );
+        assert!(
+            (result.z - exp_z).abs() < tol,
+            "{surf_name} ray{i} z: {:.10e} != {exp_z:.10e}",
+            result.z
+        );
+    }
+}
+
+#[test]
+fn golden_intersection_flat_numerical() {
+    let fix = load_fixture();
+    test_surface_numerical(&FlatSurface, &fix, "flat", 1e-8);
+}
+
+#[test]
+fn golden_intersection_toroid_numerical() {
+    let fix = load_fixture();
+    test_surface_numerical(&ToroidSurface::new(5e6, 50.0), &fix, "toroid", 1e-8);
+}
+
+#[test]
+fn golden_intersection_spherical_numerical() {
+    let fix = load_fixture();
+    test_surface_numerical(&SphericalSurface::new(1000.0), &fix, "spherical", 1e-8);
+}
+
+#[test]
+fn golden_intersection_paraboloid_lens_numerical() {
+    let fix = load_fixture();
+    test_surface_numerical(
+        &ParaboloidLensSurface::new(100.0, None),
+        &fix,
+        "paraboloid_lens",
+        1e-8,
+    );
+}

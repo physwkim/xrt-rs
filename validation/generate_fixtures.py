@@ -79,7 +79,15 @@ def gen_scattering():
     q_over_4pi = [0.0, 0.1, 0.25, 0.5, 1.0, 2.0]
     energies = [500.0, 1000.0, 5000.0, 8000.0, 10000.0, 20000.0, 50000.0]
 
-    for elem_name in ["Si", "Au"]:
+    # Edge-adjacent energies per element (Gap 5)
+    edge_energies = {
+        "Si": ("K", 1839, [1829.0, 1838.0, 1840.0, 1849.0]),
+        "Au": ("L3", 11919, [11909.0, 11918.0, 11920.0, 11929.0]),
+        "W":  ("L3", 10207, [10197.0, 10206.0, 10208.0, 10217.0]),
+        "O":  ("K", 543, [533.0, 542.0, 544.0, 553.0]),
+    }
+
+    for elem_name in ["Si", "Au", "W", "O"]:
         elem = rm.Element(elem_name, "Chantler total")
         # f0
         f0_vals = [float(elem.get_f0(np.array([q]))[0]) for q in q_over_4pi]
@@ -89,10 +97,7 @@ def gen_scattering():
         f1_vals = [float(v) for v in f1f2.real]
         f2_vals = [float(v) for v in f1f2.imag]
 
-        data = _meta("scattering")
-        data["element"] = elem_name
-        data["table"] = "Chantler total"
-        data["test_cases"] = [
+        test_cases = [
             {
                 "id": f"{elem_name.lower()}_f0",
                 "q_over_4pi": q_over_4pi,
@@ -105,6 +110,25 @@ def gen_scattering():
                 "f2": f2_vals,
             },
         ]
+
+        # Edge f1/f2 test case
+        if elem_name in edge_energies:
+            edge_name, edge_ev, edge_pts = edge_energies[elem_name]
+            e_edge = np.array(edge_pts)
+            f1f2_edge = elem.get_f1f2(e_edge)
+            test_cases.append({
+                "id": f"{elem_name.lower()}_edge_{edge_name}",
+                "edge_name": edge_name,
+                "edge_ev": edge_ev,
+                "energies_ev": edge_pts,
+                "f1": [float(v) for v in f1f2_edge.real],
+                "f2": [float(v) for v in f1f2_edge.imag],
+            })
+
+        data = _meta("scattering")
+        data["element"] = elem_name
+        data["table"] = "Chantler total"
+        data["test_cases"] = test_cases
         _write(f"scattering_{elem_name.lower()}.json", data)
 
 
@@ -147,6 +171,28 @@ def gen_material():
                 "rp_imag": float(rp[0].imag),
             })
 
+        # Edge-adjacent test cases (Gap 5)
+        edge_map = {
+            "Si": ("K", 1839, [1829, 1838, 1840, 1849]),
+            "Au": ("L3", 11919, [11909, 11918, 11920, 11929]),
+            "SiO2": ("O_K", 543, [533, 542, 544, 553]),
+        }
+        edge_cases = []
+        if mat_name in edge_map:
+            edge_name, edge_ev, edge_pts = edge_map[mat_name]
+            e_edge = np.array(edge_pts, dtype=float)
+            n_edge = mat.get_refractive_index(e_edge)
+            mu_edge = mat.get_absorption_coefficient(e_edge)
+            edge_cases.append({
+                "id": f"{mat_name.lower()}_edge_{edge_name}",
+                "edge_name": edge_name,
+                "edge_ev": edge_ev,
+                "energies_ev": edge_pts,
+                "n_real": [float(v) for v in n_edge.real],
+                "n_imag": [float(v) for v in n_edge.imag],
+                "mu_cm_inv": [float(v) for v in mu_edge],
+            })
+
         data = _meta("material_optics")
         data["material"] = mat_name
         data["elements"] = elems
@@ -169,7 +215,7 @@ def gen_material():
                 "energy_ev": 10000.0,
                 "amplitudes": fresnel,
             },
-        ]
+        ] + edge_cases
         _write(f"material_{mat_name.lower()}.json", data)
 
 
@@ -194,6 +240,37 @@ def gen_crystal():
         bidn = np.array([-math.sin(tb)])
         rs_arr, rp_arr = crystal.get_amplitude(e10, bidn)[:2]
 
+        # chi values at multiple energies (Gap 4)
+        chi_cases = []
+        for e_val in energies:
+            tb_e = crystal.get_Bragg_angle(e_val)
+            wavelength = pc.CH / e_val  # Å
+            stol = math.sin(tb_e) / wavelength  # sin(θ)/λ in Å⁻¹
+            result = crystal.get_F_chi(np.array([e_val]), np.array([stol]))
+            # result = (F0, Fhkl, Fhkl_, chi0, chih, chih_bar)
+            chi_cases.append({
+                "energy_ev": e_val,
+                "theta_b_rad": tb_e,
+                "stol": stol,
+                "chi0_re": float(result[3][0].real),
+                "chi0_im": float(result[3][0].imag),
+                "chih_re": float(result[4][0].real),
+                "chih_im": float(result[4][0].imag),
+                "chih_bar_re": float(result[5][0].real),
+                "chih_bar_im": float(result[5][0].imag),
+            })
+
+        # Mini rocking curve: 5 angles around Bragg (Gap 4)
+        dtheta_mini = [-20e-6, -10e-6, 0.0, 10e-6, 20e-6]
+        rocking_thetas = [tb + dt for dt in dtheta_mini]
+        rocking_bidn = [-math.sin(th) for th in rocking_thetas]
+        rocking_rs = []
+        rocking_rp = []
+        for bd in rocking_bidn:
+            rs_r, rp_r = crystal.get_amplitude(e10, np.array([bd]))[:2]
+            rocking_rs.append({"re": float(rs_r[0].real), "im": float(rs_r[0].imag)})
+            rocking_rp.append({"re": float(rp_r[0].real), "im": float(rp_r[0].imag)})
+
         data = _meta("crystal_diffraction")
         data["crystal"] = hkl_name
         data["hkl"] = list(hkl)
@@ -213,6 +290,18 @@ def gen_crystal():
                 "rs_imag": float(rs_arr[0].imag),
                 "rp_real": float(rp_arr[0].real),
                 "rp_imag": float(rp_arr[0].imag),
+            },
+            {
+                "id": f"{hkl_name}_chi",
+                "chi_values": chi_cases,
+            },
+            {
+                "id": f"{hkl_name}_rocking_mini",
+                "energy_ev": 10000.0,
+                "dtheta_rad": dtheta_mini,
+                "beam_in_dot_normal": rocking_bidn,
+                "rs": rocking_rs,
+                "rp": rocking_rp,
             },
         ]
         _write(f"crystal_{hkl_name}.json", data)
@@ -334,9 +423,41 @@ def gen_surfaces():
                 pts.append({"x": x, "y": y, "z": z, "nx": nx, "ny": ny, "nz": nz})
         surfaces.append({"type": surf_type, "params": params, "points": pts})
 
+    # XRT OE class independent verification (Gap 2)
+    import xrt.backends.raycing.oes as oes
+    xrt_oe_data = {}
+    oe_configs = [
+        ("flat", oes.OE(bl=None, name="flat"), {}),
+        ("toroid", oes.ToroidMirror(bl=None, name="t", R=5e6, r=50.0),
+         {"R": 5e6, "r": 50.0}),
+        ("paraboloid_lens", oes.ParaboloidFlatLens(bl=None, name="p", focus=100.0),
+         {"focus": 100.0}),
+        ("blazed_grating", oes.BlazedGrating(bl=None, name="b", rho=600.0,
+                                              blaze=0.02, antiblaze=0.5),
+         {"rho": 600.0, "blaze": 0.02, "antiBlaze": 0.5}),
+    ]
+    for surf_name, oe_obj, params in oe_configs:
+        pts = []
+        for x in xs:
+            for y in ys:
+                x_arr = np.array([x])
+                y_arr = np.array([y])
+                z_raw = oe_obj.local_z(x_arr, y_arr)
+                z_val = float(np.atleast_1d(z_raw)[0])
+                n_result = oe_obj.local_n(x_arr, y_arr)
+                nx_val = float(np.atleast_1d(n_result[0])[0])
+                ny_val = float(np.atleast_1d(n_result[1])[0])
+                nz_val = float(np.atleast_1d(n_result[2])[0])
+                pts.append({
+                    "x": x, "y": y,
+                    "z": z_val, "nx": nx_val, "ny": ny_val, "nz": nz_val,
+                })
+        xrt_oe_data[surf_name] = {"params": params, "points": pts}
+
     data = _meta("surfaces")
     data["grid"] = {"xs": xs, "ys": ys}
     data["surfaces"] = surfaces
+    data["xrt_oe"] = xrt_oe_data
     _write("surfaces.json", data)
 
 
@@ -445,6 +566,40 @@ def gen_tt():
     _write("tt_si111_10kev.json", data)
 
 
+# ── Diffraction helper ──────────────────────────────────────────────────────
+def _compute_diffraction(rays, pixels):
+    """Compute Kirchhoff diffraction integral (same formula as Rust diffraction.rs)."""
+    n_pix = len(pixels["x"])
+    n_rays = len(rays["x"])
+    results = []
+    for p in range(n_pix):
+        es_sum = complex(0, 0)
+        ep_sum = complex(0, 0)
+        for r in range(n_rays):
+            dx = pixels["x"][p] - rays["x"][r]
+            dy = pixels["y"][p] - rays["y"][r]
+            dz = pixels["z"][p] - rays["z"][r]
+            path = math.sqrt(dx * dx + dy * dy + dz * dz)
+            if path < 1e-30:
+                continue
+            ns = (rays["nx"][r] * dx + rays["ny"][r] * dy + rays["nz"][r] * dz) / path
+            k = rays["energy"][r] / pc.CHBAR * 1e7  # mm⁻¹
+            phase = k * path
+            exp_ikr = complex(math.cos(phase), math.sin(phase))
+            obliquity = rays["nl"][r] + ns
+            amplitude_factor = k / (4.0 * math.pi) * obliquity / path
+            u = complex(0, 1) * amplitude_factor * exp_ikr
+            es = complex(rays["es_re"][r], rays["es_im"][r])
+            ep = complex(rays["ep_re"][r], rays["ep_im"][r])
+            es_sum += es * u
+            ep_sum += ep * u
+        results.append({
+            "es_re": es_sum.real, "es_im": es_sum.imag,
+            "ep_re": ep_sum.real, "ep_im": ep_sum.imag,
+        })
+    return results
+
+
 # ── Domain 8: Kirchhoff diffraction ─────────────────────────────────────────
 def gen_diffraction():
     print("[8/10] diffraction (reference)")
@@ -475,11 +630,14 @@ def gen_diffraction():
         "z": [1000.0] * n_pix,
     }
 
+    expected = _compute_diffraction(rays, pixels)
+
     data = _meta("diffraction")
     data["test_cases"] = [{
         "id": "small_deterministic",
         "rays": rays,
         "pixels": pixels,
+        "expected": expected,
         "note": "Reference for cross-comparison; Rust computes from same inputs",
     }]
     _write("diffraction_ref.json", data)
@@ -503,6 +661,9 @@ def gen_sources():
         "expected_mean_z": 0.0,
         "expected_sigma_z": 0.05,
         "tolerance_rel": 0.1,
+        "expected_unit_vector": True,
+        "expected_dxprime_sigma_rad": 1e-4,
+        "expected_dzprime_sigma_rad": 5e-5,
     }]
     _write("sources.json", data)
 
