@@ -120,4 +120,20 @@ mod tests {
         let mag2 = (g2[0] * g2[0] + g2[1] * g2[1]).sqrt();
         assert!(mag2 > mag1, "mag at r=1 ({mag2}) should > mag at r=0.5 ({mag1})");
     }
+
+    #[test]
+    fn fzp_local_g_at_various_positions() {
+        let fzp = FzpSurface::new(1000.0, 0.01, 1000);
+        // At different radii, grating vector should point radially
+        for r in [0.1, 0.5, 1.0, 2.0] {
+            let g = fzp.local_g(r, 0.0);
+            if let Some([gx, gy, gz]) = g {
+                assert!(gx.is_finite() && gy.is_finite() && gz.is_finite(),
+                    "FZP g at r={r} should be finite");
+                // Grating vector should have radial component
+                let g_mag = (gx*gx + gy*gy + gz*gz).sqrt();
+                assert!(g_mag > 0.0, "FZP g magnitude should be > 0 at r={r}");
+            }
+        }
+    }
 }

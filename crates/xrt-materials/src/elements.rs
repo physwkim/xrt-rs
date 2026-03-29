@@ -195,4 +195,10 @@ mod tests {
         let au = Element::new("Au", ScatteringTable::ChantlerTotal).unwrap();
         assert_eq!(au.z, 79);
     }
+
+    #[test]
+    fn element_by_atomic_number() {
+        let si = Element::from_z(14, ScatteringTable::ChantlerTotal).unwrap();
+        assert_eq!(si.name, "Si");
+    }
 }

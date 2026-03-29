@@ -316,6 +316,24 @@ mod tests {
     }
 
     #[test]
+    fn transmitted_geometry_finite() {
+        let ml = Multilayer::new(
+            Material::new(&["W"], None, 19.3, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
+            Material::new(&["Si"], None, 2.33, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
+            Material::new(&["Si"], None, 2.33, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
+            20, 15.0, 25.0, 0.0, MultilayerGeom::Transmitted,
+        );
+        let e = Array1::from_vec(vec![10000.0]);
+        let st = Array1::from_vec(vec![0.02]);
+        let result = ml.get_amplitude(&e, &st).unwrap();
+        assert!(result.rs[0].re.is_finite(), "transmitted rs should be finite");
+        assert!(result.rp[0].re.is_finite(), "transmitted rp should be finite");
+        // Verify transmitted amplitude is nonzero and bounded
+        assert!(result.rs[0].norm() > 0.0, "transmitted |rs| should be > 0");
+        assert!(result.rs[0].norm() < 10.0, "transmitted |rs| should be bounded");
+    }
+
+    #[test]
     fn roughness_reduces_reflectivity() {
         let w = make_material("W", 19.3);
         let si = make_material("Si", 2.33);

@@ -372,4 +372,22 @@ mod tests {
         assert!(n[0].im.abs() < 1e-3,
             "LaAlO3 n.im at 10keV should be small: {}", n[0].im);
     }
+
+    #[test]
+    fn negative_density_handled() {
+        // Negative density might produce physically wrong but finite results
+        let mat = Material::new(
+            &["Si"], None, -2.33, MaterialKind::Mirror, None,
+            ScatteringTable::ChantlerTotal,
+        );
+        // Either returns error or produces finite result
+        match mat {
+            Ok(m) => {
+                let e = Array1::from_vec(vec![10000.0]);
+                let n = m.get_refractive_index(&e).unwrap();
+                assert!(n[0].re.is_finite(), "negative rho should still give finite n");
+            }
+            Err(_) => {} // Error is also acceptable
+        }
+    }
 }

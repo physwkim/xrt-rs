@@ -720,3 +720,21 @@ fn golden_debye_waller_effect() {
     assert!((theta1[0] - theta01[0]).abs() < 1e-15,
         "DW should not affect Bragg angle");
 }
+
+// Property-based test: Bragg angle decreases with energy
+#[test]
+fn bragg_angle_decreases_with_energy() {
+    let si = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
+        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let energies = Array1::from_vec(vec![5000.0, 10000.0, 15000.0, 20000.0, 30000.0]);
+    let theta = si.base.get_bragg_angle(&energies);
+
+    for i in 1..theta.len() {
+        assert!(theta[i] < theta[i-1],
+            "theta({}) = {:.6e} should be < theta({}) = {:.6e}",
+            energies[i], theta[i], energies[i-1], theta[i-1]);
+    }
+}

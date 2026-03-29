@@ -72,4 +72,47 @@ proptest! {
         prop_assert!((a - a_in).abs() < 1e-10, "a: {} → {}", a_in, a);
         prop_assert!((c - c_in).abs() < 1e-10, "c: {} → {}", c_in, c);
     }
+
+    /// Specular reflection preserves unit vector for arbitrary input directions.
+    #[test]
+    fn specular_reflection_preserves_unit_vector(
+        a_in in -1.0f64..1.0,
+        b_in in 0.1f64..1.0,
+        c_in in -1.0f64..1.0,
+    ) {
+        // Normalize input
+        let norm_in = (a_in*a_in + b_in*b_in + c_in*c_in).sqrt();
+        if norm_in < 1e-10 { return Ok(()); }
+        let (ai, bi, ci) = (a_in/norm_in, b_in/norm_in, c_in/norm_in);
+
+        // Normal along z
+        let bidn = ci; // beam_in_dot_normal for nz=1
+        let (a_out, b_out, c_out) = reflect_specular(ai, bi, ci, 0.0, 0.0, 1.0, bidn);
+
+        // Output should be unit vector
+        let norm_out = (a_out*a_out + b_out*b_out + c_out*c_out).sqrt();
+        prop_assert!((norm_out - 1.0).abs() < 1e-10,
+            "output norm = {}, expected 1.0", norm_out);
+    }
+
+    /// Snell refraction preserves unit vector for non-TIR conditions.
+    #[test]
+    fn snell_refraction_preserves_unit_vector(
+        angle in 0.1f64..1.4, // avoid grazing and TIR
+        n_ratio in 0.8f64..1.2,
+    ) {
+        let a_in = 0.0;
+        let b_in = angle.cos();
+        let c_in = -angle.sin();
+        let bidn = c_in; // dot with (0,0,1) normal
+
+        let (a_out, b_out, c_out) = refract_snell(a_in, b_in, c_in, 0.0, 0.0, 1.0, bidn, n_ratio);
+
+        if a_out.is_finite() {
+            let norm = (a_out*a_out + b_out*b_out + c_out*c_out).sqrt();
+            prop_assert!((norm - 1.0).abs() < 1e-10,
+                "refracted norm = {}, expected 1.0", norm);
+        }
+        // NaN is ok for TIR conditions
+    }
 }

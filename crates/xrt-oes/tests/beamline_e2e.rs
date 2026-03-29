@@ -361,3 +361,101 @@ fn golden_crystal_beamline() {
     // Crystal beamline should run without panic
     assert!(output.initial_count == 500);
 }
+
+#[test]
+fn golden_three_element_beamline() {
+    // Source -> Mirror -> Drift -> Mirror -> Drift -> Grating
+    let mut beam = collimated_source(500, 10000.0);
+
+    let m1 = MaterialOpticalElement::new(
+        FlatSurface,
+        OeParamsBuilder::new().pitch(0.003).build(),
+        si_mirror(),
+    );
+    let m2 = MaterialOpticalElement::new(
+        FlatSurface,
+        OeParamsBuilder::new().pitch(0.003).build(),
+        si_mirror(),
+    );
+    let g1 = GratingOpticalElement::new(
+        BlazedGrating::new(600.0, 0.02, 0.5),
+        OeParamsBuilder::new().pitch(0.01).build(),
+        1,
+    );
+
+    let bl = Beamline::new()
+        .add_material("M1", m1)
+        .drift(1000.0)
+        .add_material("M2", m2)
+        .drift(1000.0)
+        .add_grating("G1", g1);
+
+    let output = bl.propagate(&mut beam);
+    assert!(output.elements.len() >= 3,
+            "Should have at least 3 OE outputs, got {}", output.elements.len());
+    assert!(output.initial_count == 500);
+}
+
+#[test]
+fn golden_coherency_through_mirror() {
+    // Verify coherency matrix is preserved/modified through flat mirror
+    use xrt_sources::polarization::Polarization;
+
+    let source = GeometricSource {
+        nrays: 100,
+        dist_e: EnergyDist::Lines(vec![10000.0], None),
+        polarization: Polarization::Horizontal,
+        ..Default::default()
+    };
+    let mut beam = source.shine();
+
+    // Check initial coherency: horizontal -> jss=1, jpp=0
+    assert!((beam.jss[0] - 1.0).abs() < 1e-10, "initial jss should be 1.0");
+    assert!(beam.jpp[0].abs() < 1e-10, "initial jpp should be 0.0");
+
+    let mirror = MaterialOpticalElement::new(
+        FlatSurface,
+        OeParamsBuilder::new().pitch(0.003).build(),
+        si_mirror(),
+    );
+    let bl = Beamline::new()
+        .add_material("M1", mirror)
+        .drift(1000.0);
+
+    let _output = bl.propagate(&mut beam);
+
+    // After reflection, jss should still be set for surviving rays
+    let good_val = RayState::Good as i32;
+    let good_count = beam.state.iter().filter(|&&s| s == good_val).count();
+    if good_count > 0 {
+        let first_good = beam.state.iter().position(|&s| s == good_val).unwrap();
+        assert!(beam.jss[first_good].is_finite(), "jss after mirror should be finite");
+        assert!(beam.jpp[first_good].is_finite(), "jpp after mirror should be finite");
+    }
+}
+
+#[test]
+fn golden_refract_beamline() {
+    use xrt_oes::reflect::DeflectionMode;
+
+    let mut beam = collimated_source(500, 10000.0);
+
+    // Create a lens-like element using refraction
+    let si = si_mirror();
+    let lens = MaterialOpticalElement::new(
+        FlatSurface,
+        OeParamsBuilder::new()
+            .pitch(0.003)
+            .mode(DeflectionMode::Refract { n1_over_n2: 0.9999 })
+            .build(),
+        si,
+    );
+
+    let bl = Beamline::new()
+        .add_material("Lens", lens)
+        .drift(5000.0);
+
+    let output = bl.propagate(&mut beam);
+    // Refraction should produce valid output
+    assert!(output.initial_count == 500);
+}

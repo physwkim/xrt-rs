@@ -261,4 +261,30 @@ mod tests {
         assert!(ratio > 0.01 && ratio < 100.0,
             "10000 vs 100 rays ratio = {ratio:.2}, should be reasonable");
     }
+
+    #[test]
+    fn polychromatic_diffraction() {
+        // Rays with different energies should produce finite results
+        let rays: Vec<DiffractionRay> = vec![
+            DiffractionRay {
+                x: 0.0, y: 0.0, z: 0.0,
+                nx: 0.0, ny: 0.0, nz: 1.0, nl: 1.0,
+                es: Complex64::new(1.0, 0.0),
+                ep: Complex64::new(0.0, 0.0),
+                energy: 8000.0,
+            },
+            DiffractionRay {
+                x: 0.01, y: 0.0, z: 0.0,
+                nx: 0.0, ny: 0.0, nz: 1.0, nl: 1.0,
+                es: Complex64::new(1.0, 0.0),
+                ep: Complex64::new(0.0, 0.0),
+                energy: 12000.0,
+            },
+        ];
+        let pixels = vec![PixelPoint { x: 0.0, y: 0.0, z: 100.0 }];
+
+        let result = diffraction_integral(&rays, &pixels);
+        assert!(result[0].es.re.is_finite(), "polychromatic Es should be finite");
+        assert!(result[0].es.norm() > 0.0, "polychromatic should be non-zero");
+    }
 }

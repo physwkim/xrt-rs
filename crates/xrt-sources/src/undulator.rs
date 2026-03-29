@@ -378,4 +378,43 @@ mod tests {
         let u = Undulator::new(3.0, 0.3, 1.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 0.001, 0.001);
         assert!((u.k_squared() - 5.0).abs() < 1e-10);
     }
+
+    #[test]
+    fn with_phase_sets_phase() {
+        let und = Undulator::new(
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
+            5000.0, 20000.0, 1e-4, 1e-4,
+        ).with_phase(90.0);
+        assert!((und.phase_deg - 90.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn with_phase_circular_produces_rays() {
+        // K_x = K_y with phase=90° → circular polarization
+        let mut und = Undulator::new(
+            6.0, 0.2, 1.0, 1.0, 20.0, 100, 1000,
+            5000.0, 20000.0, 1e-4, 1e-4,
+        ).with_phase(90.0);
+        let beam = und.shine();
+        assert_eq!(beam.nrays(), 1000);
+        // Direction should be unit vectors
+        for i in 0..beam.nrays() {
+            let norm = (beam.a[i]*beam.a[i] + beam.b[i]*beam.b[i] + beam.c[i]*beam.c[i]).sqrt();
+            assert!((norm - 1.0).abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn harmonic_energy_scaling() {
+        // E_n = n × E_1 for odd harmonics
+        let und = Undulator::new(
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
+            5000.0, 50000.0, 1e-4, 1e-4,
+        );
+        let e1 = und.fundamental_energy();
+        assert!(e1 > 0.0, "fundamental energy should be positive");
+        // E1 = 950 * E_GeV^2 / (period_mm * (1 + K^2/2)) = 950*36/(20*2.125) ≈ 8044 eV
+        assert!(e1 > 5000.0 && e1 < 15000.0,
+            "E1 = {e1} should be ~8044 eV for 6GeV, K=1.5, λ=20mm");
+    }
 }

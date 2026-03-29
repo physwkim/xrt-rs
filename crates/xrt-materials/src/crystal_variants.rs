@@ -614,4 +614,28 @@ mod tests {
         let dll = dl_l_swenson(293.0);
         assert!(dll > -1e-3 && dll < 1e-3, "dl/l(293K) = {dll}");
     }
+
+    #[test]
+    fn crystal_from_cell_simple_cubic() {
+        // Simple cubic crystal: single atom at origin
+        let cr = CrystalFromCell::new(
+            [1, 0, 0],           // hkl
+            5.43,                // a [Å]
+            None, None,          // b, c (defaults to a)
+            90.0, 90.0, 90.0,   // alpha, beta, gamma
+            &["Si"],
+            &[[0.0, 0.0, 0.0]], // atom at origin
+            None,                // occupancy = 1.0
+            CrystalGeometry::BraggReflected,
+            1.0,                 // DW
+            None,                // thickness
+            0.0,                 // mosaicity
+            ScatteringTable::ChantlerTotal,
+        ).unwrap();
+
+        let e = array![10000.0];
+        let theta = cr.base.get_bragg_angle(&e);
+        assert!(theta[0] > 0.0 && theta[0] < std::f64::consts::FRAC_PI_2,
+            "Bragg angle should be in (0, π/2): {}", theta[0]);
+    }
 }
