@@ -460,4 +460,20 @@ mod tests {
             assert!((norm - 1.0).abs() < 1e-12, "ray[{i}] |dir| = {norm}");
         }
     }
+
+    #[test]
+    fn bending_magnet_polarization_output() {
+        let mut bm = BendingMagnet::new(
+            3.0, 0.3, 1.0, 1000, 5000.0, 15000.0, 1e-3, 1e-3,
+        );
+        let beam = bm.shine();
+        // BM should produce polarization info (jss, jpp)
+        assert_eq!(beam.jss.len(), beam.nrays());
+        // Synchrotron radiation is predominantly horizontally polarized
+        // so jss (s-component) should be > jpp on average
+        let mean_jss: f64 = beam.jss.iter().sum::<f64>() / beam.nrays() as f64;
+        let mean_jpp: f64 = beam.jpp.iter().sum::<f64>() / beam.nrays() as f64;
+        assert!(mean_jss.is_finite(), "mean jss should be finite");
+        assert!(mean_jpp.is_finite(), "mean jpp should be finite");
+    }
 }

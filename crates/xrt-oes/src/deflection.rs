@@ -184,6 +184,25 @@ mod tests {
     }
 
     #[test]
+    fn grating_deflection_basic() {
+        // Simple grating deflection test: order +1 at modest angle
+        let (a, b, c) = grating_deflection(
+            0.0, 0.99, -0.14,        // beam direction (shallow incidence)
+            0.0, -600.0, 0.0,        // grating vector [mm⁻¹]
+            0.0, 0.0, 1.0,           // surface normal
+            -0.14,                     // beam_in_dot_normal
+            1000.0,                    // energy [eV]
+            1,                         // order
+            None,                      // auto sign
+        );
+        // Output should be finite unit vector
+        assert!(a.is_finite() && b.is_finite() && c.is_finite(),
+            "grating deflection should be finite");
+        let norm = (a*a + b*b + c*c).sqrt();
+        assert!((norm - 1.0).abs() < 1e-10, "output should be unit: {norm}");
+    }
+
+    #[test]
     fn passthrough_preserves_direction() {
         // PassThrough should not change the beam direction
         // (tested via reflect.rs, but we verify the concept here)

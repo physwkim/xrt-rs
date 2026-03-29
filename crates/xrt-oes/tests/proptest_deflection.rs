@@ -1,7 +1,7 @@
 //! Property-based tests for ray deflection physics.
 
 use proptest::prelude::*;
-use xrt_oes::deflection::{reflect_specular, refract_snell};
+use xrt_oes::deflection::{grating_deflection, reflect_specular, refract_snell};
 
 proptest! {
     /// Specular reflection preserves direction vector normalization.
@@ -114,5 +114,28 @@ proptest! {
                 "refracted norm = {}, expected 1.0", norm);
         }
         // NaN is ok for TIR conditions
+    }
+
+    #[test]
+    fn grating_deflection_preserves_unit_vector(
+        angle in 0.05f64..0.5,
+        energy in 500.0f64..30000.0,
+        order in -2i32..3,
+    ) {
+        if order == 0 { return Ok(()); }
+        let b_in = angle.cos();
+        let c_in = -angle.sin();
+        let bidn = c_in;
+        let (a, b, c) = grating_deflection(
+            0.0, b_in, c_in,
+            0.0, -600.0, 0.0,
+            0.0, 0.0, 1.0,
+            bidn, energy, order, None,
+        );
+        if a.is_finite() {
+            let norm = (a*a + b*b + c*c).sqrt();
+            prop_assert!((norm - 1.0).abs() < 1e-10,
+                "grating output norm = {}, expected 1.0", norm);
+        }
     }
 }
