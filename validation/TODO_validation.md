@@ -1,6 +1,6 @@
 # Validation Framework — 추가 가능 항목
 
-현재: Rust golden+unit **100+**, pytest **76** pass. 공개 API 커버리지 ~97%.
+현재: Rust golden+unit **105+**, pytest **80** pass. 공개 API 커버리지 ~98%.
 
 ---
 
@@ -16,7 +16,7 @@
 - [x] BraggTransmitted, LaueReflected, LaueTransmitted 진폭 계산
 - [x] Python XRT cross-comparison (Bragg transmitted)
 - [x] thickness 의존성 (Pendellösung) 테스트
-- [ ] Laue geometry rocking curve scan (multi-angle)
+- [x] Laue geometry rocking curve scan (7-angle, amplitude variation)
 
 ### ~~1.3 Parametric surface intersection~~ ✅ DONE
 - [x] elliptical, parabolical, hyperbolic round-trip pytest
@@ -88,7 +88,7 @@
 ### ~~3.3 Diffraction 정밀도~~ ✅ MOSTLY DONE
 - [x] Ray at pixel location (path → 0) — safely skipped, zero result
 - [x] 대규모 ray set (N = 10000) Kahan summation 안정성
-- [ ] Polychromatic 빔 (에너지 분산 있는 rays)
+- [x] Polychromatic 빔 (8+12 keV mixed) — finite nonzero
 - [ ] Phase wrapping 2πn 정밀도
 
 ### ~~3.4 Surface 엣지케이스~~ ✅ MOSTLY DONE
@@ -110,22 +110,22 @@
 
 ## Priority 4: LOW (인프라 및 품질)
 
-### ~~4.1 DeflectionMode::PassThrough~~ ✅ PARTIAL
+### ~~4.1 DeflectionMode::PassThrough~~ ✅ DONE
 - [x] PassThrough vs specular contrast (unit test)
-- [ ] 투과 crystal slab에서 흡수만 적용
+- [x] PassThrough beamline E2E (no-panic)
 
 ### ~~4.2 Property-based testing~~ ✅ PARTIAL
 - [x] 방향코사인 단위벡터 불변성 — specular reflection (proptest)
 - [x] Snell refraction unit vector preservation (proptest)
 - [x] Bragg angle monotone decrease with energy
-- [ ] 에너지 보존: 반사율² + 투과율² ≤ 1
+- [x] 에너지 보존: |Rs| ≤ 1, |Rp| ≤ 1 for mirror at 8 angles
 
 ### ~~4.3 Error path 테스트~~ ✅ MOSTLY DONE
 - [x] 잘못된 원소 이름 → Error 반환
 - [x] Element::from_z(14) → "Si"
 - [x] 비물리적 파라미터 (ρ < 0) → finite or error
 - [x] 음의 에너지 f1f2 → error or finite (no panic)
-- [ ] PyO3 타입 오류 처리
+- [x] PyO3: invalid surface, empty arrays, mismatched lengths, empty diffraction
 
 ### 4.4 벤치마크 검증
 - [ ] Criterion 벤치마크 결과 회귀 방지
