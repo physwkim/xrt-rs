@@ -152,4 +152,34 @@ mod tests {
             theta1.to_degrees()
         );
     }
+
+    #[test]
+    fn snell_total_internal_reflection() {
+        // When angle exceeds critical angle, result should be NaN
+        // (n1/n2 > 1, grazing angle too small)
+        let (a, b, c) = refract_snell(
+            0.0, 1.0, 0.0,    // beam along y
+            0.0, 0.0, 1.0,    // normal along z
+            0.0,               // beam_in_dot_normal = 0 (grazing)
+            1.5,               // n1/n2 > 1 (dense to less dense)
+        );
+        // Should produce NaN (total internal reflection)
+        assert!(a.is_nan() || b.is_nan() || c.is_nan(),
+            "Expected NaN for total internal reflection, got ({a}, {b}, {c})");
+    }
+
+    #[test]
+    fn snell_dense_to_sparse() {
+        // n1/n2 > 1 but above critical angle → valid refraction
+        let (a, b, c) = refract_snell(
+            0.0, 0.5_f64.sqrt(), -0.5_f64.sqrt(), // 45° to normal
+            0.0, 0.0, 1.0,          // normal along z
+            -0.5_f64.sqrt(),         // beam_in_dot_normal
+            1.1,                     // slight density change
+        );
+        assert!(a.is_finite() && b.is_finite() && c.is_finite(),
+            "Should refract for angle above critical");
+        let norm = (a*a + b*b + c*c).sqrt();
+        assert!((norm - 1.0).abs() < 1e-10, "output should be unit vector");
+    }
 }

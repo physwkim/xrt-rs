@@ -441,4 +441,23 @@ mod tests {
         let k2 = bessel_k_approx(2.0 / 3.0, 10.0);
         assert!(k2 < k1, "K should decay: K(5)={k1}, K(10)={k2}");
     }
+
+    #[test]
+    fn bending_magnet_from_rho() {
+        // from_rho should create a valid BM from bending radius
+        let rho = 5729.58; // mm, corresponds to B ≈ 1.747T for 3GeV
+        let mut bm = BendingMagnet::from_rho(
+            3.0, 0.3, rho, 1000, 5000.0, 15000.0, 1e-3, 1e-3,
+        );
+        let beam = bm.shine();
+        assert_eq!(beam.nrays(), 1000);
+        // Check direction normalization
+        for i in 0..beam.nrays() {
+            let a = beam.a[i];
+            let b = beam.b[i];
+            let c = beam.c[i];
+            let norm = (a*a + b*b + c*c).sqrt();
+            assert!((norm - 1.0).abs() < 1e-12, "ray[{i}] |dir| = {norm}");
+        }
+    }
 }

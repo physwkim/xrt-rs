@@ -100,3 +100,24 @@ class TestSurfacesOECross:
                          f"{surf_name} ny({x},{y})")
             assert_close(fp["nz"], op["nz"], tol,
                          f"{surf_name} nz({x},{y})")
+
+
+class TestSurfaceEdgeCases:
+    """Test surface edge cases and non-boundary behavior."""
+
+    def test_blazed_non_boundary_values(self):
+        """Blazed grating at non-boundary y should have well-defined z and n."""
+        data = load_fixture("surfaces.json")
+        pts = data.get("blazed_non_boundary")
+        if not pts:
+            pytest.skip("No blazed_non_boundary data")
+
+        for pt in pts:
+            # z should be positive (inside a blaze facet)
+            assert pt["z"] > 0, (
+                f"blazed z({pt['x']},{pt['y']}) = {pt['z']}, expected > 0"
+            )
+            # Normal should be unit length
+            n_len = (pt["nx"]**2 + pt["ny"]**2 + pt["nz"]**2) ** 0.5
+            assert_close(n_len, 1.0, 1e-12,
+                         f"blazed normal length at y={pt['y']}")

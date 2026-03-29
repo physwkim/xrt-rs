@@ -6,7 +6,7 @@ use ndarray::{array, Array1};
 use num_complex::Complex64;
 
 use xrt_materials::crystal::CrystalGeometry;
-use xrt_materials::crystal_variants::CrystalSi;
+use xrt_materials::crystal_variants::{CrystalDiamond, CrystalSi};
 use xrt_materials::data::ScatteringTable;
 
 fn load_fixture(name: &str) -> serde_json::Value {
@@ -588,4 +588,135 @@ fn golden_crystal_thickness_dependence() {
         "Laue amplitude should depend on thickness: thin={:.6e}, thick={:.6e}",
         rs_thin[0].norm(), rs_thick[0].norm()
     );
+}
+
+// ── Crystal variants ───────────────────────────────────────────────────────
+
+#[test]
+fn golden_ge111_bragg_angle() {
+    let fix = load_fixture("crystal_ge111.json");
+    let tc = fix["test_cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"].as_str().unwrap().contains("bragg_angle"))
+        .unwrap();
+
+    let ge = CrystalDiamond::new(
+        "Ge", [1, 1, 1], 5.6579, 5.323,
+        CrystalGeometry::BraggReflected, 1.0, None, 0.0,
+        ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let energies: Vec<f64> = tc["energies_ev"].as_array().unwrap()
+        .iter().map(|v| v.as_f64().unwrap()).collect();
+    let expected: Vec<f64> = tc["theta_b_rad"].as_array().unwrap()
+        .iter().map(|v| v.as_f64().unwrap()).collect();
+
+    let e_arr = Array1::from_vec(energies.clone());
+    let theta = ge.base.get_bragg_angle(&e_arr);
+
+    for (i, energy) in energies.iter().enumerate() {
+        let diff = (theta[i] - expected[i]).abs();
+        assert!(diff < 1e-12,
+            "Ge theta_B(E={energy}): {:.15e} != {:.15e} (diff={diff:.2e})",
+            theta[i], expected[i]);
+    }
+}
+
+#[test]
+fn golden_si333_bragg_angle() {
+    let fix = load_fixture("crystal_si333.json");
+    let tc = fix["test_cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"].as_str().unwrap().contains("bragg_angle"))
+        .unwrap();
+
+    let si = CrystalSi::new(
+        [3, 3, 3], 297.15, CrystalGeometry::BraggReflected,
+        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let energies: Vec<f64> = tc["energies_ev"].as_array().unwrap()
+        .iter().map(|v| v.as_f64().unwrap()).collect();
+    let expected: Vec<f64> = tc["theta_b_rad"].as_array().unwrap()
+        .iter().map(|v| v.as_f64().unwrap()).collect();
+
+    let e_arr = Array1::from_vec(energies.clone());
+    let theta = si.base.get_bragg_angle(&e_arr);
+
+    for (i, energy) in energies.iter().enumerate() {
+        let diff = (theta[i] - expected[i]).abs();
+        assert!(diff < 1e-12,
+            "Si333 theta_B(E={energy}): {:.15e} != {:.15e} (diff={diff:.2e})",
+            theta[i], expected[i]);
+    }
+}
+
+#[test]
+fn golden_si444_bragg_angle() {
+    let fix = load_fixture("crystal_si444.json");
+    let tc = fix["test_cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"].as_str().unwrap().contains("bragg_angle"))
+        .unwrap();
+
+    let si = CrystalSi::new(
+        [4, 4, 4], 297.15, CrystalGeometry::BraggReflected,
+        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let energies: Vec<f64> = tc["energies_ev"].as_array().unwrap()
+        .iter().map(|v| v.as_f64().unwrap()).collect();
+    let expected: Vec<f64> = tc["theta_b_rad"].as_array().unwrap()
+        .iter().map(|v| v.as_f64().unwrap()).collect();
+
+    let e_arr = Array1::from_vec(energies.clone());
+    let theta = si.base.get_bragg_angle(&e_arr);
+
+    for (i, energy) in energies.iter().enumerate() {
+        let diff = (theta[i] - expected[i]).abs();
+        assert!(diff < 1e-12,
+            "Si444 theta_B(E={energy}): {:.15e} != {:.15e} (diff={diff:.2e})",
+            theta[i], expected[i]);
+    }
+}
+
+#[test]
+fn golden_debye_waller_effect() {
+    // DW factor should change chi values (structure factor scaling)
+    let si_dw1 = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
+        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+    let si_dw01 = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
+        0.1, None, 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let e_arr = array![10000.0];
+    let theta_b = si_dw1.base.get_bragg_angle(&e_arr);
+    let stol = array![theta_b[0].sin() / (xrt_core::consts::CH / 10000.0)];
+
+    let chi1 = si_dw1.base.get_f_chi(&e_arr, &stol, &si_dw1).unwrap();
+    let chi01 = si_dw01.base.get_f_chi(&e_arr, &stol, &si_dw01).unwrap();
+
+    // DW=0.1 should reduce |chih| compared to DW=1.0
+    let chih_1 = chi1.chih[0].norm();
+    let chih_01 = chi01.chih[0].norm();
+    assert!(chih_01 < chih_1,
+        "DW=0.1 |chih|={chih_01:.6e} should be < DW=1.0 |chih|={chih_1:.6e}");
+
+    // Both DW factors produce finite chi values
+    assert!(chi01.chi0[0].re.is_finite(), "DW=0.1 chi0 should be finite");
+
+    // Bragg angle should NOT change with DW (it's geometric)
+    let theta1 = si_dw1.base.get_bragg_angle(&e_arr);
+    let theta01 = si_dw01.base.get_bragg_angle(&e_arr);
+    assert!((theta1[0] - theta01[0]).abs() < 1e-15,
+        "DW should not affect Bragg angle");
 }

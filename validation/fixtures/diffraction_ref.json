@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-29T14:23:01.627355+00:00",
+  "generated_at": "2026-03-29T14:52:44.059623+00:00",
   "domain": "diffraction",
   "test_cases": [
     {

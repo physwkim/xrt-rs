@@ -365,6 +365,44 @@ def gen_crystal():
 
         _write(f"crystal_{hkl_name}.json", data)
 
+    # Ge(111) crystal — CrystalDiamond variant
+    print("    Ge(111)")
+    ge = rm.CrystalDiamond(hkl=(1,1,1), d=None, elements='Ge',
+                            a=5.6579, rho=5.323, t=297.15)
+    ge_energies = [8000.0, 10000.0, 12000.0, 15000.0]
+    ge_theta = [float(ge.get_Bragg_angle(e)) for e in ge_energies]
+    ge_data = _meta("crystal_diffraction")
+    ge_data["crystal"] = "ge111"
+    ge_data["hkl"] = [1, 1, 1]
+    ge_data["element"] = "Ge"
+    ge_data["lattice_a"] = 5.6579
+    ge_data["rho"] = 5.323
+    ge_data["d_spacing_angstrom"] = float(ge.d)
+    ge_data["test_cases"] = [{
+        "id": "ge111_bragg_angle",
+        "energies_ev": ge_energies,
+        "theta_b_rad": ge_theta,
+    }]
+    _write("crystal_ge111.json", ge_data)
+
+    # Si high-order reflections
+    for hkl, hkl_name in [((3, 3, 3), "si333"), ((4, 4, 4), "si444")]:
+        print(f"    {hkl_name}")
+        cr = rm.CrystalSi(hkl=hkl, t=297.15)
+        energies = [10000.0, 15000.0, 20000.0, 30000.0]
+        theta_list = [float(cr.get_Bragg_angle(e)) for e in energies]
+        hi_data = _meta("crystal_diffraction")
+        hi_data["crystal"] = hkl_name
+        hi_data["hkl"] = list(hkl)
+        hi_data["temperature_k"] = 297.15
+        hi_data["d_spacing_angstrom"] = float(cr.d)
+        hi_data["test_cases"] = [{
+            "id": f"{hkl_name}_bragg_angle",
+            "energies_ev": energies,
+            "theta_b_rad": theta_list,
+        }]
+        _write(f"crystal_{hkl_name}.json", hi_data)
+
 
 # ── Domain 5: Surface geometry ───────────────────────────────────────────────
 # Compute surface z and n from the same mathematical formulas as the Rust code.
@@ -517,6 +555,16 @@ def gen_surfaces():
     data["grid"] = {"xs": xs, "ys": ys}
     data["surfaces"] = surfaces
     data["xrt_oe"] = xrt_oe_data
+
+    # Supplementary blazed grating points at non-boundary y values
+    blazed_extra_ys = [0.0003, 0.0007, 0.0012]  # within one grating period
+    blazed_extra_pts = []
+    for y in blazed_extra_ys:
+        z = _blazed_z(0.0, y, 600.0, 0.02, 0.5)
+        nx, ny, nz = _blazed_n(0.0, y, 600.0, 0.02, 0.5)
+        blazed_extra_pts.append({"x": 0.0, "y": y, "z": z, "nx": nx, "ny": ny, "nz": nz})
+    data["blazed_non_boundary"] = blazed_extra_pts
+
     _write("surfaces.json", data)
 
 

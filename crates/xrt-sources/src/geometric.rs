@@ -228,4 +228,24 @@ mod tests {
         assert_eq!(beam.jss[0], 0.0);
         assert_eq!(beam.jpp[0], 1.0);
     }
+
+    #[test]
+    fn annulus_distribution() {
+        use crate::distributions::SpatialDist;
+        let source = GeometricSource {
+            nrays: 10000,
+            dist_x: SpatialDist::Annulus(1.0, 5.0), // inner=1mm, outer=5mm
+            dist_z: SpatialDist::Annulus(1.0, 5.0),
+            dist_e: EnergyDist::Lines(vec![10000.0], None),
+            ..Default::default()
+        };
+        let beam = source.shine();
+        assert_eq!(beam.nrays(), 10000);
+        // All points should be within the annulus
+        for i in 0..beam.nrays() {
+            let r = (beam.x[i].powi(2) + beam.z[i].powi(2)).sqrt();
+            assert!(r >= 0.5, "ray[{i}] r={r:.4} < inner radius");
+            assert!(r <= 6.0, "ray[{i}] r={r:.4} > outer radius");
+        }
+    }
 }

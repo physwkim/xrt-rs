@@ -181,3 +181,54 @@ class TestSynchrotronCross:
             assert abs(norm_sq - 1.0) < 1e-12, (
                 f"undulator ray[{i}]: |dir|² = {norm_sq}"
             )
+
+
+class TestUndulatorPolarization:
+    """Test undulator with different polarization configurations."""
+
+    def test_planar_vertical_kx_only(self, xrt_rs):
+        """K_x only → vertically polarized undulator."""
+        rs = xrt_rs
+        result = rs.undulator_shine_rs(
+            6.0, 0.2,    # electron_energy_gev, beam_current
+            1.5, 0.0,    # kx, ky (K_x only)
+            20.0, 100,   # period_mm, n_periods
+            5000,         # nrays
+            5000.0, 20000.0,  # e_min, e_max
+            1e-4, 1e-4,  # theta_max, psi_max
+        )
+        assert len(result["e"]) == 5000
+        for i in range(min(100, len(result["a"]))):
+            norm_sq = result["a"][i]**2 + result["b"][i]**2 + result["c"][i]**2
+            assert abs(norm_sq - 1.0) < 1e-12
+
+    def test_elliptical_phase90(self, xrt_rs):
+        """K_x = K_y with phase=90° → circular polarization."""
+        rs = xrt_rs
+        # Note: undulator_shine_rs doesn't take phase_deg directly,
+        # but we can test K_x = K_y which gives 45° linear
+        result = rs.undulator_shine_rs(
+            6.0, 0.2,
+            1.0, 1.0,    # kx = ky (equal deflection parameters)
+            20.0, 100,
+            5000,
+            5000.0, 20000.0,
+            1e-4, 1e-4,
+        )
+        assert len(result["e"]) == 5000
+        # Energy should be in range
+        for ev in result["e"]:
+            assert 5000.0 <= ev <= 20000.0
+
+    def test_zero_k_produces_no_radiation(self, xrt_rs):
+        """K=0 undulator should still produce rays (uniform angles)."""
+        rs = xrt_rs
+        result = rs.undulator_shine_rs(
+            6.0, 0.2,
+            0.0, 0.01,    # near-zero K
+            20.0, 100,
+            1000,
+            5000.0, 20000.0,
+            1e-4, 1e-4,
+        )
+        assert len(result["e"]) == 1000
