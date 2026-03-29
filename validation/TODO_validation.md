@@ -1,6 +1,6 @@
 # Validation Framework — 추가 가능 항목
 
-현재: Rust golden 45, pytest 62 pass. 공개 API 커버리지 ~64%.
+현재: Rust golden **52**, pytest **72** pass. 공개 API 커버리지 ~74%.
 
 ---
 
@@ -12,42 +12,36 @@
 - [ ] GPU fallback 경로 검증
 - **Why:** GPU 경로가 전혀 검증되지 않음. production에서 GPU 사용 시 무검증 상태
 
-### 1.2 Crystal Laue/Transmitted geometry (커버리지: 0%)
-- [ ] `CrystalGeometry::LaueReflected` 진폭 계산
-- [ ] `CrystalGeometry::LaueTransmitted` 진폭 계산
-- [ ] `CrystalGeometry::BraggTransmitted` 진폭 계산
-- [ ] Fixture 생성: Python XRT로 각 geometry에 대해 진폭 참조값
-- [ ] thickness 유한값 (예: 0.1mm) 설정 시 Laue case 반사율 변화
-- **Why:** 4개 geometry 중 1개만 테스트됨. Laue optics는 고에너지 X선 실험에 필수
+### ~~1.2 Crystal Laue/Transmitted geometry~~ ✅ DONE
+- [x] BraggTransmitted, LaueReflected, LaueTransmitted 진폭 계산
+- [x] Python XRT cross-comparison (Bragg transmitted)
+- [x] thickness 의존성 (Pendellösung) 테스트
+- [ ] Laue geometry rocking curve scan (multi-angle)
 
-### 1.3 Parametric surface intersection (커버리지: 0%)
-- [ ] `find_intersection_parametric_rs()` for elliptical mirror
-- [ ] `find_intersection_parametric_rs()` for parabolical mirror
-- [ ] `find_intersection_parametric_rs()` for hyperbolic mirror
-- [ ] Fixture: Python XRT parametric OE 클래스로 교차점 생성
-- **Why:** PyO3 바인딩 존재하지만 pytest 전무
+### ~~1.3 Parametric surface intersection~~ ✅ DONE
+- [x] elliptical, parabolical, hyperbolic round-trip pytest
+- [x] 대칭성 및 on-axis 검증
+- [ ] Python XRT OE 클래스 cross-comparison (수치 비교)
 
-### 1.4 Multilayer transmitted geometry
+### ~~1.4 Multilayer roughness~~ ✅ PARTIAL
+- [x] Roughness σ > 0 Nevot-Croce 단조감소 검증
+- [x] Zero-roughness Rust↔Python cross-comparison
 - [ ] `MultilayerGeom::Transmitted` 계산 검증
-- [ ] Python XRT `ml.get_amplitude()` transmitted 모드 참조값
-- [ ] Roughness σ > 0 효과: Nevot-Croce factor 검증
 - [ ] 단일 bilayer (n_pairs=1) 경계조건
-- **Why:** 구현됨 but 반사만 테스트. X선 투과 광학 미검증
 
 ---
 
 ## Priority 2: HIGH (물리적 완전성)
 
-### 2.1 Beamline 다중 소자 파이프라인
-- [ ] `Beamline::add_grating()` 통합 테스트
+### ~~2.1 Beamline 다중 소자 파이프라인~~ ✅ PARTIAL
+- [x] `Beamline::add_grating()` 통합 테스트
+- [x] Multi-element pipeline (2 mirrors + drift)
 - [ ] `Beamline::add_crystal()` 통합 테스트
 - [ ] 3+ 소자 체이닝 (Source → Mirror → Crystal → Screen)
 - [ ] Coherency matrix (jss, jpp, jsp) 파이프라인 보존 검증
-- [ ] 편광도 (degree of polarization) 전파
-- **Why:** 현재 Mirror → Screen만 E2E 테스트. 실제 빔라인은 복합 구성
 
-### 2.2 Grating deflection 확장
-- [ ] 음의 회절차수 (m = -1, -2)
+### ~~2.2 Grating deflection 확장~~ ✅ PARTIAL
+- [x] 음의 회절차수 (m = -1)
 - [ ] Evanescent wave 조건 (u < 0)
 - [ ] Explicit sign override (`sig=Some(value)`)
 - [ ] Grating 효율 vs 에너지 스캔
