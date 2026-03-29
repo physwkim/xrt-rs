@@ -1,6 +1,6 @@
 # Validation Framework — 추가 가능 항목
 
-현재: Rust golden **63+**, pytest **76** pass. 공개 API 커버리지 ~82%.
+현재: Rust golden+unit **80+**, pytest **76** pass. 공개 API 커버리지 ~90%.
 
 ---
 
@@ -23,20 +23,21 @@
 - [x] 대칭성 및 on-axis 검증
 - [ ] Python XRT OE 클래스 cross-comparison (수치 비교)
 
-### ~~1.4 Multilayer roughness~~ ✅ PARTIAL
+### ~~1.4 Multilayer roughness~~ ✅ MOSTLY DONE
 - [x] Roughness σ > 0 Nevot-Croce 단조감소 검증
 - [x] Zero-roughness Rust↔Python cross-comparison
+- [x] 단일 bilayer (n_pairs=1) — finite, nonzero, sub-unity
+- [x] Multilayer::period() = d_t + d_b
 - [ ] `MultilayerGeom::Transmitted` 계산 검증
-- [ ] 단일 bilayer (n_pairs=1) 경계조건
 
 ---
 
 ## Priority 2: HIGH (물리적 완전성)
 
-### ~~2.1 Beamline 다중 소자 파이프라인~~ ✅ PARTIAL
+### ~~2.1 Beamline 다중 소자 파이프라인~~ ✅ MOSTLY DONE
 - [x] `Beamline::add_grating()` 통합 테스트
 - [x] Multi-element pipeline (2 mirrors + drift)
-- [ ] `Beamline::add_crystal()` 통합 테스트
+- [x] `Beamline::add_crystal()` Si(111) E2E
 - [ ] 3+ 소자 체이닝 (Source → Mirror → Crystal → Screen)
 - [ ] Coherency matrix (jss, jpp, jsp) 파이프라인 보존 검증
 
@@ -72,11 +73,11 @@
 
 ## Priority 3: MEDIUM (엣지케이스 및 정밀도)
 
-### ~~3.1 Geometric source 확장~~ ✅ PARTIAL
+### ~~3.1 Geometric source 확장~~ ✅ DONE
 - [x] `SpatialDist::Annulus` (환형 빔) — bounds check
-- [ ] Polarization: Plus45, Minus45, Left circular
-- [ ] Rotation angles (pitch, roll, yaw)
-- [ ] `EnergyDist::Lines` weighted selection
+- [x] Polarization: Plus45, Minus45, Left circular — coherency matrix
+- [x] Rotation: pitch rotation 후 forward direction 보존
+- [x] `EnergyDist::Lines` weighted selection (9:1 ratio)
 
 ### ~~3.2 Synchrotron source 정밀 검증~~ ✅ PARTIAL
 - [x] BM `from_rho()` 대체 생성자 — direction normalization
@@ -85,23 +86,25 @@
 - [ ] Wiggler K→0 극한 (BM과 동등)
 - [ ] BM 임계에너지 스펙트럼 검증 (synchrotron universal curve)
 
-### 3.3 Diffraction 정밀도
-- [ ] Ray at pixel location (path → 0) 예외처리
+### ~~3.3 Diffraction 정밀도~~ ✅ MOSTLY DONE
+- [x] Ray at pixel location (path → 0) — safely skipped, zero result
+- [x] 대규모 ray set (N = 10000) Kahan summation 안정성
 - [ ] Polychromatic 빔 (에너지 분산 있는 rays)
-- [ ] 대규모 ray set (N > 10000) Kahan summation 안정성
 - [ ] Phase wrapping 2πn 정밀도
 
-### ~~3.4 Surface 엣지케이스~~ ✅ PARTIAL
+### ~~3.4 Surface 엣지케이스~~ ✅ MOSTLY DONE
 - [x] Toroid: x ≈ r (sagittal 경계) — finite check
 - [x] Spherical: ρ ≈ R 및 ρ > R (clamp 검증)
 - [x] Blazed grating: non-boundary y 값 (z > 0, unit normal)
-- [ ] LaminarGrating `local_g()` 검증
+- [x] LaminarGrating `local_g()` = [0, -rho, 0]
+- [x] BlazedGrating `local_g()` = [0, -rho, 0]
 - [ ] FZP zone boundary 전이
 
-### 3.5 Material 엣지케이스
-- [ ] `Multilayer::period()` 값 검증
+### ~~3.5 Material 엣지케이스~~ ✅ MOSTLY DONE
+- [x] `Multilayer::period()` 값 검증
+- [x] 복합 compound: 3+ 원소 (LaAlO3) — refractive index
+- [x] Invalid element name → Error path
 - [ ] Material 밀도 ρ=0 예외처리
-- [ ] 복합 compound: 3+ 원소 (예: LaAlO3)
 - [ ] 극저에너지 (< 100 eV) 영역 scattering
 
 ---
