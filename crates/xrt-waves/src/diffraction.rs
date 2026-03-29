@@ -192,4 +192,73 @@ mod tests {
             edge_intensity
         );
     }
+
+    #[test]
+    fn ray_at_pixel_location_skipped() {
+        // Ray exactly at pixel location: path = 0, should be skipped
+        let ray = DiffractionRay {
+            x: 1.0, y: 2.0, z: 3.0,
+            nx: 0.0, ny: 0.0, nz: 1.0,
+            nl: 1.0,
+            es: Complex64::new(1.0, 0.0),
+            ep: Complex64::new(1.0, 0.0),
+            energy: 10000.0,
+        };
+        let pixel = PixelPoint { x: 1.0, y: 2.0, z: 3.0 }; // same as ray
+
+        let result = diffraction_integral(&[ray], &[pixel]);
+        // Should be zero (ray at pixel is skipped, not a singularity)
+        assert_eq!(result.len(), 1);
+        assert!(result[0].es.norm() < 1e-30,
+            "ray at pixel should give zero: {}", result[0].es);
+    }
+
+    #[test]
+    fn kahan_summation_stability() {
+        // Many small contributions should not lose precision
+        let n_rays = 10000;
+        let rays: Vec<DiffractionRay> = (0..n_rays)
+            .map(|i| {
+                let x = (i as f64 - n_rays as f64 / 2.0) * 0.001;
+                DiffractionRay {
+                    x,
+                    y: 0.0,
+                    z: 0.0,
+                    nx: 0.0,
+                    ny: 0.0,
+                    nz: 1.0,
+                    nl: 1.0,
+                    es: Complex64::new(1.0 / n_rays as f64, 0.0),
+                    ep: Complex64::new(0.0, 0.0),
+                    energy: 10000.0,
+                }
+            })
+            .collect();
+
+        let pixel = PixelPoint { x: 0.0, y: 0.0, z: 100.0 };
+        let result = diffraction_integral(&rays, &[pixel]);
+
+        // Result should be finite and non-zero
+        assert!(result[0].es.re.is_finite(), "Kahan result not finite");
+        assert!(result[0].es.norm() > 0.0, "Kahan result should be non-zero");
+
+        // Compare with fewer rays at same density -> should scale roughly
+        let rays_small: Vec<DiffractionRay> = (0..100)
+            .map(|i| {
+                let x = (i as f64 - 50.0) * 0.001;
+                DiffractionRay {
+                    x, y: 0.0, z: 0.0,
+                    nx: 0.0, ny: 0.0, nz: 1.0, nl: 1.0,
+                    es: Complex64::new(1.0 / 100.0, 0.0),
+                    ep: Complex64::new(0.0, 0.0),
+                    energy: 10000.0,
+                }
+            })
+            .collect();
+        let result_small = diffraction_integral(&rays_small, &[pixel]);
+        // Both should have similar order of magnitude
+        let ratio = result[0].es.norm() / result_small[0].es.norm();
+        assert!(ratio > 0.01 && ratio < 100.0,
+            "10000 vs 100 rays ratio = {ratio:.2}, should be reasonable");
+    }
 }

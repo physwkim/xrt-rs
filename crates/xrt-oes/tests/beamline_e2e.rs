@@ -10,6 +10,7 @@ use xrt_materials::material::{Material, MaterialKind};
 use xrt_oes::beamline::{Beamline, OeParamsBuilder};
 use xrt_oes::material_oe::MaterialOpticalElement;
 use xrt_oes::grating_oe::GratingOpticalElement;
+use xrt_oes::crystal_oe::CrystalOpticalElement;
 use xrt_oes::oe::OpticalElement;
 use xrt_oes::screen::Screen;
 use xrt_oes::surfaces::flat::FlatSurface;
@@ -321,4 +322,42 @@ fn golden_multi_element_beamline() {
     // Second mirror may not intercept all rays depending on geometry,
     // so just verify the pipeline runs without panic and produces output
     assert!(output.initial_count == 1000, "Should start with 1000 rays");
+}
+
+#[test]
+fn golden_crystal_beamline() {
+    use xrt_materials::crystal::{CrystalGeometry, StructureFactor};
+    use xrt_materials::crystal_variants::CrystalSi;
+    use xrt_materials::data::ScatteringTable;
+
+    let mut beam = collimated_source(500, 10000.0);
+
+    let si = CrystalSi::new(
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
+
+    let bragg_angle = si.base.get_bragg_angle(&ndarray::array![10000.0])[0];
+
+    let crystal_oe = CrystalOpticalElement::new(
+        FlatSurface,
+        OeParamsBuilder::new()
+            .pitch(bragg_angle)
+            .build(),
+        si.base.clone(),
+    );
+
+    let bl = Beamline::new()
+        .add_crystal("Si111", crystal_oe, Box::new(si))
+        .drift(5000.0);
+
+    let output = bl.propagate(&mut beam);
+    // Crystal beamline should run without panic
+    assert!(output.initial_count == 500);
 }

@@ -181,4 +181,18 @@ mod tests {
     fn element_not_found() {
         assert!(Element::new("Xx", ScatteringTable::Chantler).is_err());
     }
+
+    #[test]
+    fn invalid_element_returns_error() {
+        let result = Element::new("Xx", ScatteringTable::ChantlerTotal);
+        assert!(result.is_err(), "Invalid element 'Xx' should return Err");
+    }
+
+    #[test]
+    fn valid_element_by_symbol() {
+        let si = Element::new("Si", ScatteringTable::ChantlerTotal).unwrap();
+        assert_eq!(si.z, 14);
+        let au = Element::new("Au", ScatteringTable::ChantlerTotal).unwrap();
+        assert_eq!(au.z, 79);
+    }
 }

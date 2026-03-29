@@ -248,4 +248,95 @@ mod tests {
             assert!(r <= 6.0, "ray[{i}] r={r:.4} > outer radius");
         }
     }
+
+    #[test]
+    fn polarization_plus45() {
+        let source = GeometricSource {
+            nrays: 100,
+            dist_e: EnergyDist::Lines(vec![10000.0], None),
+            polarization: Polarization::Plus45,
+            ..Default::default()
+        };
+        let beam = source.shine();
+        assert_eq!(beam.nrays(), 100);
+        // Plus45: Jss = Jpp = 0.5, Jsp = (0.5, 0)
+        for i in 0..beam.nrays() {
+            assert!((beam.jss[i] - 0.5).abs() < 1e-15);
+            assert!((beam.jpp[i] - 0.5).abs() < 1e-15);
+        }
+    }
+
+    #[test]
+    fn polarization_minus45() {
+        let source = GeometricSource {
+            nrays: 100,
+            dist_e: EnergyDist::Lines(vec![10000.0], None),
+            polarization: Polarization::Minus45,
+            ..Default::default()
+        };
+        let beam = source.shine();
+        assert_eq!(beam.nrays(), 100);
+        // Minus45: Jss = Jpp = 0.5, Jsp = (-0.5, 0)
+        for i in 0..beam.nrays() {
+            assert!((beam.jss[i] - 0.5).abs() < 1e-15);
+            assert!((beam.jpp[i] - 0.5).abs() < 1e-15);
+        }
+    }
+
+    #[test]
+    fn polarization_left_circular() {
+        let source = GeometricSource {
+            nrays: 100,
+            dist_e: EnergyDist::Lines(vec![10000.0], None),
+            polarization: Polarization::Left,
+            ..Default::default()
+        };
+        let beam = source.shine();
+        assert_eq!(beam.nrays(), 100);
+        // Left circular: Jss = Jpp = 0.5, Jsp = (0, -0.5)
+        for i in 0..beam.nrays() {
+            assert!((beam.jss[i] - 0.5).abs() < 1e-15);
+            assert!((beam.jpp[i] - 0.5).abs() < 1e-15);
+            assert!((beam.jsp[i].im - (-0.5)).abs() < 1e-15);
+        }
+    }
+
+    #[test]
+    fn weighted_energy_lines() {
+        // Two energy lines: 8000 eV (weight 0.9) and 12000 eV (weight 0.1)
+        let source = GeometricSource {
+            nrays: 10000,
+            dist_e: EnergyDist::Lines(
+                vec![8000.0, 12000.0],
+                Some(vec![0.9, 0.1]),
+            ),
+            ..Default::default()
+        };
+        let beam = source.shine();
+        assert_eq!(beam.nrays(), 10000);
+
+        // Count rays at each energy
+        let n_8k = beam.e.iter().filter(|&&e| (e - 8000.0).abs() < 1.0).count();
+        let n_12k = beam.e.iter().filter(|&&e| (e - 12000.0).abs() < 1.0).count();
+
+        // Should roughly follow 9:1 ratio
+        let ratio = n_8k as f64 / n_12k as f64;
+        assert!(ratio > 5.0 && ratio < 15.0,
+            "Expected ~9:1 ratio, got {n_8k}:{n_12k} = {ratio:.1}");
+    }
+
+    #[test]
+    fn source_with_pitch_rotation() {
+        let source = GeometricSource {
+            nrays: 1000,
+            dist_e: EnergyDist::Lines(vec![10000.0], None),
+            pitch: 0.01, // small pitch rotation
+            ..Default::default()
+        };
+        let beam = source.shine();
+        assert_eq!(beam.nrays(), 1000);
+        // After pitch rotation, mean b should still be ~1 (forward)
+        let mean_b: f64 = beam.b.iter().sum::<f64>() / 1000.0;
+        assert!(mean_b > 0.99, "mean(b) after small pitch should be ~1: {mean_b}");
+    }
 }

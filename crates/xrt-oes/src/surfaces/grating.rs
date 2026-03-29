@@ -179,4 +179,24 @@ mod tests {
         let n = g.local_n(0.0, 0.0);
         assert!((n[2] - 1.0).abs() < 1e-15);
     }
+
+    #[test]
+    fn laminar_grating_local_g() {
+        let lg = LaminarGrating::new(600.0, 0.005, 0.5);
+        let g = lg.local_g(0.0, 0.0);
+        assert!(g.is_some(), "laminar should have grating vector");
+        let [gx, gy, gz] = g.unwrap();
+        assert!((gx - 0.0).abs() < 1e-15, "gx should be 0");
+        assert!((gy - (-600.0)).abs() < 1e-12, "gy should be -rho = -600");
+        assert!((gz - 0.0).abs() < 1e-15, "gz should be 0");
+    }
+
+    #[test]
+    fn blazed_grating_local_g() {
+        let bg = BlazedGrating::new(600.0, 0.02, 0.5);
+        let g = bg.local_g(0.0, 0.0);
+        assert!(g.is_some());
+        let [_gx, gy, _gz] = g.unwrap();
+        assert!((gy - (-600.0)).abs() < 1e-12, "gy = -rho = -600");
+    }
 }

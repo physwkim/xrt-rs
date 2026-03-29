@@ -350,4 +350,26 @@ mod tests {
         assert_eq!(sio2.elements.len(), 2);
         assert!((sio2.mass - (28.0855 + 2.0 * 15.9994)).abs() < 0.01);
     }
+
+    #[test]
+    fn three_element_compound() {
+        // LaAlO3: La + Al + 3×O, density 6.52 g/cm³
+        let mat = Material::new(
+            &["La", "Al", "O"],
+            Some(&[1.0, 1.0, 3.0]),
+            6.52,
+            MaterialKind::Mirror,
+            None,
+            ScatteringTable::ChantlerTotal,
+        ).unwrap();
+
+        let e = Array1::from_vec(vec![10000.0]);
+        let n = mat.get_refractive_index(&e).unwrap();
+        // Real part should be close to 1 (1 - delta)
+        assert!(n[0].re < 1.0 && n[0].re > 0.999,
+            "LaAlO3 n.re at 10keV should be ~1: {}", n[0].re);
+        // Imaginary part should be small (absorption, sign depends on convention)
+        assert!(n[0].im.abs() < 1e-3,
+            "LaAlO3 n.im at 10keV should be small: {}", n[0].im);
+    }
 }
