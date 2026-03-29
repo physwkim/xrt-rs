@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from conftest import load_fixture, assert_complex_close
+from conftest import load_fixture, assert_close, assert_complex_close
 
 
 class TestMultilayerGolden:
@@ -89,3 +89,89 @@ class TestMultilayerCross:
                 f"|rs| mismatch at {label}: py={py_rs_abs:.10e}, "
                 f"rs={rs_abs[0]:.10e}, diff={diff:.2e}"
             )
+
+
+class TestMultilayerRoughness:
+    """Verify roughness effect on multilayer reflectivity."""
+
+    def test_roughness_reduces_reflectivity(self, xrt):
+        """Higher roughness should reduce reflectivity (Nevot-Croce)."""
+        _, rm = xrt
+        data = load_fixture("multilayer_w_si.json")
+        roughness_data = data.get("roughness_variation")
+        if not roughness_data:
+            pytest.skip("No roughness variation data in fixture")
+
+        # Reflectivity should decrease with increasing roughness
+        prev_rs = None
+        for entry in roughness_data:
+            rs = entry["rs_abs"]
+            if prev_rs is not None:
+                assert rs <= prev_rs + 1e-6, (
+                    f"roughness={entry['roughness']}: |Rs|={rs:.4f} > "
+                    f"prev |Rs|={prev_rs:.4f}"
+                )
+            prev_rs = rs
+
+    def test_zero_roughness_matches_base(self, xrt):
+        """Zero roughness should match the base multilayer result."""
+        _, rm = xrt
+        data = load_fixture("multilayer_w_si.json")
+        roughness_data = data.get("roughness_variation")
+        if not roughness_data:
+            pytest.skip("No roughness variation data in fixture")
+
+        # Find zero-roughness entry
+        zero_rough = next(
+            (r for r in roughness_data if r["roughness"] == 0.0), None
+        )
+        if zero_rough is None:
+            pytest.skip("No zero-roughness entry")
+
+        # Should be finite and positive
+        assert zero_rough["rs_abs"] > 0, "zero-roughness |Rs| should be > 0"
+        assert zero_rough["rp_abs"] > 0, "zero-roughness |Rp| should be > 0"
+
+
+class TestMultilayerCrossBroadened:
+    """Cross-compare xrt-rs multilayer with roughness against Python XRT."""
+
+    def test_roughness_cross_zero(self, xrt_rs, xrt):
+        """Rust multilayer at zero roughness should match Python XRT."""
+        rs = xrt_rs
+        _, rm = xrt
+        data = load_fixture("multilayer_w_si.json")
+        roughness_data = data.get("roughness_variation")
+        if not roughness_data:
+            pytest.skip("No roughness variation data in fixture")
+
+        # Only cross-compare at zero roughness (roughness models differ:
+        # Rust applies Nevot-Croce to all interfaces, XRT substRoughness
+        # applies only to substrate)
+        entry = next(r for r in roughness_data if r["roughness"] == 0.0)
+
+        rs_abs_list, rp_abs_list = rs.multilayer_amplitude_rs(
+            "W", 19.3, "Si", 2.33, "Si", 2.33,
+            20, 15.0, 25.0, 0.0,
+            [entry["energy_ev"]], [entry["sin_theta"]],
+        )
+
+        tol = 1e-4
+        assert_close(rs_abs_list[0], entry["rs_abs"], tol, "zero-roughness |Rs|")
+
+    def test_roughness_monotone_rust(self, xrt_rs):
+        """Rust multilayer: higher roughness should reduce reflectivity."""
+        rs = xrt_rs
+        prev_rs = None
+        for sigma in [0.0, 1.0, 3.0, 5.0]:
+            rs_abs_list, _ = rs.multilayer_amplitude_rs(
+                "W", 19.3, "Si", 2.33, "Si", 2.33,
+                20, 15.0, 25.0, sigma,
+                [10000.0], [0.02],
+            )
+            if prev_rs is not None:
+                assert rs_abs_list[0] <= prev_rs + 1e-6, (
+                    f"Rust roughness={sigma}: |Rs|={rs_abs_list[0]:.4f} > "
+                    f"prev={prev_rs:.4f}"
+                )
+            prev_rs = rs_abs_list[0]

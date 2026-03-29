@@ -323,6 +323,46 @@ def gen_crystal():
                 ),
             },
         ]
+
+        # Multi-geometry test: Bragg transmitted and Laue with finite thickness
+        crystal_thin = rm.CrystalSi(hkl=hkl, tK=297.15, geom='Bragg transmitted', t=0.1)
+        try:
+            tb_thin = crystal_thin.get_Bragg_angle(10000.0)
+            bidn_thin = np.array([-math.sin(tb_thin)])
+            rs_bt, rp_bt = crystal_thin.get_amplitude(e10, bidn_thin)[:2]
+            data["test_cases"].append({
+                "id": f"{hkl_name}_bragg_transmitted_10kev",
+                "energy_ev": 10000.0,
+                "geometry": "BraggTransmitted",
+                "thickness_mm": 0.1,
+                "beam_in_dot_normal": float(bidn_thin[0]),
+                "rs_real": float(rs_bt[0].real),
+                "rs_imag": float(rs_bt[0].imag),
+                "rp_real": float(rp_bt[0].real),
+                "rp_imag": float(rp_bt[0].imag),
+            })
+        except Exception as e:
+            print(f"    skipping Bragg transmitted for {hkl_name}: {e}")
+
+        crystal_laue = rm.CrystalSi(hkl=hkl, tK=297.15, geom='Laue reflected', t=0.1)
+        try:
+            tb_laue = crystal_laue.get_Bragg_angle(10000.0)
+            bidn_laue = np.array([math.sin(tb_laue)])  # positive for Laue
+            rs_lr, rp_lr = crystal_laue.get_amplitude(e10, bidn_laue)[:2]
+            data["test_cases"].append({
+                "id": f"{hkl_name}_laue_reflected_10kev",
+                "energy_ev": 10000.0,
+                "geometry": "LaueReflected",
+                "thickness_mm": 0.1,
+                "beam_in_dot_normal": float(bidn_laue[0]),
+                "rs_real": float(rs_lr[0].real),
+                "rs_imag": float(rs_lr[0].imag),
+                "rp_real": float(rp_lr[0].real),
+                "rp_imag": float(rp_lr[0].imag),
+            })
+        except Exception as e:
+            print(f"    skipping Laue reflected for {hkl_name}: {e}")
+
         _write(f"crystal_{hkl_name}.json", data)
 
 
@@ -727,6 +767,31 @@ def gen_multilayer():
         "n_pairs": 20, "d_t": 15.0, "d_b": 25.0, "roughness": 3.0,
     }
     data["test_cases"] = results
+
+    # Roughness variation test (Gap: roughness > 0)
+    roughness_tests = []
+    for sigma in [0.0, 1.0, 3.0, 5.0]:
+        ml_r = rm.Multilayer(
+            tLayer=rm.Material(["W"], [1], rho=19.3, table="Chantler total"),
+            tThickness=15.0,
+            bLayer=rm.Material(["Si"], [1], rho=2.33, table="Chantler total"),
+            bThickness=25.0,
+            nPairs=20,
+            substrate=rm.Material(["Si"], [1], rho=2.33, table="Chantler total"),
+            substRoughness=sigma,
+        )
+        e_test = np.array([10000.0])
+        st_test = np.array([0.02])
+        rs_r, rp_r = ml_r.get_amplitude(e_test, st_test)[:2]
+        roughness_tests.append({
+            "roughness": sigma,
+            "energy_ev": 10000.0,
+            "sin_theta": 0.02,
+            "rs_abs": float(abs(rs_r[0])),
+            "rp_abs": float(abs(rp_r[0])),
+        })
+    data["roughness_variation"] = roughness_tests
+
     _write("multilayer_w_si.json", data)
 
 
@@ -804,6 +869,21 @@ def gen_synchrotron():
     _write("synchrotron_sources.json", data)
 
 
+# ── Domain 12: Parametric surfaces ─────────────────────────────────────────
+def gen_parametric():
+    print("[12] parametric surfaces")
+    # Test round-trip: xyz → param → xyz for known surface shapes
+    surfaces = {
+        "elliptical": {"a": 5000.0, "b": 50.0, "y0": 0.0},
+        "parabolical": {"p": 500.0, "y0": 0.0},
+        "hyperbolic": {"a": 5000.0, "b": 50.0, "y0": 0.0},
+    }
+
+    data = _meta("parametric_surfaces")
+    data["surfaces"] = surfaces
+    _write("parametric_surfaces.json", data)
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print(f"Generating XRT validation fixtures (XRT {XRT_VERSION})")
@@ -818,4 +898,5 @@ if __name__ == "__main__":
     gen_sources()
     gen_multilayer()
     gen_synchrotron()
+    gen_parametric()
     print("\nDone. Run 'cargo test golden' and 'pytest validation/' to verify.")

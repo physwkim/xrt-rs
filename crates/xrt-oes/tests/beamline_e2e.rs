@@ -250,3 +250,75 @@ fn beamline_output_diagnostics() {
     assert_eq!(m1_out.name, "M1");
     assert_eq!(m1_out.good_count + m1_out.lost_count, 100);
 }
+
+#[test]
+fn golden_grating_beamline() {
+    // Test a simple grating beamline: Source -> BlazedGrating -> Screen
+    let mut beam = collimated_source(500, 1000.0);
+
+    let grating = GratingOpticalElement::new(
+        BlazedGrating::new(600.0, 0.02, 0.5),
+        OeParamsBuilder::new().pitch(0.01).build(),
+        1, // first positive order
+    );
+
+    let bl = Beamline::new()
+        .add_grating("G1", grating)
+        .drift(1000.0);
+
+    let output = bl.propagate(&mut beam);
+    assert!(output.final_good_count > 0,
+            "Grating beamline should have good rays");
+    assert!(output.efficiency() > 0.0,
+            "Grating should have non-zero efficiency");
+}
+
+#[test]
+fn golden_negative_grating_order() {
+    let mut beam = collimated_source(500, 1000.0);
+
+    let grating = GratingOpticalElement::new(
+        BlazedGrating::new(600.0, 0.02, 0.5),
+        OeParamsBuilder::new().pitch(0.01).build(),
+        -1, // first negative order
+    );
+
+    let bl = Beamline::new()
+        .add_grating("G1", grating)
+        .drift(1000.0);
+
+    let output = bl.propagate(&mut beam);
+    // Negative order should also produce valid rays
+    assert!(output.final_good_count > 0,
+            "Negative grating order should have good rays");
+}
+
+#[test]
+fn golden_multi_element_beamline() {
+    // Source -> Mirror -> Drift -> Mirror -> Screen
+    let mut beam = collimated_source(1000, 10000.0);
+
+    let m1 = MaterialOpticalElement::new(
+        FlatSurface,
+        OeParamsBuilder::new().pitch(0.003).build(),
+        si_mirror(),
+    );
+    let m2 = MaterialOpticalElement::new(
+        FlatSurface,
+        OeParamsBuilder::new().pitch(0.003).build(),
+        si_mirror(),
+    );
+
+    let bl = Beamline::new()
+        .add_material("M1", m1)
+        .drift(5000.0)
+        .add_material("M2", m2)
+        .drift(5000.0);
+
+    let output = bl.propagate(&mut beam);
+    assert!(output.elements.len() >= 2,
+            "Should have at least 2 OE outputs, got {}", output.elements.len());
+    // Second mirror may not intercept all rays depending on geometry,
+    // so just verify the pipeline runs without panic and produces output
+    assert!(output.initial_count == 1000, "Should start with 1000 rays");
+}

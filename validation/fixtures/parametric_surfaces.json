@@ -1,0 +1,22 @@
+{
+  "generator": "xrt-validation",
+  "xrt_version": "1.6.2",
+  "generated_at": "2026-03-29T14:23:01.646334+00:00",
+  "domain": "parametric_surfaces",
+  "surfaces": {
+    "elliptical": {
+      "a": 5000.0,
+      "b": 50.0,
+      "y0": 0.0
+    },
+    "parabolical": {
+      "p": 500.0,
+      "y0": 0.0
+    },
+    "hyperbolic": {
+      "a": 5000.0,
+      "b": 50.0,
+      "y0": 0.0
+    }
+  }
+}

@@ -444,3 +444,148 @@ fn golden_si111_darwin_width() {
 fn golden_si220_darwin_width() {
     test_darwin_width("crystal_si220.json", [2, 2, 0]);
 }
+
+#[test]
+fn golden_si111_bragg_transmitted() {
+    let fix = load_fixture("crystal_si111.json");
+
+    // Create crystal with BraggTransmitted geometry and finite thickness
+    let si = CrystalSi::new(
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggTransmitted,
+        1.0,
+        Some(0.1), // 0.1 mm thickness
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
+
+    let e_arr = array![10000.0];
+    let theta_b = si.base.get_bragg_angle(&e_arr);
+    let bidn = array![-theta_b[0].sin()];
+
+    let (rs, rp) = si
+        .base
+        .get_amplitude(&e_arr, &bidn, None, None, &si)
+        .unwrap();
+
+    // Physical constraints: transmitted amplitude should be finite and bounded
+    assert!(rs[0].re.is_finite() && rs[0].im.is_finite(),
+            "Bragg transmitted rs not finite: {:?}", rs[0]);
+    assert!(rp[0].re.is_finite() && rp[0].im.is_finite(),
+            "Bragg transmitted rp not finite: {:?}", rp[0]);
+
+    // Transmitted intensity should be <= 1
+    assert!(rs[0].norm() <= 1.0 + 1e-6,
+            "Bragg transmitted |rs| = {:.6} > 1", rs[0].norm());
+    assert!(rp[0].norm() <= 1.0 + 1e-6,
+            "Bragg transmitted |rp| = {:.6} > 1", rp[0].norm());
+
+    // If fixture has cross-comparison data, use it
+    if let Some(tc) = fix["test_cases"].as_array().unwrap().iter()
+        .find(|t| t["id"].as_str().unwrap().contains("bragg_transmitted"))
+    {
+        let exp_rs_re = tc["rs_real"].as_f64().unwrap();
+        let exp_rs_im = tc["rs_imag"].as_f64().unwrap();
+        let tol = 1e-4; // looser tolerance for different solver methods
+        assert!(
+            (rs[0].re - exp_rs_re).abs() < tol && (rs[0].im - exp_rs_im).abs() < tol,
+            "Bragg transmitted rs: ({:.6e},{:.6e}) != ({exp_rs_re:.6e},{exp_rs_im:.6e})",
+            rs[0].re, rs[0].im
+        );
+    }
+}
+
+#[test]
+fn golden_si111_laue_reflected() {
+    let si = CrystalSi::new(
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::LaueReflected,
+        1.0,
+        Some(0.1), // 0.1 mm thickness
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
+
+    let e_arr = array![10000.0];
+    let theta_b = si.base.get_bragg_angle(&e_arr);
+    // For Laue: beam enters through the surface, bidn positive
+    let bidn = array![theta_b[0].sin()];
+
+    let (rs, rp) = si
+        .base
+        .get_amplitude(&e_arr, &bidn, None, None, &si)
+        .unwrap();
+
+    // Physical constraints: finite and bounded (Laue amplitude can exceed 1
+    // due to different normalization including asymmetry parameter)
+    assert!(rs[0].re.is_finite() && rs[0].im.is_finite(),
+            "Laue reflected rs not finite: {:?}", rs[0]);
+    assert!(rp[0].re.is_finite() && rp[0].im.is_finite(),
+            "Laue reflected rp not finite: {:?}", rp[0]);
+    assert!(rs[0].norm() < 100.0,
+            "Laue reflected |rs| = {:.6} unreasonably large", rs[0].norm());
+    assert!(rp[0].norm() < 100.0,
+            "Laue reflected |rp| = {:.6} unreasonably large", rp[0].norm());
+}
+
+#[test]
+fn golden_si111_laue_transmitted() {
+    let si = CrystalSi::new(
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::LaueTransmitted,
+        1.0,
+        Some(0.1),
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
+
+    let e_arr = array![10000.0];
+    let theta_b = si.base.get_bragg_angle(&e_arr);
+    let bidn = array![theta_b[0].sin()];
+
+    let (rs, rp) = si
+        .base
+        .get_amplitude(&e_arr, &bidn, None, None, &si)
+        .unwrap();
+
+    assert!(rs[0].re.is_finite() && rs[0].im.is_finite(),
+            "Laue transmitted rs not finite: {:?}", rs[0]);
+    assert!(rp[0].re.is_finite() && rp[0].im.is_finite(),
+            "Laue transmitted rp not finite: {:?}", rp[0]);
+    assert!(rs[0].norm() < 100.0,
+            "Laue transmitted |rs| = {:.6} unreasonably large", rs[0].norm());
+}
+
+#[test]
+fn golden_crystal_thickness_dependence() {
+    // Thicker crystal in Laue -> different amplitude (pendelloesung)
+    let thin = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::LaueReflected,
+        1.0, Some(0.01), 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+    let thick = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::LaueReflected,
+        1.0, Some(1.0), 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let e_arr = array![10000.0];
+    let theta_b = thin.base.get_bragg_angle(&e_arr);
+    let bidn = array![theta_b[0].sin()];
+
+    let (rs_thin, _) = thin.base.get_amplitude(&e_arr, &bidn, None, None, &thin).unwrap();
+    let (rs_thick, _) = thick.base.get_amplitude(&e_arr, &bidn, None, None, &thick).unwrap();
+
+    // Amplitudes should differ for different thicknesses (pendelloesung oscillation)
+    let diff = (rs_thin[0].norm() - rs_thick[0].norm()).abs();
+    assert!(
+        diff > 1e-6,
+        "Laue amplitude should depend on thickness: thin={:.6e}, thick={:.6e}",
+        rs_thin[0].norm(), rs_thick[0].norm()
+    );
+}

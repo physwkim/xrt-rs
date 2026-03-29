@@ -154,3 +154,30 @@ class TestSynchrotronCross:
 
         # Both should produce valid rays
         assert len(bm_result["e"]) == 1000
+
+    def test_undulator_direction_normalization(self, xrt_rs):
+        """All undulator rays should have unit direction vectors."""
+        rs = xrt_rs
+        data = load_fixture("synchrotron_sources.json")
+        tc = next(t for t in data["test_cases"] if t["id"] == "undulator")
+
+        result = rs.undulator_shine_rs(
+            tc["electron_energy_gev"],
+            tc["beam_current"],
+            tc["kx"],
+            tc["ky"],
+            tc["period_mm"],
+            tc["n_periods"],
+            tc["nrays"],
+            tc["e_min"],
+            tc["e_max"],
+            tc["theta_max"],
+            tc["psi_max"],
+        )
+
+        a, b, c = result["a"], result["b"], result["c"]
+        for i in range(min(100, len(a))):
+            norm_sq = a[i]**2 + b[i]**2 + c[i]**2
+            assert abs(norm_sq - 1.0) < 1e-12, (
+                f"undulator ray[{i}]: |dir|² = {norm_sq}"
+            )

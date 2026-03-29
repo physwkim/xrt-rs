@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-29T13:56:41.338639+00:00",
+  "generated_at": "2026-03-29T14:23:01.635309+00:00",
   "domain": "multilayer",
   "config": {
     "t_elem": "W",
@@ -207,6 +207,36 @@
       "rs_imag": -0.0007514663028574573,
       "rp_real": -0.0006495215433400893,
       "rp_imag": -0.000747738961431362
+    }
+  ],
+  "roughness_variation": [
+    {
+      "roughness": 0.0,
+      "energy_ev": 10000.0,
+      "sin_theta": 0.02,
+      "rs_abs": 0.029779424704242236,
+      "rp_abs": 0.02975418096207362
+    },
+    {
+      "roughness": 1.0,
+      "energy_ev": 10000.0,
+      "sin_theta": 0.02,
+      "rs_abs": 0.029779424704242236,
+      "rp_abs": 0.02975418096207362
+    },
+    {
+      "roughness": 3.0,
+      "energy_ev": 10000.0,
+      "sin_theta": 0.02,
+      "rs_abs": 0.029779424704242236,
+      "rp_abs": 0.02975418096207362
+    },
+    {
+      "roughness": 5.0,
+      "energy_ev": 10000.0,
+      "sin_theta": 0.02,
+      "rs_abs": 0.029779424704242236,
+      "rp_abs": 0.02975418096207362
     }
   ]
 }
