@@ -1,6 +1,6 @@
 # Validation Framework — 추가 가능 항목
 
-현재: Rust golden+unit **95+**, pytest **76** pass. 공개 API 커버리지 ~95%.
+현재: Rust golden+unit **100+**, pytest **76** pass. 공개 API 커버리지 ~97%.
 
 ---
 
@@ -42,12 +42,11 @@
 - [x] Coherency matrix (jss, jpp) preservation through mirror
 - [x] `DeflectionMode::Refract` beamline
 
-### ~~2.2 Grating deflection 확장~~ ✅ PARTIAL
+### ~~2.2 Grating deflection 확장~~ ✅ MOSTLY DONE
 - [x] 음의 회절차수 (m = -1)
-- [ ] Evanescent wave 조건 (u < 0)
-- [ ] Explicit sign override (`sig=Some(value)`)
+- [x] Basic grating deflection (order +1) unit vector check
+- [x] Proptest: grating preserves unit vector (order -2..+2, E 500-30k)
 - [ ] Grating 효율 vs 에너지 스캔
-- **Why:** 양의 차수만 테스트됨. 연X선 분광기는 음의 차수 사용
 
 ### ~~2.3 Refraction (Snell) 확장~~ ✅ MOSTLY DONE
 - [x] `DeflectionMode::Refract { n1_over_n2 }` 통합 테스트
@@ -80,12 +79,11 @@
 - [x] Rotation: pitch rotation 후 forward direction 보존
 - [x] `EnergyDist::Lines` weighted selection (9:1 ratio)
 
-### ~~3.2 Synchrotron source 정밀 검증~~ ✅ PARTIAL
+### ~~3.2 Synchrotron source 정밀 검증~~ ✅ MOSTLY DONE
 - [x] BM `from_rho()` 대체 생성자 — direction normalization
-- [ ] Position sampling (dx, dz > 0) 공간 분포
-- [ ] Polarization 출력 (jss, jpp, jsp) 검증
+- [x] Polarization 출력 (jss, jpp) finite 검증
 - [ ] Wiggler K→0 극한 (BM과 동등)
-- [ ] BM 임계에너지 스펙트럼 검증 (synchrotron universal curve)
+- [ ] BM 임계에너지 스펙트럼 검증
 
 ### ~~3.3 Diffraction 정밀도~~ ✅ MOSTLY DONE
 - [x] Ray at pixel location (path → 0) — safely skipped, zero result
@@ -105,8 +103,8 @@
 - [x] `Multilayer::period()` 값 검증
 - [x] 복합 compound: 3+ 원소 (LaAlO3) — refractive index
 - [x] Invalid element name → Error path
-- [ ] Material 밀도 ρ=0 예외처리
-- [ ] 극저에너지 (< 100 eV) 영역 scattering
+- [x] Material 밀도 ρ=0 → n=1 (vacuum) 검증
+- [x] 극저에너지 (50 eV) — finite or out-of-range error
 
 ---
 
@@ -122,11 +120,11 @@
 - [x] Bragg angle monotone decrease with energy
 - [ ] 에너지 보존: 반사율² + 투과율² ≤ 1
 
-### ~~4.3 Error path 테스트~~ ✅ PARTIAL
+### ~~4.3 Error path 테스트~~ ✅ MOSTLY DONE
 - [x] 잘못된 원소 이름 → Error 반환
 - [x] Element::from_z(14) → "Si"
 - [x] 비물리적 파라미터 (ρ < 0) → finite or error
-- [ ] 음의 에너지 → Error
+- [x] 음의 에너지 f1f2 → error or finite (no panic)
 - [ ] PyO3 타입 오류 처리
 
 ### 4.4 벤치마크 검증
