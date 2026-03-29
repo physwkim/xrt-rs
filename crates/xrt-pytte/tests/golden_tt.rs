@@ -81,3 +81,65 @@ fn golden_tt_rocking_curve_shape() {
         "Off-peak |Rs|={rs_edge:.4} should be < peak |Rs|={rs_mid:.4}"
     );
 }
+
+#[test]
+fn golden_tt_rocking_curve_numerical() {
+    let fix = load_fixture();
+    let tc = &fix["test_cases"][0];
+    let rs_list = tc["rs"].as_array().unwrap();
+    let rp_list = tc["rp"].as_array().unwrap();
+
+    // Verify each point on the rocking curve has finite, bounded amplitude
+    for (i, (rs_val, rp_val)) in rs_list.iter().zip(rp_list.iter()).enumerate() {
+        let rs_re = rs_val["re"].as_f64().unwrap();
+        let rs_im = rs_val["im"].as_f64().unwrap();
+        let rp_re = rp_val["re"].as_f64().unwrap();
+        let rp_im = rp_val["im"].as_f64().unwrap();
+
+        let rs_norm = (rs_re * rs_re + rs_im * rs_im).sqrt();
+        let rp_norm = (rp_re * rp_re + rp_im * rp_im).sqrt();
+
+        // Reflectivity must be in [0, 1] for perfect crystal
+        assert!(
+            rs_norm <= 1.0 + 1e-6,
+            "point[{i}] |Rs| = {rs_norm:.6} > 1"
+        );
+        assert!(
+            rp_norm <= 1.0 + 1e-6,
+            "point[{i}] |Rp| = {rp_norm:.6} > 1"
+        );
+
+        // |Rs| >= |Rp| for all angles (s-polarization has wider Darwin width)
+        assert!(
+            rs_norm >= rp_norm - 1e-6,
+            "point[{i}] |Rs| = {rs_norm:.6} < |Rp| = {rp_norm:.6}"
+        );
+    }
+
+    // Note: rocking curve is inherently asymmetric due to anomalous absorption
+    // (Borrmann effect), so we do NOT check symmetry.
+
+    // Find peak reflectivity (shifted from dtheta=0 due to Darwin shift)
+    let n = rs_list.len();
+    let mut peak_rs = 0.0_f64;
+    let mut peak_idx = 0;
+    for (i, v) in rs_list.iter().enumerate() {
+        let norm = (v["re"].as_f64().unwrap().powi(2) + v["im"].as_f64().unwrap().powi(2)).sqrt();
+        if norm > peak_rs {
+            peak_rs = norm;
+            peak_idx = i;
+        }
+    }
+
+    // Peak should show high reflectivity
+    assert!(
+        peak_rs > 0.9,
+        "peak |Rs| = {peak_rs:.4} at index {peak_idx}, expected > 0.9"
+    );
+
+    // Peak should be within scan range (not at edges)
+    assert!(
+        peak_idx > 1 && peak_idx < n - 2,
+        "peak at index {peak_idx} is too close to scan edge"
+    );
+}

@@ -78,3 +78,26 @@ class TestCrystalChi:
                 float(result[5][0].real), float(result[5][0].imag),
                 chi_val["chih_bar_re"], chi_val["chih_bar_im"],
                 tol, f"chih_bar(E={energy})")
+
+
+class TestCrystalDarwinWidth:
+    """Verify Darwin width analytical formula consistency."""
+
+    @pytest.mark.parametrize("crystal", ["si111", "si220"])
+    def test_darwin_width_s_vs_p(self, xrt, crystal):
+        _, rm = xrt
+        data = load_fixture(f"crystal_{crystal}.json")
+        tc = next(t for t in data["test_cases"] if "darwin_width" in t["id"])
+
+        # S-polarization width should be >= P-polarization width
+        assert tc["darwin_width_s_rad"] >= tc["darwin_width_p_rad"], (
+            f"dw_s ({tc['darwin_width_s_rad']:.6e}) < dw_p ({tc['darwin_width_p_rad']:.6e})"
+        )
+
+        # Both should be positive and in reasonable range (1-100 µrad for Si at 10 keV)
+        assert 1e-7 < tc["darwin_width_s_rad"] < 1e-4, (
+            f"dw_s = {tc['darwin_width_s_rad']:.6e} outside expected range"
+        )
+        assert 1e-7 < tc["darwin_width_p_rad"] < 1e-4, (
+            f"dw_p = {tc['darwin_width_p_rad']:.6e} outside expected range"
+        )

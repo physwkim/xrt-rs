@@ -1,0 +1,49 @@
+{
+  "generator": "xrt-validation",
+  "xrt_version": "1.6.2",
+  "generated_at": "2026-03-29T13:56:41.338898+00:00",
+  "domain": "synchrotron_sources",
+  "test_cases": [
+    {
+      "id": "bending_magnet",
+      "electron_energy_gev": 3.0,
+      "beam_current": 0.3,
+      "b_field": 1.0,
+      "nrays": 10000,
+      "e_min": 5000.0,
+      "e_max": 15000.0,
+      "theta_max": 0.001,
+      "psi_max": 0.001,
+      "expected_ec_ev": 5985.0
+    },
+    {
+      "id": "wiggler",
+      "electron_energy_gev": 3.0,
+      "beam_current": 0.3,
+      "k_param": 10.0,
+      "period_mm": 80.0,
+      "n_periods": 10,
+      "nrays": 10000,
+      "e_min": 5000.0,
+      "e_max": 50000.0,
+      "theta_max": 0.001,
+      "psi_max": 0.001,
+      "expected_ec_ev": 8009.90364025696
+    },
+    {
+      "id": "undulator",
+      "electron_energy_gev": 6.0,
+      "beam_current": 0.2,
+      "kx": 0.0,
+      "ky": 1.5,
+      "period_mm": 20.0,
+      "n_periods": 100,
+      "nrays": 10000,
+      "e_min": 402.3529411764706,
+      "e_max": 1207.0588235294117,
+      "theta_max": 0.0001,
+      "psi_max": 0.0001,
+      "expected_e1_ev": 804.7058823529412
+    }
+  ]
+}

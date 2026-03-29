@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-29T13:43:01.429636+00:00",
+  "generated_at": "2026-03-29T13:56:41.293448+00:00",
   "domain": "crystal_diffraction",
   "crystal": "si220",
   "hkl": [
@@ -146,6 +146,13 @@
           "im": -0.8287544614485947
         }
       ]
+    },
+    {
+      "id": "si220_darwin_width",
+      "energy_ev": 10000.0,
+      "b": -1.0,
+      "darwin_width_s_rad": 2.0402896404198698e-05,
+      "darwin_width_p_rad": 1.614925036927658e-05
     }
   ]
 }

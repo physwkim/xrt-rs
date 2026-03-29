@@ -9,6 +9,7 @@ both Rust golden tests (cargo test golden) and Python cross-comparison tests
 """
 
 import json
+import cmath
 import math
 import os
 import sys
@@ -302,6 +303,24 @@ def gen_crystal():
                 "beam_in_dot_normal": rocking_bidn,
                 "rs": rocking_rs,
                 "rp": rocking_rp,
+            },
+            {
+                "id": f"{hkl_name}_darwin_width",
+                "energy_ev": 10000.0,
+                "b": -1.0,
+                "darwin_width_s_rad": float(
+                    2.0 * abs(cmath.sqrt(
+                        complex(chi_cases[1]["chih_re"], chi_cases[1]["chih_im"])
+                        * complex(chi_cases[1]["chih_bar_re"], chi_cases[1]["chih_bar_im"])
+                    )) / math.sin(2.0 * chi_cases[1]["theta_b_rad"])
+                ),
+                "darwin_width_p_rad": float(
+                    2.0 * abs(cmath.sqrt(
+                        complex(chi_cases[1]["chih_re"], chi_cases[1]["chih_im"])
+                        * complex(chi_cases[1]["chih_bar_re"], chi_cases[1]["chih_bar_im"])
+                    )) * abs(math.cos(2.0 * chi_cases[1]["theta_b_rad"]))
+                    / math.sin(2.0 * chi_cases[1]["theta_b_rad"])
+                ),
             },
         ]
         _write(f"crystal_{hkl_name}.json", data)
@@ -711,6 +730,80 @@ def gen_multilayer():
     _write("multilayer_w_si.json", data)
 
 
+# ── Domain 11: Synchrotron sources ─────────────────────────────────────────
+def gen_synchrotron():
+    print("[11] synchrotron sources")
+    # Critical energy: Ec(keV) = 0.665 * E(GeV)^2 * B(T)
+    bm_e_gev = 3.0
+    bm_current = 0.3
+    bm_b0 = 1.0
+    bm_ec_kev = 0.665 * bm_e_gev**2 * bm_b0
+
+    # Wiggler: same critical energy formula, K = 0.934 * B(T) * period(cm)
+    wig_e_gev = 3.0
+    wig_current = 0.3
+    wig_k = 10.0
+    wig_period = 80.0  # mm
+    wig_n_periods = 10
+    wig_b0 = wig_k / (0.0934 * wig_period)  # T
+    wig_ec_kev = 0.665 * wig_e_gev**2 * wig_b0
+
+    # Undulator: fundamental energy E1(eV) = 950 * E(GeV)^2 / (period(mm) * (1 + K^2/2))
+    und_e_gev = 6.0
+    und_current = 0.2
+    und_kx = 0.0
+    und_ky = 1.5
+    und_period = 20.0  # mm
+    und_n_periods = 100
+    und_e1_ev = 950.0 * und_e_gev**2 / (und_period * (1 + und_ky**2 / 2.0))
+
+    data = _meta("synchrotron_sources")
+    data["test_cases"] = [
+        {
+            "id": "bending_magnet",
+            "electron_energy_gev": bm_e_gev,
+            "beam_current": bm_current,
+            "b_field": bm_b0,
+            "nrays": 10000,
+            "e_min": 5000.0,
+            "e_max": 15000.0,
+            "theta_max": 1e-3,
+            "psi_max": 1e-3,
+            "expected_ec_ev": bm_ec_kev * 1000,
+        },
+        {
+            "id": "wiggler",
+            "electron_energy_gev": wig_e_gev,
+            "beam_current": wig_current,
+            "k_param": wig_k,
+            "period_mm": wig_period,
+            "n_periods": wig_n_periods,
+            "nrays": 10000,
+            "e_min": 5000.0,
+            "e_max": 50000.0,
+            "theta_max": 1e-3,
+            "psi_max": 1e-3,
+            "expected_ec_ev": wig_ec_kev * 1000,
+        },
+        {
+            "id": "undulator",
+            "electron_energy_gev": und_e_gev,
+            "beam_current": und_current,
+            "kx": und_kx,
+            "ky": und_ky,
+            "period_mm": und_period,
+            "n_periods": und_n_periods,
+            "nrays": 10000,
+            "e_min": und_e1_ev * 0.5,
+            "e_max": und_e1_ev * 1.5,
+            "theta_max": 1e-4,
+            "psi_max": 1e-4,
+            "expected_e1_ev": und_e1_ev,
+        },
+    ]
+    _write("synchrotron_sources.json", data)
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print(f"Generating XRT validation fixtures (XRT {XRT_VERSION})")
@@ -724,4 +817,5 @@ if __name__ == "__main__":
     gen_diffraction()
     gen_sources()
     gen_multilayer()
+    gen_synchrotron()
     print("\nDone. Run 'cargo test golden' and 'pytest validation/' to verify.")

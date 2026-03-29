@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-29T13:43:01.425523+00:00",
+  "generated_at": "2026-03-29T13:56:41.289222+00:00",
   "domain": "material_optics",
   "material": "Au",
   "elements": [

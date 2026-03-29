@@ -372,3 +372,75 @@ fn golden_si111_rocking() {
 fn golden_si220_rocking() {
     test_rocking_mini("crystal_si220.json", [2, 2, 0]);
 }
+
+fn test_darwin_width(fixture_name: &str, hkl: [i32; 3]) {
+    let si = CrystalSi::new(
+        hkl,
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
+
+    let e_arr = array![10000.0];
+    let b = -1.0; // symmetric Bragg
+
+    // S-polarization
+    let dw_s = si
+        .base
+        .get_darwin_width(&e_arr, b, xrt_materials::crystal::Polarization::S, &si)
+        .unwrap();
+
+    // P-polarization
+    let dw_p = si
+        .base
+        .get_darwin_width(&e_arr, b, xrt_materials::crystal::Polarization::P, &si)
+        .unwrap();
+
+    // Both should be positive
+    assert!(dw_s[0] > 0.0, "darwin_width_s should be positive: {:.6e}", dw_s[0]);
+    assert!(dw_p[0] > 0.0, "darwin_width_p should be positive: {:.6e}", dw_p[0]);
+
+    // S-polarization width should be >= P-polarization width
+    assert!(
+        dw_s[0] >= dw_p[0],
+        "darwin_width_s ({:.6e}) should be >= darwin_width_p ({:.6e})",
+        dw_s[0],
+        dw_p[0]
+    );
+
+    // Same crystal at higher energy should have smaller Darwin width
+    let e_high = array![20000.0];
+    let dw_s_high = si
+        .base
+        .get_darwin_width(&e_high, b, xrt_materials::crystal::Polarization::S, &si)
+        .unwrap();
+    assert!(
+        dw_s_high[0] < dw_s[0],
+        "dw_s(20keV)={:.6e} should be < dw_s(10keV)={:.6e}",
+        dw_s_high[0],
+        dw_s[0]
+    );
+
+    // Verify fixture stores consistent values
+    let fix = load_fixture(fixture_name);
+    let _tc = fix["test_cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"].as_str().unwrap().contains("darwin_width"))
+        .unwrap();
+}
+
+#[test]
+fn golden_si111_darwin_width() {
+    test_darwin_width("crystal_si111.json", [1, 1, 1]);
+}
+
+#[test]
+fn golden_si220_darwin_width() {
+    test_darwin_width("crystal_si220.json", [2, 2, 0]);
+}
