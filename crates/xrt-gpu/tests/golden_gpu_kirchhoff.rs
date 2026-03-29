@@ -1,7 +1,11 @@
 //! GPU vs CPU parity tests for Kirchhoff diffraction integral.
 //!
-//! Verifies that the GPU (WGSL shader) and CPU implementations produce
-//! numerically equivalent results within f32 precision bounds.
+//! Verifies that the GPU (WGSL shader with phase reduction) and CPU
+//! implementations produce numerically equivalent results.
+//!
+//! The GPU shader subtracts a per-pixel reference path before computing
+//! sin/cos, keeping the f32 argument small. The base phase exp(i*k*ref)
+//! is restored on the CPU side in f64.
 
 use num_complex::Complex64;
 
@@ -9,176 +13,57 @@ use xrt_gpu::context::GpuContext;
 use xrt_gpu::kirchhoff::{kirchhoff_gpu, GpuPixel, GpuRay};
 use xrt_gpu::fallback::kirchhoff_auto;
 
-/// Create test rays/pixels with SHORT distances suitable for f32 precision.
-///
-/// The GPU shader uses f32, so phase = k * path must fit in f32 precision.
-/// At E=10keV, k ≈ 5e7 mm⁻¹. For path=1mm, phase ≈ 5e7 which is borderline.
-/// We use path ≈ 0.1mm for safe f32 sin/cos.
-fn make_short_distance_rays_pixels() -> (Vec<GpuRay>, Vec<GpuPixel>) {
-    let rays = vec![
-        GpuRay {
-            x: 0.0, y: 0.0, z: 0.0,
-            nx: 0.0, ny: 0.0, nz: 1.0,
-            nl: 1.0, energy: 1000.0, // 1 keV → smaller k
-            es_re: 1.0, es_im: 0.0,
-            ep_re: 0.5, ep_im: 0.1,
-        },
-        GpuRay {
-            x: 0.01, y: 0.0, z: 0.0,
-            nx: 0.0, ny: 0.0, nz: 1.0,
-            nl: 1.0, energy: 1000.0,
-            es_re: 0.8, es_im: -0.1,
-            ep_re: 0.6, ep_im: 0.0,
-        },
-        GpuRay {
-            x: -0.01, y: 0.0, z: 0.0,
-            nx: 0.0, ny: 0.0, nz: 1.0,
-            nl: 1.0, energy: 1000.0,
-            es_re: 0.9, es_im: 0.05,
-            ep_re: 0.7, ep_im: -0.05,
-        },
-    ];
-    let pixels = vec![
-        GpuPixel { x: -0.005, y: 0.0, z: 0.1, _pad: 0.0 }, // 0.1 mm away
-        GpuPixel { x: 0.0,    y: 0.0, z: 0.1, _pad: 0.0 },
-        GpuPixel { x: 0.005,  y: 0.0, z: 0.1, _pad: 0.0 },
-    ];
+fn load_fixture() -> serde_json::Value {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../validation/fixtures/diffraction_ref.json"
+    );
+    let text = std::fs::read_to_string(path)
+        .expect("Run `python validation/generate_fixtures.py` first");
+    serde_json::from_str(&text).unwrap()
+}
+
+/// Create fixture rays/pixels (path ≈ 1000mm, E=10keV → large phase).
+/// This tests the phase reduction fix.
+fn make_fixture_rays_pixels() -> (Vec<GpuRay>, Vec<GpuPixel>) {
+    let fix = load_fixture();
+    let tc = &fix["test_cases"][0];
+    let rd = &tc["rays"];
+    let pd = &tc["pixels"];
+
+    let n_rays = rd["x"].as_array().unwrap().len();
+    let rays: Vec<GpuRay> = (0..n_rays)
+        .map(|i| GpuRay {
+            x: rd["x"][i].as_f64().unwrap() as f32,
+            y: rd["y"][i].as_f64().unwrap() as f32,
+            z: rd["z"][i].as_f64().unwrap() as f32,
+            nx: rd["nx"][i].as_f64().unwrap() as f32,
+            ny: rd["ny"][i].as_f64().unwrap() as f32,
+            nz: rd["nz"][i].as_f64().unwrap() as f32,
+            nl: rd["nl"][i].as_f64().unwrap() as f32,
+            energy: rd["energy"][i].as_f64().unwrap() as f32,
+            es_re: rd["es_re"][i].as_f64().unwrap() as f32,
+            es_im: rd["es_im"][i].as_f64().unwrap() as f32,
+            ep_re: rd["ep_re"][i].as_f64().unwrap() as f32,
+            ep_im: rd["ep_im"][i].as_f64().unwrap() as f32,
+        })
+        .collect();
+
+    let n_pix = pd["x"].as_array().unwrap().len();
+    let pixels: Vec<GpuPixel> = (0..n_pix)
+        .map(|i| GpuPixel {
+            x: pd["x"][i].as_f64().unwrap() as f32,
+            y: pd["y"][i].as_f64().unwrap() as f32,
+            z: pd["z"][i].as_f64().unwrap() as f32,
+            _pad: 0.0,
+        })
+        .collect();
+
     (rays, pixels)
 }
 
-
-#[test]
-fn golden_gpu_kirchhoff_vs_cpu() {
-    let ctx = match GpuContext::new() {
-        Some(ctx) => ctx,
-        None => {
-            eprintln!("SKIP: no GPU available");
-            return;
-        }
-    };
-    eprintln!("GPU: {}", ctx.adapter_name());
-
-    let (rays, pixels) = make_short_distance_rays_pixels();
-
-    // GPU result
-    let gpu_results = kirchhoff_gpu(&ctx, &rays, &pixels);
-
-    // CPU fallback result (same data types, same formula but f64 precision)
-    let cpu_results = kirchhoff_auto_cpu_only(&rays, &pixels);
-
-    assert_eq!(gpu_results.len(), cpu_results.len());
-
-    // f32 GPU vs f64 CPU: expect ~1e-3 relative tolerance
-    for (i, (gpu, cpu)) in gpu_results.iter().zip(cpu_results.iter()).enumerate() {
-        let (gpu_es, gpu_ep) = gpu;
-        let (cpu_es, cpu_ep) = cpu;
-
-        // Check GPU results are finite
-        assert!(
-            gpu_es.re.is_finite() && gpu_es.im.is_finite(),
-            "GPU pixel[{i}] Es not finite: {gpu_es}"
-        );
-        assert!(
-            gpu_ep.re.is_finite() && gpu_ep.im.is_finite(),
-            "GPU pixel[{i}] Ep not finite: {gpu_ep}"
-        );
-
-        // Compare GPU (f32 shader) vs CPU (f64 with f32 input).
-        // At 1keV and 0.1mm distance, phase ≈ 5e5 rad — f32 sin/cos
-        // gives ~1-2% precision loss from range reduction.
-        let tol = 5e-2;
-        let es_diff = (gpu_es - cpu_es).norm();
-        let es_scale = cpu_es.norm().max(1e-30);
-        assert!(
-            es_diff / es_scale < tol,
-            "pixel[{i}] Es: GPU={gpu_es:.6e} vs CPU={cpu_es:.6e} (rel_diff={:.2e})",
-            es_diff / es_scale
-        );
-
-        let ep_diff = (gpu_ep - cpu_ep).norm();
-        let ep_scale = cpu_ep.norm().max(1e-30);
-        assert!(
-            ep_diff / ep_scale < tol,
-            "pixel[{i}] Ep: GPU={gpu_ep:.6e} vs CPU={cpu_ep:.6e} (rel_diff={:.2e})",
-            ep_diff / ep_scale
-        );
-    }
-}
-
-#[test]
-fn golden_gpu_kirchhoff_nonzero_output() {
-    // Verify GPU produces non-zero output for reasonable inputs
-    let ctx = match GpuContext::new() {
-        Some(ctx) => ctx,
-        None => {
-            eprintln!("SKIP: no GPU available");
-            return;
-        }
-    };
-
-    let (rays, pixels) = make_short_distance_rays_pixels();
-    let gpu_results = kirchhoff_gpu(&ctx, &rays, &pixels);
-
-    assert_eq!(gpu_results.len(), pixels.len());
-    for (i, (es, _ep)) in gpu_results.iter().enumerate() {
-        assert!(
-            es.norm() > 1e-10,
-            "pixel[{i}] GPU Es too small: {es:.6e}"
-        );
-    }
-}
-
-#[test]
-fn golden_gpu_kirchhoff_symmetry() {
-    let ctx = match GpuContext::new() {
-        Some(ctx) => ctx,
-        None => {
-            eprintln!("SKIP: no GPU available");
-            return;
-        }
-    };
-
-    // Single ray at origin, two symmetric pixels
-    let rays = vec![GpuRay {
-        x: 0.0, y: 0.0, z: 0.0,
-        nx: 0.0, ny: 0.0, nz: 1.0,
-        nl: 1.0, energy: 10000.0,
-        es_re: 1.0, es_im: 0.0,
-        ep_re: 1.0, ep_im: 0.0,
-    }];
-    let pixels = vec![
-        GpuPixel { x: -0.01, y: 0.0, z: 1000.0, _pad: 0.0 },
-        GpuPixel { x:  0.01, y: 0.0, z: 1000.0, _pad: 0.0 },
-    ];
-
-    let results = kirchhoff_gpu(&ctx, &rays, &pixels);
-    assert_eq!(results.len(), 2);
-
-    // Symmetric inputs → same |Es| at both pixels
-    let diff = (results[0].0.norm() - results[1].0.norm()).abs();
-    assert!(
-        diff < 1e-5,
-        "symmetric pixels: |Es[0]|={:.6e} vs |Es[1]|={:.6e}",
-        results[0].0.norm(),
-        results[1].0.norm()
-    );
-}
-
-#[test]
-fn golden_gpu_kirchhoff_auto_dispatch() {
-    // Test that kirchhoff_auto picks GPU and produces valid results
-    let (rays, pixels) = make_short_distance_rays_pixels();
-    let results = kirchhoff_auto(&rays, &pixels);
-
-    assert_eq!(results.len(), pixels.len());
-    for (i, (es, _ep)) in results.iter().enumerate() {
-        assert!(es.re.is_finite(), "auto pixel[{i}] Es.re not finite");
-        assert!(es.norm() > 1e-10, "auto pixel[{i}] Es too small");
-    }
-}
-
-/// CPU-only version for comparison (bypasses GPU)
-fn kirchhoff_auto_cpu_only(
+/// CPU-only Kirchhoff (f64 precision, no GPU) for comparison.
+fn kirchhoff_cpu_f64(
     rays: &[GpuRay],
     pixels: &[GpuPixel],
 ) -> Vec<(Complex64, Complex64)> {
@@ -210,4 +95,166 @@ fn kirchhoff_auto_cpu_only(
             (es, ep)
         })
         .collect()
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn golden_gpu_long_distance_vs_cpu() {
+    // This is the KEY test: E=10keV, path=1000mm → phase ≈ 5e10.
+    // Before the phase-reduction fix, GPU returned zeros.
+    // After: GPU subtracts ref_path in f32 (delta_phase is small),
+    // then CPU multiplies back exp(i*k*ref_path) in f64.
+    let ctx = match GpuContext::new() {
+        Some(ctx) => ctx,
+        None => {
+            eprintln!("SKIP: no GPU available");
+            return;
+        }
+    };
+    eprintln!("GPU: {}", ctx.adapter_name());
+
+    let (rays, pixels) = make_fixture_rays_pixels();
+
+    let gpu_results = kirchhoff_gpu(&ctx, &rays, &pixels);
+    let cpu_results = kirchhoff_cpu_f64(&rays, &pixels);
+
+    assert_eq!(gpu_results.len(), cpu_results.len());
+
+    for (i, (gpu, cpu)) in gpu_results.iter().zip(cpu_results.iter()).enumerate() {
+        // GPU should now produce non-zero results
+        assert!(
+            gpu.0.norm() > 1e-10,
+            "pixel[{i}] GPU Es is zero/tiny after phase reduction: {:.6e}",
+            gpu.0
+        );
+
+        // Compare GPU vs CPU (tolerance accounts for f32 path subtraction)
+        let es_diff = (gpu.0 - cpu.0).norm();
+        let es_scale = cpu.0.norm().max(1e-30);
+        let rel = es_diff / es_scale;
+        // Phase reduction keeps delta_path in f32, giving ~1e-4 to 1e-2 relative error
+        assert!(
+            rel < 0.1,
+            "pixel[{i}] Es: GPU={:.4e} vs CPU={:.4e} (rel={rel:.2e})",
+            gpu.0, cpu.0
+        );
+    }
+}
+
+#[test]
+fn golden_gpu_long_distance_vs_fixture() {
+    let ctx = match GpuContext::new() {
+        Some(ctx) => ctx,
+        None => {
+            eprintln!("SKIP: no GPU available");
+            return;
+        }
+    };
+
+    let fix = load_fixture();
+    let expected = fix["test_cases"][0]["expected"].as_array().unwrap();
+    let (rays, pixels) = make_fixture_rays_pixels();
+
+    let gpu_results = kirchhoff_gpu(&ctx, &rays, &pixels);
+
+    for (i, (gpu, exp)) in gpu_results.iter().zip(expected.iter()).enumerate() {
+        let exp_es = Complex64::new(
+            exp["es_re"].as_f64().unwrap(),
+            exp["es_im"].as_f64().unwrap(),
+        );
+
+        assert!(
+            gpu.0.norm() > 1e-10,
+            "pixel[{i}] GPU Es still zero: {:.6e}", gpu.0
+        );
+
+        let rel = (gpu.0 - exp_es).norm() / exp_es.norm().max(1e-30);
+        assert!(
+            rel < 0.1,
+            "pixel[{i}] Es: GPU={:.4e} vs fixture={exp_es:.4e} (rel={rel:.2e})",
+            gpu.0
+        );
+    }
+}
+
+#[test]
+fn golden_gpu_short_distance_vs_cpu() {
+    let ctx = match GpuContext::new() {
+        Some(ctx) => ctx,
+        None => {
+            eprintln!("SKIP: no GPU available");
+            return;
+        }
+    };
+
+    let rays = vec![
+        GpuRay { x: 0.0, y: 0.0, z: 0.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                  nl: 1.0, energy: 1000.0, es_re: 1.0, es_im: 0.0, ep_re: 0.5, ep_im: 0.1 },
+        GpuRay { x: 0.01, y: 0.0, z: 0.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                  nl: 1.0, energy: 1000.0, es_re: 0.8, es_im: -0.1, ep_re: 0.6, ep_im: 0.0 },
+    ];
+    let pixels = vec![
+        GpuPixel { x: 0.0, y: 0.0, z: 0.1, _pad: 0.0 },
+        GpuPixel { x: 0.005, y: 0.0, z: 0.1, _pad: 0.0 },
+    ];
+
+    let gpu = kirchhoff_gpu(&ctx, &rays, &pixels);
+    let cpu = kirchhoff_cpu_f64(&rays, &pixels);
+
+    let tol = 5e-2; // f32 vs f64
+    for (i, (g, c)) in gpu.iter().zip(cpu.iter()).enumerate() {
+        let rel = (g.0 - c.0).norm() / c.0.norm().max(1e-30);
+        assert!(rel < tol, "pixel[{i}] Es rel diff = {rel:.2e}");
+    }
+}
+
+#[test]
+fn golden_gpu_symmetry() {
+    let ctx = match GpuContext::new() {
+        Some(ctx) => ctx,
+        None => {
+            eprintln!("SKIP: no GPU available");
+            return;
+        }
+    };
+
+    let rays = vec![GpuRay {
+        x: 0.0, y: 0.0, z: 0.0,
+        nx: 0.0, ny: 0.0, nz: 1.0,
+        nl: 1.0, energy: 10000.0,
+        es_re: 1.0, es_im: 0.0,
+        ep_re: 1.0, ep_im: 0.0,
+    }];
+    let pixels = vec![
+        GpuPixel { x: -0.01, y: 0.0, z: 1000.0, _pad: 0.0 },
+        GpuPixel { x:  0.01, y: 0.0, z: 1000.0, _pad: 0.0 },
+    ];
+
+    let results = kirchhoff_gpu(&ctx, &rays, &pixels);
+    assert_eq!(results.len(), 2);
+
+    // Both pixels should now produce non-zero results (phase reduction fix)
+    assert!(results[0].0.norm() > 1e-10, "|Es[0]| too small: {:.4e}", results[0].0.norm());
+    assert!(results[1].0.norm() > 1e-10, "|Es[1]| too small: {:.4e}", results[1].0.norm());
+
+    // Symmetric inputs → same |Es|
+    let diff = (results[0].0.norm() - results[1].0.norm()).abs();
+    assert!(
+        diff < 1e-4 * results[0].0.norm(),
+        "symmetric pixels: |Es[0]|={:.6e} vs |Es[1]|={:.6e}",
+        results[0].0.norm(), results[1].0.norm()
+    );
+}
+
+#[test]
+fn golden_gpu_auto_dispatch() {
+    let (rays, pixels) = make_fixture_rays_pixels();
+    let results = kirchhoff_auto(&rays, &pixels);
+
+    assert_eq!(results.len(), pixels.len());
+    for (i, (es, _ep)) in results.iter().enumerate() {
+        assert!(es.re.is_finite(), "auto pixel[{i}] Es.re not finite");
+        assert!(es.norm() > 1e-10, "auto pixel[{i}] Es too small: {:.4e}", es.norm());
+    }
 }

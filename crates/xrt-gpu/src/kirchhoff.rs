@@ -2,6 +2,12 @@
 //!
 //! Sends ray and pixel data to the GPU, runs the WGSL compute shader,
 //! and reads back the diffraction results.
+//!
+//! Phase reduction for f32 precision:
+//! The shader computes `delta_phase = k * (path - ref_path)` where ref_path
+//! is the distance from the ray centroid to the pixel. The path difference
+//! is computed algebraically (via path² - ref²) to avoid f32 cancellation.
+//! The base phase `exp(i*k*ref_path)` is restored on the CPU in f64.
 
 use bytemuck::{Pod, Zeroable};
 use num_complex::Complex64;
@@ -56,11 +62,18 @@ struct GpuParams {
     n_pixels: u32,
     chbar_inv_1e7: f32,
     _pad: u32,
+    // Ray centroid for phase reduction
+    cx: f32,
+    cy: f32,
+    cz: f32,
+    _pad2: u32,
 }
 
 /// Run the Kirchhoff diffraction integral on the GPU.
 ///
-/// Returns complex field amplitudes (Es, Ep) per pixel.
+/// Uses phase reduction to handle arbitrary ray-to-pixel distances
+/// without f32 precision loss. Returns complex field amplitudes (Es, Ep)
+/// per pixel.
 pub fn kirchhoff_gpu(
     ctx: &GpuContext,
     rays: &[GpuRay],
@@ -80,11 +93,25 @@ async fn kirchhoff_gpu_async(
     let n_rays = rays.len() as u32;
     let n_pixels = pixels.len() as u32;
 
+    // Compute ray centroid (f64 for precision)
+    let n = rays.len() as f64;
+    let cx_f64: f64 = rays.iter().map(|r| r.x as f64).sum::<f64>() / n;
+    let cy_f64: f64 = rays.iter().map(|r| r.y as f64).sum::<f64>() / n;
+    let cz_f64: f64 = rays.iter().map(|r| r.z as f64).sum::<f64>() / n;
+
+    // Mean energy for base phase correction
+    let mean_energy: f64 = rays.iter().map(|r| r.energy as f64).sum::<f64>() / n;
+    let k_f64 = mean_energy / CHBAR * 1e7;
+
     let params = GpuParams {
         n_rays,
         n_pixels,
         chbar_inv_1e7: (1.0 / CHBAR * 1e7) as f32,
         _pad: 0,
+        cx: cx_f64 as f32,
+        cy: cy_f64 as f32,
+        cz: cz_f64 as f32,
+        _pad2: 0,
     };
 
     // Create buffers
@@ -128,7 +155,7 @@ async fn kirchhoff_gpu_async(
         source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
 
-    // Create bind group layout and pipeline
+    // Create bind group layout (4 bindings: rays, pixels, results, params)
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("kirchhoff_layout"),
         entries: &[
@@ -246,13 +273,26 @@ async fn kirchhoff_gpu_async(
     let data = buffer_slice.get_mapped_range();
     let results: &[GpuPixelResult] = bytemuck::cast_slice(&data);
 
+    // Apply base phase correction per pixel: multiply by exp(i * k * ref_path)
+    // where ref_path is computed in f64 for precision
     results
         .iter()
-        .map(|r| {
-            (
-                Complex64::new(r.es_re as f64, r.es_im as f64),
-                Complex64::new(r.ep_re as f64, r.ep_im as f64),
-            )
+        .enumerate()
+        .map(|(i, r)| {
+            let pix = &pixels[i];
+            let dx = pix.x as f64 - cx_f64;
+            let dy = pix.y as f64 - cy_f64;
+            let dz = pix.z as f64 - cz_f64;
+            let ref_path = (dx * dx + dy * dy + dz * dz).sqrt();
+            let base_phase = k_f64 * ref_path;
+
+            let (sin_bp, cos_bp) = base_phase.sin_cos();
+            let phase_factor = Complex64::new(cos_bp, sin_bp);
+
+            let es_reduced = Complex64::new(r.es_re as f64, r.es_im as f64);
+            let ep_reduced = Complex64::new(r.ep_re as f64, r.ep_im as f64);
+
+            (es_reduced * phase_factor, ep_reduced * phase_factor)
         })
         .collect()
 }

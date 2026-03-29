@@ -12,17 +12,19 @@ use crate::kirchhoff::{self, GpuPixel, GpuRay};
 
 /// Try GPU Kirchhoff diffraction, fall back to CPU if GPU unavailable.
 ///
+/// The GPU shader uses phase reduction (ref_path subtraction) so it
+/// handles any distance correctly. Falls back to CPU only if no GPU.
+///
 /// Returns (Es, Ep) per pixel, same as `kirchhoff_gpu`.
 pub fn kirchhoff_auto(
     rays: &[GpuRay],
     pixels: &[GpuPixel],
 ) -> Vec<(Complex64, Complex64)> {
-    // Try GPU
     if let Some(ctx) = GpuContext::new() {
         return kirchhoff::kirchhoff_gpu(&ctx, rays, pixels);
     }
 
-    // CPU fallback
+    // CPU fallback: f64 precision
     kirchhoff_cpu_from_gpu_types(rays, pixels)
 }
 
