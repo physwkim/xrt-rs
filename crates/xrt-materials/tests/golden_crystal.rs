@@ -738,3 +738,30 @@ fn bragg_angle_decreases_with_energy() {
             energies[i], theta[i], energies[i-1], theta[i-1]);
     }
 }
+
+#[test]
+fn golden_laue_rocking_curve_scan() {
+    // Scan Laue reflected amplitude over multiple angles around Bragg
+    let si = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::LaueReflected,
+        1.0, Some(0.1), 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let e_arr = array![10000.0];
+    let theta_b = si.base.get_bragg_angle(&e_arr)[0];
+
+    let mut amplitudes = Vec::new();
+    for dtheta_urad in [-50, -25, -10, 0, 10, 25, 50] {
+        let theta = theta_b + dtheta_urad as f64 * 1e-6;
+        let bidn = array![theta.sin()]; // positive for Laue
+        let (rs, _) = si.base.get_amplitude(&e_arr, &bidn, None, None, &si).unwrap();
+        assert!(rs[0].re.is_finite(), "Laue rs at dθ={dtheta_urad}µrad not finite");
+        amplitudes.push(rs[0].norm());
+    }
+
+    // Amplitude should vary across the rocking curve (not all identical)
+    let min_amp = amplitudes.iter().cloned().fold(f64::INFINITY, f64::min);
+    let max_amp = amplitudes.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    assert!(max_amp > min_amp * 1.01 || (max_amp - min_amp).abs() > 1e-6,
+        "Laue rocking curve should vary: min={min_amp:.4e}, max={max_amp:.4e}");
+}

@@ -329,4 +329,25 @@ mod tests {
         let (i_wig, _, _) = w.build_i_map(&energies, &thetas, &psis);
         assert!(i_wig[0] > 0.0);
     }
+
+    #[test]
+    fn wiggler_small_k_produces_rays() {
+        // Very small K → wiggler behaves more like bending magnet
+        let mut wig = Wiggler::new(
+            3.0, 0.3, 0.01, // very small K
+            80.0, 10, 1000,
+            5000.0, 15000.0, 1e-3, 1e-3,
+        );
+        let beam = wig.shine();
+        assert_eq!(beam.nrays(), 1000);
+        // All energies in range
+        for &e in beam.e.iter() {
+            assert!(e >= 5000.0 && e <= 15000.0, "energy {e} out of range");
+        }
+        // Direction vectors normalized
+        for i in 0..beam.nrays() {
+            let norm = (beam.a[i]*beam.a[i] + beam.b[i]*beam.b[i] + beam.c[i]*beam.c[i]).sqrt();
+            assert!((norm - 1.0).abs() < 1e-12);
+        }
+    }
 }

@@ -459,3 +459,28 @@ fn golden_refract_beamline() {
     // Refraction should produce valid output
     assert!(output.initial_count == 500);
 }
+
+#[test]
+fn golden_passthrough_beamline() {
+    use xrt_oes::reflect::DeflectionMode;
+
+    let mut beam = collimated_source(500, 10000.0);
+    let initial_count = beam.nrays();
+
+    // PassThrough should not deflect the beam
+    let pass = MaterialOpticalElement::new(
+        FlatSurface,
+        OeParamsBuilder::new()
+            .mode(DeflectionMode::PassThrough)
+            .build(),
+        si_mirror(),
+    );
+
+    let bl = Beamline::new()
+        .add_material("Pass", pass)
+        .drift(1000.0);
+
+    let output = bl.propagate(&mut beam);
+    // PassThrough pipeline should run without panic
+    assert_eq!(output.initial_count, initial_count as usize);
+}

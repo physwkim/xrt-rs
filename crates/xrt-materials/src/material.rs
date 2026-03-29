@@ -426,4 +426,23 @@ mod tests {
             Err(_) => {} // Out of range error is acceptable
         }
     }
+
+    #[test]
+    fn fresnel_reflectivity_bounded() {
+        // For any material and angle, |Rs| ≤ 1 and |Rp| ≤ 1
+        let mat = Material::new(
+            &["Si"], None, 2.33, MaterialKind::Mirror, None,
+            ScatteringTable::ChantlerTotal,
+        ).unwrap();
+
+        let e = Array1::from_vec(vec![10000.0]);
+        for sin_theta in [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.9] {
+            let bidn = Array1::from_vec(vec![sin_theta]);
+            let result = mat.get_amplitude(&e, &bidn, true).unwrap();
+            assert!(result.rs[0].norm() <= 1.0 + 1e-10,
+                "Si |Rs| at sin_θ={sin_theta}: {:.6} > 1", result.rs[0].norm());
+            assert!(result.rp[0].norm() <= 1.0 + 1e-10,
+                "Si |Rp| at sin_θ={sin_theta}: {:.6} > 1", result.rp[0].norm());
+        }
+    }
 }
