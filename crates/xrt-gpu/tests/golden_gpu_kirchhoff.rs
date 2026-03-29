@@ -133,9 +133,9 @@ fn golden_gpu_long_distance_vs_cpu() {
         let es_diff = (gpu.0 - cpu.0).norm();
         let es_scale = cpu.0.norm().max(1e-30);
         let rel = es_diff / es_scale;
-        // Phase reduction keeps delta_path in f32, giving ~1e-4 to 1e-2 relative error
+        // Phase reduction keeps delta_path in f32, giving ~1e-4 relative error
         assert!(
-            rel < 0.1,
+            rel < 1e-3,
             "pixel[{i}] Es: GPU={:.4e} vs CPU={:.4e} (rel={rel:.2e})",
             gpu.0, cpu.0
         );
@@ -171,7 +171,7 @@ fn golden_gpu_long_distance_vs_fixture() {
 
         let rel = (gpu.0 - exp_es).norm() / exp_es.norm().max(1e-30);
         assert!(
-            rel < 0.1,
+            rel < 1e-3,
             "pixel[{i}] Es: GPU={:.4e} vs fixture={exp_es:.4e} (rel={rel:.2e})",
             gpu.0
         );
