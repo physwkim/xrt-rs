@@ -1,0 +1,40 @@
+{
+  "generator": "xrt-validation",
+  "xrt_version": "1.6.2",
+  "generated_at": "2026-03-29T12:44:18.670444+00:00",
+  "domain": "crystal_diffraction",
+  "crystal": "si220",
+  "hkl": [
+    2,
+    2,
+    0
+  ],
+  "temperature_k": 297.15,
+  "d_spacing_angstrom": 1.9200677810242166,
+  "test_cases": [
+    {
+      "id": "si220_bragg_angle",
+      "energies_ev": [
+        8000.0,
+        10000.0,
+        12000.0,
+        15000.0
+      ],
+      "theta_b_rad": [
+        0.4154264343446972,
+        0.3287541016387156,
+        0.2724100755827848,
+        0.2169403855947496
+      ]
+    },
+    {
+      "id": "si220_amplitude_10kev",
+      "energy_ev": 10000.0,
+      "beam_in_dot_normal": -0.3228641045943707,
+      "rs_real": -0.35967026973182453,
+      "rs_imag": 0.004121512614908555,
+      "rp_real": -0.2705296797155935,
+      "rp_imag": 0.002767229641686643
+    }
+  ]
+}

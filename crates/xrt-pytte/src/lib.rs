@@ -1,3 +1,10 @@
-// xrt-pytte: Takagi-Taupin solver (Phase 5)
-// - RK4/RK8 ODE integrator
-// - Crystal deformation model
+//! xrt-pytte: Takagi-Taupin ODE solver for dynamical diffraction.
+//!
+//! Solves the Takagi-Taupin equations for bent/deformed crystals using
+//! a Dormand-Prince RK45 adaptive integrator.
+
+pub mod solver;
+pub mod quantity;
+pub mod crystal;
+pub mod scan;
+pub mod deformation;

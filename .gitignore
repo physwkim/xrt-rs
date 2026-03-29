@@ -1,2 +1,4 @@
 /target
 Cargo.lock
+validation/__pycache__/
+.pytest_cache/

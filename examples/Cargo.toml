@@ -1,0 +1,29 @@
+[package]
+name = "xrt-examples"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+xrt-core = { workspace = true }
+xrt-math = { workspace = true }
+xrt-materials = { workspace = true }
+xrt-oes = { workspace = true }
+xrt-sources = { workspace = true }
+xrt-waves = { workspace = true }
+xrt-pytte = { workspace = true }
+ndarray = { workspace = true }
+num-complex = { workspace = true }
+
+[[example]]
+name = "mirror_beamline"
+path = "mirror_beamline.rs"
+
+[[example]]
+name = "grating_monochromator"
+path = "grating_monochromator.rs"
+
+[[example]]
+name = "crystal_rocking_curve"
+path = "crystal_rocking_curve.rs"

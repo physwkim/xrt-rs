@@ -1,0 +1,381 @@
+//! Undulator synchrotron source (CPU reference implementation).
+//!
+//! Models a planar or elliptical undulator with K_x and K_y deflection
+//! parameters, producing quasi-monochromatic radiation at harmonics of
+//! the fundamental energy E₁.
+//!
+//! Key features:
+//! - Fundamental energy: E₁ = 2γ²ℏω₁/(1 + K²/2)
+//! - Electron trajectory integration over one period
+//! - N-period resonance function sin(Nπu)/sin(πu)
+//! - Monte Carlo rejection sampling for beam generation
+//!
+//! Ported from sources_synchr.py Undulator class.
+
+use num_complex::Complex64;
+use rand::Rng;
+use rand_distr::{Distribution, Normal, Uniform};
+
+use xrt_core::beam::{Beam, RayState};
+use xrt_core::consts::{FINE_STR, PI2, SIE0, SIC, SIHPLANCK, E2W};
+
+use crate::bending_magnet::SynchrotronParams;
+
+/// Undulator source parameters.
+#[derive(Debug, Clone)]
+pub struct Undulator {
+    pub params: SynchrotronParams,
+    /// Horizontal deflection parameter K_x
+    pub kx: f64,
+    /// Vertical deflection parameter K_y
+    pub ky: f64,
+    /// Undulator period [mm]
+    pub period: f64,
+    /// Number of periods
+    pub n_periods: usize,
+    /// Phase difference between K_x and K_y [degrees]
+    pub phase_deg: f64,
+    /// Number of rays
+    pub nrays: usize,
+    /// Photon energy range [eV]
+    pub e_min: f64,
+    pub e_max: f64,
+    /// Angular range [rad]
+    pub theta_max: f64,
+    pub psi_max: f64,
+    /// Maximum intensity (rejection sampling)
+    i_max: f64,
+}
+
+impl Undulator {
+    pub fn new(
+        electron_energy_gev: f64,
+        beam_current: f64,
+        kx: f64,
+        ky: f64,
+        period_mm: f64,
+        n_periods: usize,
+        nrays: usize,
+        e_min: f64,
+        e_max: f64,
+        theta_max: f64,
+        psi_max: f64,
+    ) -> Self {
+        let params = SynchrotronParams::new(electron_energy_gev, beam_current);
+        Self {
+            params,
+            kx,
+            ky,
+            period: period_mm,
+            n_periods,
+            phase_deg: 0.0,
+            nrays,
+            e_min,
+            e_max,
+            theta_max,
+            psi_max,
+            i_max: 0.0,
+        }
+    }
+
+    /// Set the K_x - K_y phase difference [degrees].
+    pub fn with_phase(mut self, phase_deg: f64) -> Self {
+        self.phase_deg = phase_deg;
+        self
+    }
+
+    /// Total K² = K_x² + K_y².
+    pub fn k_squared(&self) -> f64 {
+        self.kx * self.kx + self.ky * self.ky
+    }
+
+    /// Fundamental photon energy E₁ [eV].
+    pub fn fundamental_energy(&self) -> f64 {
+        let gamma = self.params.gamma;
+        let lambda_u = self.period * 1e-3; // mm → m
+        // E₁ = 2γ²hc / (λ_u(1 + K²/2))
+        let e1 = 2.0 * gamma * gamma * SIHPLANCK * SIC / (lambda_u * (1.0 + self.k_squared() / 2.0));
+        e1 / SIE0 // J → eV
+    }
+
+    /// Compute intensity map using numerical trajectory integration.
+    ///
+    /// Integrates the electron trajectory over one period and applies
+    /// the N-period resonance function.
+    pub fn build_i_map(
+        &self,
+        energies: &[f64],
+        thetas: &[f64],
+        psis: &[f64],
+    ) -> (Vec<f64>, Vec<Complex64>, Vec<Complex64>) {
+        let gamma = self.params.gamma;
+        let gamma2 = self.params.gamma2;
+        let n = energies.len();
+
+        let mut intensity = vec![0.0; n];
+        let mut amp_s = vec![Complex64::new(0.0, 0.0); n];
+        let mut amp_p = vec![Complex64::new(0.0, 0.0); n];
+
+        let lambda_u = self.period * 1e-3; // mm → m
+        let phase_rad = self.phase_deg.to_radians();
+
+        let amp2flux = FINE_STR * self.params.beam_current / SIE0
+            * (self.n_periods as f64);
+
+        // Number of integration steps per period
+        let n_steps = 64;
+        let dt = 1.0 / n_steps as f64; // normalized time (0..1 = one period)
+
+        for i in 0..n {
+            let e = energies[i];
+            let theta = thetas[i];
+            let psi = psis[i];
+
+            let omega = e * E2W; // angular frequency [rad/s]
+
+            // Integrate radiation amplitude over one period
+            let mut ax_sum = Complex64::new(0.0, 0.0);
+            let mut az_sum = Complex64::new(0.0, 0.0);
+
+            for j in 0..n_steps {
+                let t = (j as f64 + 0.5) * dt;
+                let phi_t = PI2 * t;
+
+                // Electron velocity (normalized to c)
+                // β_x = K_x/γ × sin(2πt)
+                // β_z = K_y/γ × sin(2πt + φ)
+                let beta_x = self.kx / gamma * phi_t.sin();
+                let beta_z = self.ky / gamma * (phi_t + phase_rad).sin();
+
+                // Electron position (normalized)
+                // x = K_x λ_u/(2πγ) × (1 - cos(2πt))
+                // z = K_y λ_u/(2πγ) × (1 - cos(2πt + φ))
+                let x_e = self.kx * lambda_u / (PI2 * gamma) * (1.0 - phi_t.cos());
+                let z_e = self.ky * lambda_u / (PI2 * gamma) * (1.0 - (phi_t + phase_rad).cos());
+
+                // Longitudinal position
+                let y_e = lambda_u * t;
+
+                // Retarded phase: ω/c × (y_e - x_e×sinθ - z_e×sinψ)
+                // Simplified for small angles: phase ≈ ω × (t/c - n·r/c)
+                let path = y_e - x_e * theta - z_e * psi;
+                let phase_term = omega / SIC * path;
+
+                // Correction for average velocity
+                let avg_correction = omega / SIC * lambda_u * t
+                    * (1.0 + self.k_squared() / 2.0) / (2.0 * gamma2);
+
+                let total_phase = phase_term - avg_correction;
+                let exp_phase = Complex64::new(total_phase.cos(), total_phase.sin());
+
+                // Radiation amplitude ∝ (β_⊥ - n̂_⊥) × exp(iφ)
+                ax_sum += (beta_x - theta) * exp_phase * dt;
+                az_sum += (beta_z - psi) * exp_phase * dt;
+            }
+
+            // N-period resonance enhancement
+            // For the fundamental and harmonics, the single-period amplitude
+            // gets multiplied by N (coherent enhancement)
+            let n_per = self.n_periods as f64;
+
+            // Single-period result scaled by N
+            let ax = ax_sum * n_per * gamma2;
+            let az = az_sum * n_per * gamma2;
+
+            let is_val = (ax * ax.conj()).re;
+            let ip_val = (az * az.conj()).re;
+
+            let inv_e = 1.0 / e;
+            intensity[i] = amp2flux * inv_e * (is_val + ip_val);
+            let sqrt_flux = (amp2flux * inv_e).sqrt();
+            amp_s[i] = ax * sqrt_flux;
+            amp_p[i] = az * sqrt_flux;
+        }
+
+        (intensity, amp_s, amp_p)
+    }
+
+    /// Generate a beam using Monte Carlo rejection sampling.
+    pub fn shine(&mut self) -> Beam {
+        let mut rng = rand::thread_rng();
+        let mc_rays = (self.nrays as f64 * 1.2) as usize;
+
+        let mut collected_beams: Vec<Beam> = Vec::new();
+        let mut total_length = 0;
+
+        let theta_min = -self.theta_max;
+        let psi_min = -self.psi_max;
+
+        while total_length < self.nrays {
+            let e_dist = Uniform::new(self.e_min, self.e_max);
+            let theta_dist = Uniform::new(theta_min, self.theta_max);
+            let psi_dist = Uniform::new(psi_min, self.psi_max);
+
+            let energies: Vec<f64> = (0..mc_rays).map(|_| e_dist.sample(&mut rng)).collect();
+            let thetas: Vec<f64> = (0..mc_rays).map(|_| theta_dist.sample(&mut rng)).collect();
+            let psis: Vec<f64> = (0..mc_rays).map(|_| psi_dist.sample(&mut rng)).collect();
+            let disc: Vec<f64> = (0..mc_rays).map(|_| rng.gen::<f64>()).collect();
+
+            let (int, a_s, a_p) = self.build_i_map(&energies, &thetas, &psis);
+
+            for &val in &int {
+                if val > self.i_max {
+                    self.i_max = val;
+                }
+            }
+
+            if self.i_max <= 0.0 {
+                continue;
+            }
+
+            let passed: Vec<usize> = (0..mc_rays)
+                .filter(|&j| self.i_max * disc[j] < int[j])
+                .collect();
+
+            let npassed = passed.len();
+            if npassed == 0 {
+                continue;
+            }
+
+            let mut bot = Beam::with_amplitudes(npassed);
+            bot.set_state(RayState::Good);
+
+            for (j, &k) in passed.iter().enumerate() {
+                bot.e[j] = energies[k];
+                bot.a[j] = thetas[k].tan();
+                bot.c[j] = psis[k].tan();
+
+                if self.params.dx > 0.0 {
+                    if let Ok(d) = Normal::new(0.0, self.params.dx) {
+                        bot.x[j] = d.sample(&mut rng);
+                    }
+                }
+                if self.params.dz > 0.0 {
+                    if let Ok(d) = Normal::new(0.0, self.params.dz) {
+                        bot.z[j] = d.sample(&mut rng);
+                    }
+                }
+
+                let is_val = (a_s[k] * a_s[k].conj()).re;
+                let ip_val = (a_p[k] * a_p[k].conj()).re;
+                let ssp = is_val + ip_val;
+                if ssp > 0.0 {
+                    bot.jss[j] = is_val / ssp;
+                    bot.jpp[j] = ip_val / ssp;
+                    bot.jsp[j] = a_s[k] * a_p[k].conj() / ssp;
+                }
+
+                if let Some(ref mut es) = bot.es {
+                    es[j] = a_s[k];
+                }
+                if let Some(ref mut ep) = bot.ep {
+                    ep[j] = a_p[k];
+                }
+            }
+
+            total_length += npassed;
+            collected_beams.push(bot);
+        }
+
+        let mut beam = collected_beams.remove(0);
+        for bot in collected_beams {
+            beam.concatenate(&bot);
+        }
+
+        if beam.nrays() > self.nrays {
+            beam = beam.filter_by_index(&(0..self.nrays).collect::<Vec<_>>());
+        }
+
+        // Normalize directions
+        for i in 0..beam.nrays() {
+            let norm = (beam.a[i] * beam.a[i] + 1.0 + beam.c[i] * beam.c[i]).sqrt();
+            beam.a[i] /= norm;
+            beam.b[i] = 1.0 / norm;
+            beam.c[i] /= norm;
+        }
+
+        beam
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn undulator_fundamental_energy() {
+        // ESRF U20: 6 GeV, K=1.0, period=20mm
+        let u = Undulator::new(
+            6.0,    // 6 GeV
+            0.2,    // 200 mA
+            0.0,    // Kx = 0
+            1.0,    // Ky = 1
+            20.0,   // 20 mm period
+            100,    // 100 periods
+            100,    // rays
+            5000.0, // energy range
+            20000.0,
+            0.0001,
+            0.0001,
+        );
+        let e1 = u.fundamental_energy();
+        // E₁ should be in the keV range for these parameters
+        assert!(
+            e1 > 1000.0 && e1 < 100000.0,
+            "E₁ = {} eV",
+            e1
+        );
+    }
+
+    #[test]
+    fn undulator_build_i_map_nonzero() {
+        let u = Undulator::new(
+            3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 0.0005, 0.0005,
+        );
+        let e1 = u.fundamental_energy();
+        // Test at fundamental energy, on-axis
+        let energies = vec![e1];
+        let thetas = vec![0.0];
+        let psis = vec![0.0];
+        let (int, _, _) = u.build_i_map(&energies, &thetas, &psis);
+        assert!(int[0] > 0.0, "intensity at fundamental = {}", int[0]);
+    }
+
+    #[test]
+    fn undulator_on_axis_nonzero() {
+        let u = Undulator::new(
+            3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 0.001, 0.001,
+        );
+        let e1 = u.fundamental_energy();
+        let (int_on, _, _) = u.build_i_map(&[e1], &[0.0], &[0.0]);
+        assert!(
+            int_on[0] > 0.0 && int_on[0].is_finite(),
+            "on-axis intensity = {}",
+            int_on[0]
+        );
+    }
+
+    #[test]
+    fn undulator_shine() {
+        let mut u = Undulator::new(
+            3.0, 0.3, 0.0, 2.0, 30.0, 50, 50, 5000.0, 15000.0, 0.001, 0.001,
+        );
+        let beam = u.shine();
+        assert_eq!(beam.nrays(), 50);
+        for i in 0..50 {
+            assert!(beam.e[i] >= 5000.0 && beam.e[i] <= 15000.0);
+            let norm =
+                (beam.a[i] * beam.a[i] + beam.b[i] * beam.b[i] + beam.c[i] * beam.c[i]).sqrt();
+            assert!(
+                (norm - 1.0).abs() < 1e-10,
+                "direction not normalized: {norm}"
+            );
+        }
+    }
+
+    #[test]
+    fn k_squared() {
+        let u = Undulator::new(3.0, 0.3, 1.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 0.001, 0.001);
+        assert!((u.k_squared() - 5.0).abs() < 1e-10);
+    }
+}

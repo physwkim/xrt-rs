@@ -2,6 +2,8 @@
 //!
 //! Ported from `xrt/backends/raycing/sources_beams.py`.
 
+use std::io::Write;
+
 use ndarray::Array1;
 use num_complex::Complex64;
 
@@ -90,6 +92,47 @@ pub struct Beam {
     pub s: Option<Array1<f64>>,
     pub phi: Option<Array1<f64>>,
     pub r: Option<Array1<f64>>,
+}
+
+/// Summary statistics for good rays in a beam.
+#[derive(Debug, Clone)]
+pub struct BeamStatistics {
+    /// Number of good rays
+    pub n_good: usize,
+    /// Total number of rays
+    pub n_total: usize,
+    /// Mean horizontal position [mm]
+    pub mean_x: f64,
+    /// Mean vertical position [mm]
+    pub mean_z: f64,
+    /// RMS horizontal beam size [mm]
+    pub sigma_x: f64,
+    /// RMS vertical beam size [mm]
+    pub sigma_z: f64,
+    /// RMS horizontal divergence [rad]
+    pub sigma_xprime: f64,
+    /// RMS vertical divergence [rad]
+    pub sigma_zprime: f64,
+    /// Mean photon energy [eV]
+    pub mean_energy: f64,
+    /// Minimum energy [eV]
+    pub e_min: f64,
+    /// Maximum energy [eV]
+    pub e_max: f64,
+}
+
+impl std::fmt::Display for BeamStatistics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Beam: {}/{} good rays ({:.1}%)",
+            self.n_good, self.n_total,
+            100.0 * self.n_good as f64 / self.n_total.max(1) as f64)?;
+        writeln!(f, "  position:   x={:.3}±{:.3}mm, z={:.3}±{:.3}mm",
+            self.mean_x, self.sigma_x, self.mean_z, self.sigma_z)?;
+        writeln!(f, "  divergence: x'={:.1}μrad, z'={:.1}μrad",
+            self.sigma_xprime * 1e6, self.sigma_zprime * 1e6)?;
+        write!(f, "  energy:     {:.1} eV [{:.1}, {:.1}]",
+            self.mean_energy, self.e_min, self.e_max)
+    }
 }
 
 impl Beam {
@@ -199,14 +242,14 @@ impl Beam {
             Array1::from_iter(indices.iter().map(|&i| arr[i]))
         };
         let pick_opt = |arr: &Option<Array1<f64>>| -> Option<Array1<f64>> {
-            arr.as_ref().map(|a| pick(a))
+            arr.as_ref().map(&pick)
         };
         let pick_opt_i32 = |arr: &Option<Array1<i32>>| -> Option<Array1<i32>> {
-            arr.as_ref().map(|a| pick_i32(a))
+            arr.as_ref().map(&pick_i32)
         };
         let pick_opt_c64 =
             |arr: &Option<Array1<Complex64>>| -> Option<Array1<Complex64>> {
-                arr.as_ref().map(|a| pick_c64(a))
+                arr.as_ref().map(&pick_c64)
             };
 
         Self {
@@ -254,6 +297,124 @@ impl Beam {
             .map(|(i, _)| i)
             .collect();
         self.filter_by_index(&indices)
+    }
+
+    /// Propagate good rays through free space by a given distance [mm].
+    ///
+    /// Advances each ray's position along its direction vector and
+    /// accumulates the path length.
+    pub fn propagate(&mut self, distance: f64) {
+        for i in 0..self.nrays() {
+            if self.state[i] == RayState::Good as i32 {
+                self.x[i] += self.a[i] * distance;
+                self.y[i] += self.b[i] * distance;
+                self.z[i] += self.c[i] * distance;
+                self.path[i] += distance;
+            }
+        }
+    }
+
+    /// Propagate selected rays through free space.
+    pub fn propagate_indices(&mut self, distance: f64, indices: &[usize]) {
+        for &i in indices {
+            self.x[i] += self.a[i] * distance;
+            self.y[i] += self.b[i] * distance;
+            self.z[i] += self.c[i] * distance;
+            self.path[i] += distance;
+        }
+    }
+
+    /// Get indices of all good rays.
+    pub fn good_indices(&self) -> Vec<usize> {
+        self.state
+            .iter()
+            .enumerate()
+            .filter(|(_, &s)| s == RayState::Good as i32)
+            .map(|(i, _)| i)
+            .collect()
+    }
+
+    /// Kill rays outside an energy range (mark as Dead).
+    ///
+    /// Useful for simulating energy slits / monochromators.
+    pub fn filter_energy(&mut self, e_min: f64, e_max: f64) -> usize {
+        let mut killed = 0;
+        for i in 0..self.nrays() {
+            if self.state[i] == RayState::Good as i32
+                && (self.e[i] < e_min || self.e[i] > e_max)
+            {
+                self.state[i] = RayState::Dead as i32;
+                killed += 1;
+            }
+        }
+        killed
+    }
+
+    /// Get (x, z) footprint positions of good rays.
+    pub fn footprint(&self) -> (Vec<f64>, Vec<f64>) {
+        let good = self.good_indices();
+        let x: Vec<f64> = good.iter().map(|&i| self.x[i]).collect();
+        let z: Vec<f64> = good.iter().map(|&i| self.z[i]).collect();
+        (x, z)
+    }
+
+    /// Write good rays to TSV format.
+    ///
+    /// Columns: x, y, z, a, b, c, energy, state, jss, jpp, path
+    pub fn write_tsv<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        writeln!(w, "# x\ty\tz\ta\tb\tc\tenergy\tstate\tjss\tjpp\tpath")?;
+        for i in 0..self.nrays() {
+            if self.state[i] == RayState::Good as i32 {
+                writeln!(
+                    w,
+                    "{:.6}\t{:.6}\t{:.6}\t{:.9}\t{:.9}\t{:.9}\t{:.2}\t{}\t{:.6}\t{:.6}\t{:.6}",
+                    self.x[i], self.y[i], self.z[i],
+                    self.a[i], self.b[i], self.c[i],
+                    self.e[i], self.state[i],
+                    self.jss[i], self.jpp[i], self.path[i],
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Compute statistics for good rays.
+    ///
+    /// Returns `None` if there are no good rays.
+    pub fn statistics(&self) -> Option<BeamStatistics> {
+        let good = self.good_indices();
+        if good.is_empty() {
+            return None;
+        }
+        let n = good.len() as f64;
+
+        let mean_x = good.iter().map(|&i| self.x[i]).sum::<f64>() / n;
+        let mean_z = good.iter().map(|&i| self.z[i]).sum::<f64>() / n;
+        let mean_a = good.iter().map(|&i| self.a[i]).sum::<f64>() / n;
+        let mean_c = good.iter().map(|&i| self.c[i]).sum::<f64>() / n;
+        let mean_e = good.iter().map(|&i| self.e[i]).sum::<f64>() / n;
+
+        let sigma_x = (good.iter().map(|&i| (self.x[i] - mean_x).powi(2)).sum::<f64>() / n).sqrt();
+        let sigma_z = (good.iter().map(|&i| (self.z[i] - mean_z).powi(2)).sum::<f64>() / n).sqrt();
+        let sigma_xp = (good.iter().map(|&i| (self.a[i] - mean_a).powi(2)).sum::<f64>() / n).sqrt();
+        let sigma_zp = (good.iter().map(|&i| (self.c[i] - mean_c).powi(2)).sum::<f64>() / n).sqrt();
+
+        let e_min = good.iter().map(|&i| self.e[i]).fold(f64::INFINITY, f64::min);
+        let e_max = good.iter().map(|&i| self.e[i]).fold(f64::NEG_INFINITY, f64::max);
+
+        Some(BeamStatistics {
+            n_good: good.len(),
+            n_total: self.nrays(),
+            mean_x,
+            mean_z,
+            sigma_x,
+            sigma_z,
+            sigma_xprime: sigma_xp,
+            sigma_zprime: sigma_zp,
+            mean_energy: mean_e,
+            e_min,
+            e_max,
+        })
     }
 
     /// Concatenate another beam onto this one.
@@ -352,5 +513,90 @@ mod tests {
         assert_eq!(RayState::from_i32(1), RayState::Good);
         assert_eq!(RayState::from_i32(-1), RayState::Dead);
         assert_eq!(RayState::from_i32(99), RayState::Undefined);
+    }
+
+    #[test]
+    fn test_statistics() {
+        let mut beam = Beam::new(100);
+        beam.set_state(RayState::Good);
+        for i in 0..100 {
+            beam.b[i] = 1.0;
+            beam.e[i] = 10000.0 + i as f64;
+        }
+        let stats = beam.statistics().unwrap();
+        assert_eq!(stats.n_good, 100);
+        assert!((stats.mean_energy - 10049.5).abs() < 0.1);
+        assert!((stats.e_min - 10000.0).abs() < 0.1);
+        assert!((stats.e_max - 10099.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_statistics_empty() {
+        let beam = Beam::new(5);
+        // No good rays → None
+        assert!(beam.statistics().is_none());
+    }
+
+    #[test]
+    fn test_statistics_display() {
+        let mut beam = Beam::new(10);
+        beam.set_state(RayState::Good);
+        for i in 0..10 {
+            beam.b[i] = 1.0;
+            beam.e[i] = 10000.0;
+        }
+        let stats = beam.statistics().unwrap();
+        let s = format!("{stats}");
+        assert!(s.contains("10/10 good"));
+    }
+
+    #[test]
+    fn test_filter_energy() {
+        let mut beam = Beam::new(100);
+        beam.set_state(RayState::Good);
+        for i in 0..100 {
+            beam.e[i] = 8000.0 + i as f64 * 40.0; // 8000..11960
+        }
+        let killed = beam.filter_energy(9000.0, 11000.0);
+        assert!(killed > 0);
+        // Remaining good rays should be in [9000, 11000]
+        for i in 0..100 {
+            if beam.state[i] == RayState::Good as i32 {
+                assert!(beam.e[i] >= 9000.0 && beam.e[i] <= 11000.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_write_tsv() {
+        let mut beam = Beam::new(3);
+        beam.set_state(RayState::Good);
+        beam.b[0] = 1.0;
+        beam.b[1] = 1.0;
+        beam.b[2] = 1.0;
+        beam.e[0] = 10000.0;
+        beam.e[1] = 10000.0;
+        beam.e[2] = 10000.0;
+        beam.state[1] = RayState::Dead as i32;
+
+        let mut buf = Vec::new();
+        beam.write_tsv(&mut buf).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("# x\ty\tz"));
+        // Only 2 good rays should be written
+        let data_lines: Vec<&str> = output.lines().filter(|l| !l.starts_with('#')).collect();
+        assert_eq!(data_lines.len(), 2);
+    }
+
+    #[test]
+    fn test_footprint() {
+        let mut beam = Beam::new(5);
+        beam.set_state(RayState::Good);
+        beam.x[0] = 1.0;
+        beam.z[0] = 2.0;
+        beam.state[1] = RayState::Dead as i32;
+        let (x, z) = beam.footprint();
+        assert_eq!(x.len(), 4); // 4 good rays
+        assert!((x[0] - 1.0).abs() < 1e-15);
     }
 }

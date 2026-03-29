@@ -8,7 +8,11 @@ description = "Takagi-Taupin ODE solver for dynamical diffraction"
 [dependencies]
 xrt-core = { workspace = true }
 xrt-math = { workspace = true }
+xrt-materials = { workspace = true }
 ndarray = { workspace = true }
 num-complex = { workspace = true }
 rayon = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

@@ -56,7 +56,7 @@ pub const FINE_STR: f64 = 1.0 / 137.035_999_76;
 /// Energy to angular frequency: ω = E2W × E[eV]
 pub const E2W: f64 = 1_519_267_514_747_457.9;
 
-pub const E2WC: f64 = 5067.730_939_206_809;
+pub const E2WC: f64 = 5_067.730_939_206_809;
 
 /// Classical electron radius [Å]
 pub const R0: f64 = 2.817_940_285e-5;

@@ -9,4 +9,8 @@ description = "GPU compute shaders (wgpu/WGSL) for ray tracing kernels"
 xrt-core = { workspace = true }
 ndarray = { workspace = true }
 num-complex = { workspace = true }
+rayon = { workspace = true }
 thiserror = { workspace = true }
+wgpu = { workspace = true }
+bytemuck = { workspace = true }
+pollster = { workspace = true }
