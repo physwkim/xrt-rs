@@ -94,7 +94,7 @@ impl Surface for JohanssonToroidSurface {
             .local_n(x, y)
     }
 
-    fn local_n_bragg(&self, x: f64, y: f64) -> Option<[f64; 3]> {
+    fn local_n_bragg(&self, _x: f64, y: f64) -> Option<[f64; 3]> {
         // Johansson: ground-bent formula for Bragg normal
         let r2 = self.rm * self.rm;
         let sq = if y * y < r2 { (r2 - y * y).sqrt() } else { 0.0 };

@@ -10,6 +10,22 @@ use rayon::prelude::*;
 
 use xrt_core::consts::CHBAR;
 
+/// Observation screen configuration for Fresnel propagation.
+pub struct FresnelScreen {
+    /// X range minimum [mm]
+    pub x_min: f64,
+    /// X range maximum [mm]
+    pub x_max: f64,
+    /// Number of x pixels
+    pub nx: usize,
+    /// Z range minimum [mm]
+    pub z_min: f64,
+    /// Z range maximum [mm]
+    pub z_max: f64,
+    /// Number of z pixels
+    pub nz: usize,
+}
+
 /// Result of Fresnel propagation.
 pub struct FresnelResult {
     /// Complex amplitude at each observation pixel
@@ -34,31 +50,25 @@ impl FresnelResult {
 /// Perform 2D Fresnel propagation.
 ///
 /// Propagates from source rays at z=0 to an observation screen at distance `dist`.
-///
-/// # Arguments
-/// * `ray_x`, `ray_z` — source ray positions [mm]
-/// * `ray_es` — complex s-polarization amplitude at each ray
-/// * `energy` — photon energy [eV]
-/// * `dist` — propagation distance [mm]
-/// * `x_min`, `x_max`, `nx` — observation screen x range and pixel count
-/// * `z_min`, `z_max`, `nz` — observation screen z range and pixel count
 pub fn fresnel_propagate(
     ray_x: &[f64],
     ray_z: &[f64],
     ray_es: &[Complex64],
     energy: f64,
     dist: f64,
-    x_min: f64, x_max: f64, nx: usize,
-    z_min: f64, z_max: f64, nz: usize,
+    screen: &FresnelScreen,
 ) -> FresnelResult {
     let k = energy / CHBAR * 1e7; // mm⁻¹
 
+    let nx = screen.nx;
+    let nz = screen.nz;
+
     // Build pixel grid
     let x_pixels: Vec<f64> = (0..nx)
-        .map(|i| x_min + (x_max - x_min) * i as f64 / (nx - 1).max(1) as f64)
+        .map(|i| screen.x_min + (screen.x_max - screen.x_min) * i as f64 / (nx - 1).max(1) as f64)
         .collect();
     let z_pixels: Vec<f64> = (0..nz)
-        .map(|i| z_min + (z_max - z_min) * i as f64 / (nz - 1).max(1) as f64)
+        .map(|i| screen.z_min + (screen.z_max - screen.z_min) * i as f64 / (nz - 1).max(1) as f64)
         .collect();
 
     // Fresnel kernel: U(x',z') = Σ_j Es_j × exp(ik/(2d) × ((x'-x_j)² + (z'-z_j)²))
@@ -91,23 +101,20 @@ pub fn fresnel_propagate(
 mod tests {
     use super::*;
 
+    fn screen(x_min: f64, x_max: f64, nx: usize, z_min: f64, z_max: f64, nz: usize) -> FresnelScreen {
+        FresnelScreen { x_min, x_max, nx, z_min, z_max, nz }
+    }
+
     #[test]
     fn fresnel_single_point_source() {
-        // Single point source → should produce Airy-like pattern
-        let ray_x = vec![0.0];
-        let ray_z = vec![0.0];
-        let ray_es = vec![Complex64::new(1.0, 0.0)];
-
         let result = fresnel_propagate(
-            &ray_x, &ray_z, &ray_es,
-            10000.0, // 10 keV
-            1000.0,  // 1 meter
-            -0.1, 0.1, 21,
-            -0.1, 0.1, 21,
+            &[0.0], &[0.0],
+            &[Complex64::new(1.0, 0.0)],
+            10000.0, 1000.0,
+            &screen(-0.1, 0.1, 21, -0.1, 0.1, 21),
         );
 
         assert_eq!(result.amplitude.len(), 21 * 21);
-        // Center should have maximum intensity
         let center = &result.amplitude[10 * 21 + 10];
         let corner = &result.amplitude[0];
         assert!(center.norm() >= corner.norm(),
@@ -117,25 +124,15 @@ mod tests {
 
     #[test]
     fn fresnel_two_slit() {
-        // Two slits → should show interference
-        let ray_x = vec![-0.01, 0.01]; // two point sources separated by 20 µm
-        let ray_z = vec![0.0, 0.0];
-        let ray_es = vec![Complex64::new(1.0, 0.0), Complex64::new(1.0, 0.0)];
-
         let result = fresnel_propagate(
-            &ray_x, &ray_z, &ray_es,
-            10000.0,
-            1000.0,
-            -0.1, 0.1, 101,
-            0.0, 0.0, 1,
+            &[-0.01, 0.01], &[0.0, 0.0],
+            &[Complex64::new(1.0, 0.0), Complex64::new(1.0, 0.0)],
+            10000.0, 1000.0,
+            &screen(-0.1, 0.1, 101, 0.0, 0.0, 1),
         );
 
         let intensities: Vec<f64> = result.amplitude.iter().map(|a| a.norm_sqr()).collect();
-        // Should have interference fringes (not monotonically decreasing)
-        let center = intensities[50];
-        let off_center = intensities[60];
-        // Just verify we get non-trivial pattern
-        assert!(center > 0.0);
-        assert!(off_center > 0.0);
+        assert!(intensities[50] > 0.0);
+        assert!(intensities[60] > 0.0);
     }
 }
