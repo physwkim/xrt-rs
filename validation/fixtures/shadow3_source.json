@@ -1,0 +1,25 @@
+{
+  "generator": "shadow3",
+  "domain": "source_statistics",
+  "source": {
+    "npoint": 50000,
+    "energy_ev": 10000.0,
+    "sigmax_cm": 0.01,
+    "sigmaz_cm": 0.005,
+    "sigdix_rad": 0.0001,
+    "sigdiz_rad": 5e-05
+  },
+  "result": {
+    "n_good": 50000,
+    "mean_x_cm": -3.4443624726146717e-06,
+    "std_x_cm": 0.009997276976388837,
+    "mean_z_cm": 2.61470166459434e-05,
+    "std_z_cm": 0.005002596944586982,
+    "mean_xp": 1.1550611054659908e-09,
+    "std_xp": 2.8868155877866627e-07,
+    "mean_zp": 4.380143677281065e-09,
+    "std_zp": 2.8835968690619577e-06,
+    "mean_energy_ev": 506773075.85342795,
+    "mean_dir_norm": 1.0
+  }
+}

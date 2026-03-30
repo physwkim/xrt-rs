@@ -1,0 +1,14 @@
+{
+  "generator": "shadow3",
+  "domain": "spherical_mirror",
+  "n_good": 200,
+  "oe": {
+    "surface": "spherical",
+    "radius_cm": 500000.0,
+    "grazing_mrad": 3.0
+  },
+  "result": {
+    "x_std_cm": 0.005502603952447149,
+    "z_std_cm": 0.001082237274741655
+  }
+}

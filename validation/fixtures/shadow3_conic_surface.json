@@ -1,0 +1,24 @@
+{
+  "generator": "shadow3",
+  "domain": "conic_surface",
+  "oe": {
+    "ccc": [
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -1000000.0,
+      0.0
+    ],
+    "equivalent_sphere_radius_cm": 500000.0
+  },
+  "result": {
+    "n_good": 100,
+    "x_std_cm": 0.005421087256298314,
+    "z_std_cm": 0.3272362344816365
+  }
+}
