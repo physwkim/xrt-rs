@@ -653,7 +653,7 @@ class BeamlineWindow(QMainWindow):
 
         # 4-panel XRT-style
         self.four_panel = FourPanelWidget()
-        plot_tabs.addTab(self.four_panel, "4-Panel")
+        plot_tabs.addTab(self.four_panel, "Beam Profile")
 
         # 2D footprint
         self.plot_2d = Plot2D(backend=BACKEND)
