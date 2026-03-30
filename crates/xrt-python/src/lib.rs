@@ -1,13 +1,33 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 //! PyO3 bindings for xrt-rs.
 //!
-//! Provides Python-callable functions that can replace XRT's performance-critical
-//! inner loops. Usage from Python:
+//! Provides both low-level functions (find_intersection_rs, etc.) and
+//! high-level Python classes (BeamLine, GeometricSource, OE types, Screen)
+//! for XRT-compatible beamline simulation.
 //!
+//! # High-level usage
 //! ```python
-//! import xrt_rs
-//! result = xrt_rs.find_intersection_rs("flat", {}, t1, t2, x, y, z, a, b, c, 1)
+//! import xrt_rs as xr
+//!
+//! bl = xr.BeamLine()
+//! source = xr.GeometricSource(bl, 'source', nrays=10000, energies=[10000.0])
+//! m1 = xr.ToroidMirror(bl, 'M1', center=[0, 5000, 0],
+//!     pitch=0.005, R=5e6, r=50.0, material=xr.Material(['Si'], rho=2.33))
+//! screen = xr.Screen(bl, 'screen', center=[0, 10000, 0])
+//!
+//! beam = source.shine()
+//! m1.reflect(beam)
+//! result = screen.expose(beam)
+//! print(f"FWHM: {result.fwhm_x:.3f} x {result.fwhm_z:.3f} mm")
 //! ```
+
+mod py_beam;
+mod py_beamline;
+mod py_material;
+mod py_oe;
+mod py_screen;
+mod py_source;
+mod surface_enum;
 
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -546,6 +566,7 @@ fn version() -> &'static str {
 /// Python module definition.
 #[pymodule]
 fn xrt_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // ── Existing low-level functions ────────────────────────────────────
     m.add_function(wrap_pyfunction!(find_intersection_rs, m)?)?;
     m.add_function(wrap_pyfunction!(find_intersection_parametric_rs, m)?)?;
     m.add_function(wrap_pyfunction!(diffraction_integral_rs, m)?)?;
@@ -556,5 +577,37 @@ fn xrt_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(multilayer_amplitude_rs, m)?)?;
     m.add_function(wrap_pyfunction!(geometric_source_shine, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
+
+    // ── High-level classes ──────────────────────────────────────────────
+    // Core types
+    m.add_class::<py_beam::PyBeam>()?;
+    m.add_class::<py_material::PyMaterial>()?;
+    m.add_class::<py_beamline::PyBeamLine>()?;
+    m.add_class::<py_screen::PyScreen>()?;
+    m.add_class::<py_screen::PyScreenCapture>()?;
+
+    // Sources
+    m.add_class::<py_source::PyGeometricSource>()?;
+
+    // Mirror OEs
+    m.add_class::<py_oe::PyFlatMirror>()?;
+    m.add_class::<py_oe::PyToroidMirror>()?;
+    m.add_class::<py_oe::PySphericalMirror>()?;
+    m.add_class::<py_oe::PyCylindricalMirror>()?;
+    m.add_class::<py_oe::PyBentFlatMirror>()?;
+    m.add_class::<py_oe::PyVFM>()?;
+
+    // Parametric mirror OEs
+    m.add_class::<py_oe::PyEllipticalMirror>()?;
+    m.add_class::<py_oe::PyParabolicalMirror>()?;
+
+    // Grating OEs
+    m.add_class::<py_oe::PyBlazedGrating>()?;
+    m.add_class::<py_oe::PyLaminarGrating>()?;
+    m.add_class::<py_oe::PyVLSGrating>()?;
+
+    // Lens OEs
+    m.add_class::<py_oe::PyParaboloidLens>()?;
+
     Ok(())
 }

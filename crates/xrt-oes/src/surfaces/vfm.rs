@@ -72,7 +72,7 @@ mod tests {
         let z = vfm.local_z(1.0, 10.0);
         // Compare with toroid formula
         let z_mer = 10.0 * 10.0 / (2.0 * 5e6);
-        let arg = 1.0 / 50.0;
+        let arg: f64 = 1.0 / 50.0;
         let z_sag = 50.0 * (1.0 - (1.0 - arg * arg).sqrt());
         assert!((z - z_mer - z_sag).abs() < 1e-12);
     }
