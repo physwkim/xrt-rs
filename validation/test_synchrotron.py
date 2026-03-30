@@ -232,3 +232,67 @@ class TestUndulatorPolarization:
             1e-4, 1e-4,
         )
         assert len(result["e"]) == 1000
+
+
+class TestSynchrotronXRTCross:
+    """Cross-compare xrt-rs synchrotron sources with Python XRT reference."""
+
+    def test_bm_mean_energy_cross(self, xrt_rs):
+        rs = xrt_rs
+        data = load_fixture("synchrotron_sources.json")
+        tc = next(t for t in data["test_cases"] if t["id"] == "bending_magnet")
+
+        if "xrt_mean_energy" not in tc:
+            pytest.skip("No XRT BM reference in fixture")
+
+        result = rs.bending_magnet_shine_rs(
+            tc["electron_energy_gev"],
+            tc["beam_current"],
+            tc["b_field"],
+            tc["nrays"],
+            tc["e_min"],
+            tc["e_max"],
+            tc["theta_max"],
+            tc["psi_max"],
+        )
+
+        e = result["e"]
+        mean_e = sum(e) / len(e)
+
+        xrt_mean = tc["xrt_mean_energy"]
+        # Statistical comparison: 20% tolerance (Monte Carlo)
+        rel = abs(mean_e - xrt_mean) / xrt_mean
+        assert rel < 0.2, (
+            f"BM mean energy: Rust={mean_e:.0f} vs XRT={xrt_mean:.0f} (rel={rel:.2f})"
+        )
+
+    def test_undulator_mean_energy_cross(self, xrt_rs):
+        rs = xrt_rs
+        data = load_fixture("synchrotron_sources.json")
+        tc = next(t for t in data["test_cases"] if t["id"] == "undulator")
+
+        if "xrt_mean_energy" not in tc:
+            pytest.skip("No XRT undulator reference in fixture")
+
+        result = rs.undulator_shine_rs(
+            tc["electron_energy_gev"],
+            tc["beam_current"],
+            tc["kx"],
+            tc["ky"],
+            tc["period_mm"],
+            tc["n_periods"],
+            tc["nrays"],
+            tc["e_min"],
+            tc["e_max"],
+            tc["theta_max"],
+            tc["psi_max"],
+        )
+
+        e = result["e"]
+        mean_e = sum(e) / len(e)
+
+        xrt_mean = tc["xrt_mean_energy"]
+        rel = abs(mean_e - xrt_mean) / xrt_mean
+        assert rel < 0.3, (
+            f"Undulator mean energy: Rust={mean_e:.0f} vs XRT={xrt_mean:.0f} (rel={rel:.2f})"
+        )

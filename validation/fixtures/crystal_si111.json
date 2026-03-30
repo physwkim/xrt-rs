@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-29T14:52:44.013203+00:00",
+  "generated_at": "2026-03-30T02:20:31.837880+00:00",
   "domain": "crystal_diffraction",
   "crystal": "si111",
   "hkl": [
@@ -152,12 +152,14 @@
       "energy_ev": 10000.0,
       "b": -1.0,
       "darwin_width_s_rad": 2.742615522427016e-05,
-      "darwin_width_p_rad": 2.5281953107477796e-05
+      "darwin_width_p_rad": 2.5281953107477796e-05,
+      "xrt_darwin_s_rad": 2.7420571366632767e-05,
+      "xrt_darwin_p_rad": 2.5276805800981747e-05
     },
     {
       "id": "si111_bragg_transmitted_10kev",
       "energy_ev": 10000.0,
-      "geometry": "BraggTransmitted",
+      "geometry": "bragg_transmitted",
       "thickness_mm": 0.1,
       "beam_in_dot_normal": -0.19771307812919653,
       "rs_real": 0.015658145378001892,
@@ -168,7 +170,7 @@
     {
       "id": "si111_laue_reflected_10kev",
       "energy_ev": 10000.0,
-      "geometry": "LaueReflected",
+      "geometry": "laue_reflected",
       "thickness_mm": 0.1,
       "beam_in_dot_normal": 0.19771307812919653,
       "rs_real": 0.945073311827987,

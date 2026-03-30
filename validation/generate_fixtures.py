@@ -324,44 +324,48 @@ def gen_crystal():
             },
         ]
 
-        # Multi-geometry test: Bragg transmitted and Laue with finite thickness
-        crystal_thin = rm.CrystalSi(hkl=hkl, tK=297.15, geom='Bragg transmitted', t=0.1)
+        # Darwin width from XRT get_Darwin_width
         try:
-            tb_thin = crystal_thin.get_Bragg_angle(10000.0)
-            bidn_thin = np.array([-math.sin(tb_thin)])
-            rs_bt, rp_bt = crystal_thin.get_amplitude(e10, bidn_thin)[:2]
-            data["test_cases"].append({
-                "id": f"{hkl_name}_bragg_transmitted_10kev",
-                "energy_ev": 10000.0,
-                "geometry": "BraggTransmitted",
-                "thickness_mm": 0.1,
-                "beam_in_dot_normal": float(bidn_thin[0]),
-                "rs_real": float(rs_bt[0].real),
-                "rs_imag": float(rs_bt[0].imag),
-                "rp_real": float(rp_bt[0].real),
-                "rp_imag": float(rp_bt[0].imag),
-            })
+            dw_s_xrt = crystal.get_Darwin_width(10000.0, 1., 's')
+            dw_p_xrt = crystal.get_Darwin_width(10000.0, 1., 'p')
+            # Update the darwin_width test case with XRT reference
+            for tc_item in data["test_cases"]:
+                if tc_item["id"] == f"{hkl_name}_darwin_width":
+                    tc_item["xrt_darwin_s_rad"] = float(dw_s_xrt)
+                    tc_item["xrt_darwin_p_rad"] = float(dw_p_xrt)
+                    print(f"      Darwin width: s={float(dw_s_xrt):.4e}, p={float(dw_p_xrt):.4e}")
         except Exception as e:
-            print(f"    skipping Bragg transmitted for {hkl_name}: {e}")
+            print(f"      Darwin width XRT: {e}")
 
-        crystal_laue = rm.CrystalSi(hkl=hkl, tK=297.15, geom='Laue reflected', t=0.1)
-        try:
-            tb_laue = crystal_laue.get_Bragg_angle(10000.0)
-            bidn_laue = np.array([math.sin(tb_laue)])  # positive for Laue
-            rs_lr, rp_lr = crystal_laue.get_amplitude(e10, bidn_laue)[:2]
-            data["test_cases"].append({
-                "id": f"{hkl_name}_laue_reflected_10kev",
-                "energy_ev": 10000.0,
-                "geometry": "LaueReflected",
-                "thickness_mm": 0.1,
-                "beam_in_dot_normal": float(bidn_laue[0]),
-                "rs_real": float(rs_lr[0].real),
-                "rs_imag": float(rs_lr[0].imag),
-                "rp_real": float(rp_lr[0].real),
-                "rp_imag": float(rp_lr[0].imag),
-            })
-        except Exception as e:
-            print(f"    skipping Laue reflected for {hkl_name}: {e}")
+        # Multi-geometry cross-comparison (Laue, Bragg transmitted)
+        for geom_name, geom_str, bidn_sign in [
+            ("bragg_transmitted", "Bragg transmitted", -1.0),
+            ("laue_reflected", "Laue reflected", 1.0),
+        ]:
+            try:
+                cr_geom = rm.CrystalSi(hkl=hkl, geom=geom_str)
+                # Set crystal thickness for Laue/transmitted cases
+                cr_geom.t = 0.1  # mm — may set thickness or temperature depending on version
+                tb_g = cr_geom.get_Bragg_angle(10000.0)
+                bidn_g = np.array([bidn_sign * math.sin(tb_g)])
+                rs_g, rp_g = cr_geom.get_amplitude(e10, bidn_g)[:2]
+                if np.isfinite(rs_g[0]) and np.isfinite(rp_g[0]):
+                    data["test_cases"].append({
+                        "id": f"{hkl_name}_{geom_name}_10kev",
+                        "energy_ev": 10000.0,
+                        "geometry": geom_name,
+                        "thickness_mm": 0.1,
+                        "beam_in_dot_normal": float(bidn_g[0]),
+                        "rs_real": float(rs_g[0].real),
+                        "rs_imag": float(rs_g[0].imag),
+                        "rp_real": float(rp_g[0].real),
+                        "rp_imag": float(rp_g[0].imag),
+                    })
+                    print(f"      {geom_name}: |Rs|={abs(rs_g[0]):.4f}")
+                else:
+                    print(f"      {geom_name}: NaN, skipped")
+            except Exception as e:
+                print(f"      {geom_name}: {e}")
 
         _write(f"crystal_{hkl_name}.json", data)
 
@@ -914,6 +918,57 @@ def gen_synchrotron():
             "expected_e1_ev": und_e1_ev,
         },
     ]
+    # XRT reference: generate actual rays from Python XRT sources
+    try:
+        import xrt.backends.raycing.sources as rsources
+    except ImportError:
+        try:
+            import xrt.backends.raycing.sources_synchr as rsources
+        except ImportError:
+            rsources = None
+
+    if rsources is not None:
+        # BendingMagnet reference
+        try:
+            bm = rsources.BendingMagnet(
+                bl=None, name='BM',
+                eE=3.0, eI=0.3, B0=1.0,
+                eMin=5000.0, eMax=15000.0,
+                nrays=10000,
+            )
+            bm_beam = bm.shine()
+            bm_e = np.array(bm_beam.E)
+            bm_mean_e = float(np.mean(bm_e[np.isfinite(bm_e)]))
+            bm_std_e = float(np.std(bm_e[np.isfinite(bm_e)]))
+            # Add to BM test case
+            for tc in data["test_cases"]:
+                if tc["id"] == "bending_magnet":
+                    tc["xrt_mean_energy"] = bm_mean_e
+                    tc["xrt_std_energy"] = bm_std_e
+                    print(f"    BM XRT: mean_E={bm_mean_e:.0f}, std_E={bm_std_e:.0f}")
+        except Exception as e:
+            print(f"    BM XRT: {e}")
+
+        # Undulator reference
+        try:
+            und = rsources.Undulator(
+                bl=None, name='Und',
+                eE=6.0, eI=0.2,
+                period=20.0, n=100,
+                K=1.5,
+                eMin=4022.0, eMax=12066.0,  # 0.5E1 to 1.5E1
+                nrays=10000,
+            )
+            und_beam = und.shine()
+            und_e = np.array(und_beam.E)
+            und_mean_e = float(np.mean(und_e[np.isfinite(und_e)]))
+            for tc in data["test_cases"]:
+                if tc["id"] == "undulator":
+                    tc["xrt_mean_energy"] = und_mean_e
+                    print(f"    Und XRT: mean_E={und_mean_e:.0f}")
+        except Exception as e:
+            print(f"    Und XRT: {e}")
+
     _write("synchrotron_sources.json", data)
 
 

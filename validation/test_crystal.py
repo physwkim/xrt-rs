@@ -101,3 +101,31 @@ class TestCrystalDarwinWidth:
         assert 1e-7 < tc["darwin_width_p_rad"] < 1e-4, (
             f"dw_p = {tc['darwin_width_p_rad']:.6e} outside expected range"
         )
+
+
+class TestCrystalDarwinWidthXRT:
+    """Cross-compare Darwin width with XRT reference."""
+
+    @pytest.mark.parametrize("crystal", ["si111", "si220"])
+    def test_darwin_width_vs_xrt(self, xrt, crystal):
+        _, rm = xrt
+        data = load_fixture(f"crystal_{crystal}.json")
+        tc = next(
+            (t for t in data["test_cases"] if "darwin_width" in t["id"]),
+            None,
+        )
+        if tc is None or "xrt_darwin_s_rad" not in tc:
+            pytest.skip("No XRT Darwin width reference")
+
+        # Verify XRT reference is self-consistent
+        assert tc["xrt_darwin_s_rad"] > tc["xrt_darwin_p_rad"], (
+            f"XRT Darwin S ({tc['xrt_darwin_s_rad']:.4e}) should be > P ({tc['xrt_darwin_p_rad']:.4e})"
+        )
+
+        # Verify fixture analytical formula matches XRT
+        assert_close(
+            tc["darwin_width_s_rad"],
+            tc["xrt_darwin_s_rad"],
+            tc["xrt_darwin_s_rad"] * 0.1,  # 10% tolerance
+            "analytical vs XRT Darwin S",
+        )
