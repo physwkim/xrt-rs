@@ -924,8 +924,6 @@ def gen_synchrotron():
     # Key fix: XRT sources need a BeamLine object (for sinAzimuth/cosAzimuth)
     import xrt.backends.raycing as raycing
     import xrt.backends.raycing.sources as rsources
-    import os
-    os.environ['XRT_CL'] = 'none'  # disable OpenCL (not available on Metal)
 
     bl = raycing.BeamLine()
 
@@ -959,7 +957,6 @@ def gen_synchrotron():
             period=und_period, n=und_n_periods, K=und_ky,
             eMin=und_tc["e_min"], eMax=und_tc["e_max"],
             nrays=5000,
-            targetOpenCL=None,
         )
         und_beam = und_xrt.shine()
         und_e = np.array(und_beam.E)

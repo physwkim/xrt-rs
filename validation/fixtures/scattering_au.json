@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-30T03:13:52.125752+00:00",
+  "generated_at": "2026-03-30T03:20:00.935532+00:00",
   "domain": "scattering",
   "element": "Au",
   "table": "Chantler total",
