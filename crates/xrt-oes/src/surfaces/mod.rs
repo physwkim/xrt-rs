@@ -18,3 +18,7 @@ pub mod johann;
 pub mod bent_laue;
 pub mod johann_toroid;
 pub mod diced;
+pub mod dual_vfm;
+pub mod plate;
+pub mod revolution;
+pub mod mesh;
