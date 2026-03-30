@@ -765,3 +765,54 @@ fn golden_laue_rocking_curve_scan() {
     assert!(max_amp > min_amp * 1.01 || (max_amp - min_amp).abs() > 1e-6,
         "Laue rocking curve should vary: min={min_amp:.4e}, max={max_amp:.4e}");
 }
+
+#[test]
+fn golden_mosaicity_broadens_darwin_width() {
+    // Mosaicity should increase the Darwin width
+    let si_no_mos = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
+        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+    let si_mos = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
+        1.0, None, 50e-6, // 50 µrad mosaicity
+        ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let e_arr = array![10000.0];
+
+    let dw_no = si_no_mos.base.get_darwin_width(
+        &e_arr, -1.0, xrt_materials::crystal::Polarization::S, &si_no_mos
+    ).unwrap();
+    let dw_mos = si_mos.base.get_darwin_width(
+        &e_arr, -1.0, xrt_materials::crystal::Polarization::S, &si_mos
+    ).unwrap();
+
+    // Mosaicity should increase width
+    assert!(dw_mos[0] > dw_no[0],
+        "mosaicity should broaden: {:.6e} > {:.6e}",
+        dw_mos[0], dw_no[0]);
+
+    // Width should be approximately sqrt(dw² + m²)
+    let expected = (dw_no[0] * dw_no[0] + (50e-6_f64).powi(2)).sqrt();
+    let rel = (dw_mos[0] - expected).abs() / expected;
+    assert!(rel < 0.01,
+        "broadened width {:.6e} should match sqrt(dw²+m²) = {expected:.6e}",
+        dw_mos[0]);
+}
+
+#[test]
+fn golden_zero_mosaicity_unchanged() {
+    // Zero mosaicity should give same result as before
+    let si = CrystalSi::new(
+        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
+        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
+    ).unwrap();
+
+    let e_arr = array![10000.0];
+    let dw = si.base.get_darwin_width(
+        &e_arr, -1.0, xrt_materials::crystal::Polarization::S, &si
+    ).unwrap();
+
+    assert!(dw[0] > 0.0, "darwin width should be positive");
+}

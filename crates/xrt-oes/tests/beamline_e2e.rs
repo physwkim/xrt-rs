@@ -484,3 +484,48 @@ fn golden_passthrough_beamline() {
     // PassThrough pipeline should run without panic
     assert_eq!(output.initial_count, initial_count as usize);
 }
+
+#[test]
+fn golden_crl_pipeline() {
+    use xrt_oes::reflect::DeflectionMode;
+    use xrt_oes::surfaces::lens::ParaboloidLensSurface;
+
+    // CRL: compound refractive lens — N paraboloid lenses in sequence
+    // At 10 keV, Si refractive decrement δ ≈ 4.9e-6
+    // Single lens focal length: f = R / (2δ) where R = 2 × focus_param
+    // For focus_param = 0.5mm: R = 1.0mm, f ≈ 1.0 / (2 × 4.9e-6) ≈ 102000mm
+    // CRL with N=10 lenses: f_total ≈ 10200mm
+
+    let mut beam = collimated_source(1000, 10000.0);
+
+    // Si lens material
+    let si = si_mirror(); // same Si material
+
+    // n1/n2 for vacuum → Si at 10 keV: n_Si ≈ 1 - 4.9e-6
+    // n1_over_n2 = 1.0 / (1.0 - 4.9e-6) ≈ 1.0000049
+    let n_ratio = 1.0 / (1.0 - 4.9e-6);
+
+    // Build CRL: 3 lenses
+    let names = ["L0", "L1", "L2"];
+    let mut bl = Beamline::new();
+    for i in 0..3 {
+        let lens_front = MaterialOpticalElement::new(
+            ParaboloidLensSurface::new(0.5, Some(0.3)),
+            OeParamsBuilder::new()
+                .mode(DeflectionMode::Refract { n1_over_n2: n_ratio })
+                .build(),
+            si.clone(),
+        );
+        bl = bl.add_material(names[i], lens_front);
+        if i < 2 {
+            bl = bl.drift(1.0); // 1mm between lenses
+        }
+    }
+    bl = bl.drift(5000.0); // propagate to observation
+
+    let output = bl.propagate(&mut beam);
+    assert!(output.initial_count == 1000);
+    // CRL should not crash and should process rays
+    assert!(output.elements.len() >= 3,
+        "CRL should have at least 3 OE elements, got {}", output.elements.len());
+}

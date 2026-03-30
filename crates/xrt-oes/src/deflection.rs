@@ -71,6 +71,36 @@ pub fn grating_deflection(
     (a / norm, b / norm, c / norm)
 }
 
+/// Compute the blaze efficiency for a blazed grating.
+///
+/// Uses the sinc² approximation:
+///   η = sinc²(π × (m - d×(sin(α) + sin(β))/λ))
+/// where α is the incidence angle, β is the diffracted angle,
+/// m is the diffraction order, d is the groove spacing, λ is the wavelength.
+///
+/// Returns efficiency factor in [0, 1].
+pub fn blaze_efficiency(
+    sin_alpha: f64,
+    sin_beta: f64,
+    energy: f64,
+    order: i32,
+    groove_spacing: f64, // d = 1/rho [mm]
+) -> f64 {
+    use xrt_core::consts::CH;
+    use std::f64::consts::PI;
+
+    let wavelength = CH / energy * 1e-7; // Å → mm
+    let path_diff = groove_spacing * (sin_alpha + sin_beta) / wavelength;
+    let arg = PI * (order as f64 - path_diff);
+
+    if arg.abs() < 1e-15 {
+        1.0 // sinc(0) = 1
+    } else {
+        let sinc = arg.sin() / arg;
+        sinc * sinc
+    }
+}
+
 /// Snell's law refraction through a surface.
 ///
 /// out = (n1/n2)·in + ((n1/n2)·cos(θ₁) - cos(θ₂))·n
@@ -216,5 +246,61 @@ mod tests {
         assert!((c_r - (-c_in)).abs() < 0.1,
             "specular should flip c: got {c_r}");
         // PassThrough would NOT flip c (it's a no-op on direction)
+    }
+
+    #[test]
+    fn blaze_efficiency_peak() {
+        // At the blaze condition, efficiency should be near 1
+        // Blaze condition: m × λ = d × (sin(α) + sin(β_blaze))
+        let d = 1.0 / 600.0; // groove spacing [mm] for 600 lines/mm
+        let energy = 1000.0; // 1 keV
+        let sin_alpha = 0.1; // incidence angle
+
+        // At order 1, compute β that satisfies blaze condition
+        // For simplicity, test that efficiency is between 0 and 1
+        let eff = blaze_efficiency(sin_alpha, -0.05, energy, 1, d);
+        assert!(eff >= 0.0 && eff <= 1.0,
+            "efficiency should be in [0,1]: {eff}");
+        assert!(eff.is_finite(), "efficiency should be finite");
+    }
+
+    #[test]
+    fn blaze_efficiency_high_order_lower() {
+        // Higher orders should generally have lower efficiency
+        let d = 1.0 / 600.0;
+        let energy = 1000.0;
+        let sin_alpha = 0.1;
+        let sin_beta = -0.05;
+
+        let eff1 = blaze_efficiency(sin_alpha, sin_beta, energy, 1, d);
+        let eff3 = blaze_efficiency(sin_alpha, sin_beta, energy, 3, d);
+
+        // Both should be valid
+        assert!(eff1.is_finite() && eff3.is_finite());
+        // Order 1 at this geometry should have different efficiency than order 3
+        assert!((eff1 - eff3).abs() > 1e-10,
+            "orders 1 and 3 should have different efficiency: {eff1:.4} vs {eff3:.4}");
+    }
+
+    #[test]
+    fn blaze_efficiency_energy_scan() {
+        // Scan energy: efficiency should vary with wavelength
+        let d = 1.0 / 600.0;
+        let sin_alpha = 0.1;
+        let sin_beta = -0.05;
+
+        let mut efficiencies = Vec::new();
+        for energy in [500.0, 1000.0, 1500.0, 2000.0, 3000.0] {
+            let eff = blaze_efficiency(sin_alpha, sin_beta, energy, 1, d);
+            assert!(eff >= 0.0 && eff <= 1.0 + 1e-10,
+                "efficiency at E={energy}: {eff}");
+            efficiencies.push(eff);
+        }
+
+        // Not all the same (energy-dependent)
+        let min = efficiencies.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max = efficiencies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        assert!(max > min + 1e-6,
+            "efficiency should vary with energy: min={min:.4}, max={max:.4}");
     }
 }

@@ -215,13 +215,21 @@ impl CrystalBase {
             Polarization::P => theta0.mapv(|t| (2.0 * t).cos()),
         };
 
-        Ok(ndarray::Zip::from(&pol_factor)
+        let width = ndarray::Zip::from(&pol_factor)
             .and(&fchi.chih)
             .and(&fchi.chih_bar)
             .and(&sin2theta)
             .map_collect(|&pf, &chih, &chih_bar, &s2t| {
                 (2.0 * (pf * pf * chih * chih_bar / b).sqrt() / s2t).re
-            }))
+            });
+
+        // Apply mosaicity broadening: total width = sqrt(dynamical² + mosaicity²)
+        let width = if self.mosaicity > 0.0 {
+            width.mapv(|w| (w * w + self.mosaicity * self.mosaicity).sqrt())
+        } else {
+            width
+        };
+        Ok(width)
     }
 
     /// Calculate crystal amplitude reflectivity/transmittivity.
