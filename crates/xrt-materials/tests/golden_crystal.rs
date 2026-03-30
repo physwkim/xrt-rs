@@ -921,22 +921,14 @@ fn golden_darwin_width_vs_xrt() {
             .unwrap();
 
         let xrt_s = tc["xrt_darwin_s_rad"].as_f64().unwrap();
-        let _xrt_p = tc["xrt_darwin_p_rad"].as_f64().unwrap();
+        let xrt_p = tc["xrt_darwin_p_rad"].as_f64().unwrap();
 
-        // Known discrepancy: Rust get_darwin_width uses a different formula
-        // than XRT get_Darwin_width (~50x difference). Log for investigation.
+        // Compare Rust vs XRT Darwin width (5% tolerance)
         let rel_s = (dw_s[0] - xrt_s).abs() / xrt_s.abs().max(1e-20);
-        eprintln!(
-            "  Darwin width {fixture_name}: Rust={:.4e} vs XRT={xrt_s:.4e} (ratio={:.1}x) — known discrepancy",
-            dw_s[0], xrt_s / dw_s[0]
-        );
-
-        // Verify Rust values are at least self-consistent (S > P)
-        assert!(dw_s[0] > dw_p[0],
-            "Rust Darwin S ({:.4e}) should be > P ({:.4e})", dw_s[0], dw_p[0]);
-        // And XRT values are self-consistent
-        assert!(xrt_s > _xrt_p,
-            "XRT Darwin S ({xrt_s:.4e}) should be > P ({_xrt_p:.4e})");
-
+        let rel_p = (dw_p[0] - xrt_p).abs() / xrt_p.abs().max(1e-20);
+        assert!(rel_s < 0.05,
+            "Darwin S: Rust={:.6e} vs XRT={xrt_s:.6e} (rel={rel_s:.2e})", dw_s[0]);
+        assert!(rel_p < 0.05,
+            "Darwin P: Rust={:.6e} vs XRT={xrt_p:.6e} (rel={rel_p:.2e})", dw_p[0]);
     }
 }

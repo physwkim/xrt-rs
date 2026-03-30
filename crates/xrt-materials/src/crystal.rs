@@ -193,7 +193,10 @@ impl CrystalBase {
         })
     }
 
-    /// Darwin width: 2δ = |C| × sqrt(χh × χh̄ / b) / sin(2θ)
+    /// Darwin width: 2δ = |C| × |√(χh × χh̄)| / (sin(2θ) × √|b|)
+    ///
+    /// Uses the absolute value of the complex square root (not just the
+    /// real part), consistent with XRT's `get_Darwin_width()`.
     pub fn get_darwin_width(
         &self,
         e: &Array1<f64>,
@@ -212,15 +215,16 @@ impl CrystalBase {
 
         let pol_factor = match polarization {
             Polarization::S => Array1::ones(e.len()),
-            Polarization::P => theta0.mapv(|t| (2.0 * t).cos()),
+            Polarization::P => theta0.mapv(|t| (2.0 * t).cos().abs()),
         };
 
+        let b_sqrt = b.abs().sqrt();
         let width = ndarray::Zip::from(&pol_factor)
             .and(&fchi.chih)
             .and(&fchi.chih_bar)
             .and(&sin2theta)
             .map_collect(|&pf, &chih, &chih_bar, &s2t| {
-                (2.0 * (pf * pf * chih * chih_bar / b).sqrt() / s2t).re
+                2.0 * pf * (chih * chih_bar).sqrt().norm() / (s2t * b_sqrt)
             });
 
         // Apply mosaicity broadening: total width = sqrt(dynamical² + mosaicity²)
