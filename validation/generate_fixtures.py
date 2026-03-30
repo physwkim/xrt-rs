@@ -872,7 +872,9 @@ def gen_synchrotron():
     und_ky = 1.5
     und_period = 20.0  # mm
     und_n_periods = 100
-    und_e1_ev = 950.0 * und_e_gev**2 / (und_period * (1 + und_ky**2 / 2.0))
+    # E₁(eV) = 949.6 × E(GeV)² / (λ_u(cm) × (1 + K²/2))
+    und_period_cm = und_period / 10.0  # mm → cm
+    und_e1_ev = 949.6 * und_e_gev**2 / (und_period_cm * (1 + und_ky**2 / 2.0))
 
     data = _meta("synchrotron_sources")
     data["test_cases"] = [
@@ -919,55 +921,56 @@ def gen_synchrotron():
         },
     ]
     # XRT reference: generate actual rays from Python XRT sources
+    # Key fix: XRT sources need a BeamLine object (for sinAzimuth/cosAzimuth)
+    import xrt.backends.raycing as raycing
+    import xrt.backends.raycing.sources as rsources
+    import os
+    os.environ['XRT_CL'] = 'none'  # disable OpenCL (not available on Metal)
+
+    bl = raycing.BeamLine()
+
+    # BendingMagnet reference
     try:
-        import xrt.backends.raycing.sources as rsources
-    except ImportError:
-        try:
-            import xrt.backends.raycing.sources_synchr as rsources
-        except ImportError:
-            rsources = None
+        bm = rsources.BendingMagnet(
+            bl=bl, name='BM',
+            eE=3.0, eI=0.3, B0=1.0,
+            eMin=5000.0, eMax=15000.0,
+            nrays=10000,
+        )
+        bm_beam = bm.shine()
+        bm_e = np.array(bm_beam.E)
+        good = np.isfinite(bm_e) & (bm_e > 0)
+        bm_mean_e = float(np.mean(bm_e[good]))
+        bm_std_e = float(np.std(bm_e[good]))
+        for tc in data["test_cases"]:
+            if tc["id"] == "bending_magnet":
+                tc["xrt_mean_energy"] = bm_mean_e
+                tc["xrt_std_energy"] = bm_std_e
+                print(f"    BM XRT: mean_E={bm_mean_e:.0f}, std_E={bm_std_e:.0f}")
+    except Exception as e:
+        print(f"    BM XRT: {e}")
 
-    if rsources is not None:
-        # BendingMagnet reference
-        try:
-            bm = rsources.BendingMagnet(
-                bl=None, name='BM',
-                eE=3.0, eI=0.3, B0=1.0,
-                eMin=5000.0, eMax=15000.0,
-                nrays=10000,
-            )
-            bm_beam = bm.shine()
-            bm_e = np.array(bm_beam.E)
-            bm_mean_e = float(np.mean(bm_e[np.isfinite(bm_e)]))
-            bm_std_e = float(np.std(bm_e[np.isfinite(bm_e)]))
-            # Add to BM test case
-            for tc in data["test_cases"]:
-                if tc["id"] == "bending_magnet":
-                    tc["xrt_mean_energy"] = bm_mean_e
-                    tc["xrt_std_energy"] = bm_std_e
-                    print(f"    BM XRT: mean_E={bm_mean_e:.0f}, std_E={bm_std_e:.0f}")
-        except Exception as e:
-            print(f"    BM XRT: {e}")
-
-        # Undulator reference
-        try:
-            und = rsources.Undulator(
-                bl=None, name='Und',
-                eE=6.0, eI=0.2,
-                period=20.0, n=100,
-                K=1.5,
-                eMin=4022.0, eMax=12066.0,  # 0.5E1 to 1.5E1
-                nrays=10000,
-            )
-            und_beam = und.shine()
-            und_e = np.array(und_beam.E)
-            und_mean_e = float(np.mean(und_e[np.isfinite(und_e)]))
-            for tc in data["test_cases"]:
-                if tc["id"] == "undulator":
-                    tc["xrt_mean_energy"] = und_mean_e
-                    print(f"    Und XRT: mean_E={und_mean_e:.0f}")
-        except Exception as e:
-            print(f"    Und XRT: {e}")
+    # Undulator reference (use same E range as fixture)
+    try:
+        und_tc = next(t for t in data["test_cases"] if t["id"] == "undulator")
+        und_xrt = rsources.Undulator(
+            bl=bl, name='Und',
+            eE=und_e_gev, eI=und_current,
+            period=und_period, n=und_n_periods, K=und_ky,
+            eMin=und_tc["e_min"], eMax=und_tc["e_max"],
+            nrays=5000,
+            targetOpenCL=None,
+        )
+        und_beam = und_xrt.shine()
+        und_e = np.array(und_beam.E)
+        good_u = np.isfinite(und_e) & (und_e > 0)
+        und_mean_e = float(np.mean(und_e[good_u]))
+        for tc in data["test_cases"]:
+            if tc["id"] == "undulator":
+                tc["xrt_mean_energy"] = und_mean_e
+                print(f"    Und XRT: mean_E={und_mean_e:.0f}")
+    except Exception as e:
+        print(f"    Und XRT: {e}")
 
     _write("synchrotron_sources.json", data)
 

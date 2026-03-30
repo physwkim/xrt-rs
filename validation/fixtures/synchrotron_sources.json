@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-30T02:20:31.923231+00:00",
+  "generated_at": "2026-03-30T03:13:52.203899+00:00",
   "domain": "synchrotron_sources",
   "test_cases": [
     {
@@ -14,7 +14,9 @@
       "e_max": 15000.0,
       "theta_max": 0.001,
       "psi_max": 0.001,
-      "expected_ec_ev": 5985.0
+      "expected_ec_ev": 5985.0,
+      "xrt_mean_energy": 8069.959825343112,
+      "xrt_std_energy": 2534.2982586627722
     },
     {
       "id": "wiggler",
@@ -39,11 +41,12 @@
       "period_mm": 20.0,
       "n_periods": 100,
       "nrays": 10000,
-      "e_min": 402.3529411764706,
-      "e_max": 1207.0588235294117,
+      "e_min": 4021.8352941176468,
+      "e_max": 12065.50588235294,
       "theta_max": 0.0001,
       "psi_max": 0.0001,
-      "expected_e1_ev": 804.7058823529412
+      "expected_e1_ev": 8043.6705882352935,
+      "xrt_mean_energy": 7284.9501867287545
     }
   ]
 }

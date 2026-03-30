@@ -1,7 +1,7 @@
 {
   "generator": "xrt-validation",
   "xrt_version": "1.6.2",
-  "generated_at": "2026-03-30T02:20:31.836222+00:00",
+  "generated_at": "2026-03-30T03:13:52.132662+00:00",
   "domain": "material_optics",
   "material": "SiO2",
   "elements": [
