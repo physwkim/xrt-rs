@@ -22,3 +22,8 @@ pub mod dual_vfm;
 pub mod plate;
 pub mod revolution;
 pub mod mesh;
+pub mod conic_mirror;
+pub mod cylinder_lens;
+pub mod general_fzp;
+pub mod vcm;
+pub mod dcm_variants;

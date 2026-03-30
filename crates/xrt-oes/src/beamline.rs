@@ -351,6 +351,43 @@ impl Beamline {
         self
     }
 
+    /// Add a double parabolic cylinder lens (focuses in x only).
+    pub fn add_double_cylinder_lens(
+        self,
+        name_prefix: &str,
+        focus: f64,
+        z_max: Option<f64>,
+        material: xrt_materials::material::Material,
+        n1_over_n2: f64,
+        thickness: f64,
+    ) -> Self {
+        use crate::material_oe::MaterialOpticalElement;
+        use crate::reflect::DeflectionMode;
+        use crate::surfaces::cylinder_lens::ParabolicCylinderLensSurface;
+
+        let front_name = format!("{name_prefix}_front");
+        let back_name = format!("{name_prefix}_back");
+
+        let front = MaterialOpticalElement::new(
+            ParabolicCylinderLensSurface::new(focus, z_max),
+            OeParamsBuilder::new()
+                .mode(DeflectionMode::Refract { n1_over_n2 })
+                .build(),
+            material.clone(),
+        );
+        let back = MaterialOpticalElement::new(
+            ParabolicCylinderLensSurface::new(focus, z_max),
+            OeParamsBuilder::new()
+                .mode(DeflectionMode::Refract { n1_over_n2: 1.0 / n1_over_n2 })
+                .build(),
+            material,
+        );
+
+        self.add_material(Box::leak(front_name.into_boxed_str()), front)
+            .drift(thickness)
+            .add_material(Box::leak(back_name.into_boxed_str()), back)
+    }
+
     /// Number of optical elements.
     pub fn len(&self) -> usize {
         self.elements.len()

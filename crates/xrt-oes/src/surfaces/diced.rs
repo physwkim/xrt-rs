@@ -91,6 +91,12 @@ impl<S: Surface> Surface for DicedSurface<S> {
     }
 }
 
+/// Diced Johann toroid crystal.
+pub type DicedJohannToroid = DicedSurface<super::johann_toroid::JohannToroidSurface>;
+
+/// Diced Johansson toroid crystal.
+pub type DicedJohanssonToroid = DicedSurface<super::johann_toroid::JohanssonToroidSurface>;
+
 #[cfg(test)]
 mod tests {
     use super::*;
