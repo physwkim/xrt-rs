@@ -27,3 +27,7 @@ pub mod cylinder_lens;
 pub mod general_fzp;
 pub mod vcm;
 pub mod dcm_variants;
+pub mod conic;
+pub mod error_map;
+pub mod cylindrical;
+pub mod roughness;
