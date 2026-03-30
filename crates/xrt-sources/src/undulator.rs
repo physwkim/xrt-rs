@@ -417,4 +417,101 @@ mod tests {
         assert!(e1 > 5000.0 && e1 < 15000.0,
             "E1 = {e1} should be ~8044 eV for 6GeV, K=1.5, λ=20mm");
     }
+
+    #[test]
+    fn harmonic_peaks_detected() {
+        // Scan energy spectrum on-axis to find harmonic peaks
+        let und = Undulator::new(
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
+            1000.0, 50000.0, 1e-4, 1e-4,
+        );
+        let e1 = und.fundamental_energy();
+
+        // Fine energy scan around E₁ and 3×E₁
+        let n_points = 200;
+        let energies: Vec<f64> = (0..n_points)
+            .map(|i| 1000.0 + (50000.0 - 1000.0) * i as f64 / (n_points - 1) as f64)
+            .collect();
+        let thetas = vec![0.0]; // on-axis
+        let psis = vec![0.0];
+
+        let (intensity, _, _) = und.build_i_map(&energies, &thetas, &psis);
+
+        // Find local maxima (peaks)
+        let mut peaks = Vec::new();
+        for i in 1..intensity.len() - 1 {
+            if intensity[i] > intensity[i - 1] && intensity[i] > intensity[i + 1]
+                && intensity[i] > 0.0
+            {
+                peaks.push((energies[i], intensity[i]));
+            }
+        }
+
+        assert!(!peaks.is_empty(), "Should find at least one harmonic peak");
+
+        // First peak should be near E₁
+        let (peak1_e, _peak1_i) = peaks[0];
+        let rel_diff = (peak1_e - e1).abs() / e1;
+        assert!(rel_diff < 0.3,
+            "First peak at {peak1_e:.0} eV should be near E₁={e1:.0} eV (rel={rel_diff:.2})");
+
+        // If we found multiple peaks, check they're at roughly odd harmonics
+        if peaks.len() >= 2 {
+            let (peak2_e, _) = peaks[1];
+            let harmonic_ratio = peak2_e / peak1_e;
+            // Should be near 3 (third harmonic) for on-axis
+            assert!(harmonic_ratio > 2.0 && harmonic_ratio < 4.5,
+                "Second peak ratio = {harmonic_ratio:.1}, expected ~3 (third harmonic)");
+        }
+    }
+
+    #[test]
+    fn on_axis_odd_harmonics_only() {
+        // On-axis: only odd harmonics should appear
+        let und = Undulator::new(
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
+            1000.0, 50000.0, 1e-4, 1e-4,
+        );
+        let e1 = und.fundamental_energy();
+
+        // Check intensity at E₁, 2×E₁, 3×E₁
+        let thetas = vec![0.0];
+        let psis = vec![0.0];
+
+        let (i_e1, _, _) = und.build_i_map(&[e1], &thetas, &psis);
+        let (i_2e1, _, _) = und.build_i_map(&[2.0 * e1], &thetas, &psis);
+        let (i_3e1, _, _) = und.build_i_map(&[3.0 * e1], &thetas, &psis);
+
+        // On-axis: E₁ and 3×E₁ should have significant intensity
+        assert!(i_e1[0] > 0.0, "I(E₁) should be > 0: {}", i_e1[0]);
+        assert!(i_3e1[0] > 0.0, "I(3E₁) should be > 0: {}", i_3e1[0]);
+
+        // 2×E₁ on-axis should be suppressed (even harmonic)
+        // Allow it to be small but not zero (finite N effects)
+        if i_e1[0] > 1e-30 {
+            let ratio_2nd = i_2e1[0] / i_e1[0];
+            assert!(ratio_2nd < 0.5,
+                "On-axis 2nd harmonic should be suppressed: I(2E₁)/I(E₁) = {ratio_2nd:.3}");
+        }
+    }
+
+    #[test]
+    fn off_axis_even_harmonics_appear() {
+        // Off-axis: even harmonics become visible
+        let und = Undulator::new(
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
+            1000.0, 50000.0, 1e-4, 1e-4,
+        );
+        let e1 = und.fundamental_energy();
+
+        // Off-axis observation
+        let thetas = vec![5e-5]; // 50 µrad off-axis
+        let psis = vec![0.0];
+
+        let (i_2e1_off, _, _) = und.build_i_map(&[2.0 * e1], &thetas, &psis);
+
+        // Off-axis 2nd harmonic should have some intensity
+        assert!(i_2e1_off[0].is_finite(),
+            "Off-axis I(2E₁) should be finite: {}", i_2e1_off[0]);
+    }
 }

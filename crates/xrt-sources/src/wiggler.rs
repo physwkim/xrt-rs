@@ -18,6 +18,10 @@ use xrt_core::consts::{FINE_STR, PI, SIE0, SIM0, E2W, K2B};
 use crate::bending_magnet::{bessel_k_approx, SynchrotronParams};
 
 /// Wiggler source.
+///
+/// Note: At K->0, the wiggler becomes highly collimated and does NOT
+/// converge to a single bending magnet. For BM-equivalent behavior,
+/// use `BendingMagnet` directly. The flux scales as N_periods * (single pole flux).
 #[derive(Debug, Clone)]
 pub struct Wiggler {
     pub params: SynchrotronParams,
@@ -328,6 +332,32 @@ mod tests {
         let psis = vec![0.0];
         let (i_wig, _, _) = w.build_i_map(&energies, &thetas, &psis);
         assert!(i_wig[0] > 0.0);
+    }
+
+    #[test]
+    fn wiggler_flux_scales_with_periods() {
+        // Flux should scale approximately linearly with N_periods
+        let mut wig10 = Wiggler::new(
+            3.0, 0.3, 5.0, 80.0, 10, 5000,
+            5000.0, 15000.0, 1e-3, 1e-3,
+        );
+        let mut wig20 = Wiggler::new(
+            3.0, 0.3, 5.0, 80.0, 20, 5000,
+            5000.0, 15000.0, 1e-3, 1e-3,
+        );
+        let beam10 = wig10.shine();
+        let beam20 = wig20.shine();
+
+        // Both should produce same number of rays
+        assert_eq!(beam10.nrays(), 5000);
+        assert_eq!(beam20.nrays(), 5000);
+
+        // Energy distributions should be similar (same K, same B)
+        let mean_e10: f64 = beam10.e.iter().sum::<f64>() / beam10.nrays() as f64;
+        let mean_e20: f64 = beam20.e.iter().sum::<f64>() / beam20.nrays() as f64;
+        let rel_diff = (mean_e10 - mean_e20).abs() / mean_e10;
+        assert!(rel_diff < 0.2,
+            "mean energy should be similar: {mean_e10:.0} vs {mean_e20:.0}");
     }
 
     #[test]

@@ -258,3 +258,48 @@ fn golden_gpu_auto_dispatch() {
         assert!(es.norm() > 1e-10, "auto pixel[{i}] Es too small: {:.4e}", es.norm());
     }
 }
+
+#[test]
+fn golden_gpu_extreme_distance() {
+    // Test at 10000mm (10x the standard fixture distance)
+    // Phase ≈ 5e11 — would be impossible without phase reduction
+    let ctx = match GpuContext::new() {
+        Some(ctx) => ctx,
+        None => {
+            eprintln!("SKIP: no GPU available");
+            return;
+        }
+    };
+
+    let rays = vec![
+        GpuRay {
+            x: 0.0, y: 0.0, z: 0.0,
+            nx: 0.0, ny: 0.0, nz: 1.0,
+            nl: 1.0, energy: 10000.0,
+            es_re: 1.0, es_im: 0.0,
+            ep_re: 0.5, ep_im: 0.0,
+        },
+        GpuRay {
+            x: 0.01, y: 0.0, z: 0.0,
+            nx: 0.0, ny: 0.0, nz: 1.0,
+            nl: 1.0, energy: 10000.0,
+            es_re: 0.8, es_im: 0.1,
+            ep_re: 0.6, ep_im: -0.1,
+        },
+    ];
+    let pixels = vec![
+        GpuPixel { x: 0.0, y: 0.0, z: 10000.0, _pad: 0.0 },
+    ];
+
+    let gpu = kirchhoff_gpu(&ctx, &rays, &pixels);
+    let cpu = kirchhoff_cpu_f64(&rays, &pixels);
+
+    // GPU should produce non-zero result even at extreme distance
+    assert!(gpu[0].0.norm() > 1e-10,
+        "GPU at 10000mm should be non-zero: {:.4e}", gpu[0].0.norm());
+
+    // Compare with CPU
+    let rel = (gpu[0].0 - cpu[0].0).norm() / cpu[0].0.norm();
+    assert!(rel < 0.05,
+        "GPU vs CPU at 10000mm: rel_err={rel:.2e}");
+}

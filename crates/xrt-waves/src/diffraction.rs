@@ -263,6 +263,54 @@ mod tests {
     }
 
     #[test]
+    fn phase_wrapping_extreme_cpu() {
+        // Test CPU f64 precision at extreme phase: 2π × 10⁹ revolutions
+        // f64 sin should still be precise for phase up to ~1e15
+        let n_revolutions = 1_000_000_000.0_f64;
+        let base_phase = 2.0 * std::f64::consts::PI * n_revolutions;
+        let epsilon = 0.001; // small offset
+
+        let sin_full = (base_phase + epsilon).sin();
+        let sin_ref = epsilon.sin();
+
+        // f64 should maintain precision: sin(2πN + ε) ≈ sin(ε)
+        let diff = (sin_full - sin_ref).abs();
+        assert!(diff < 1e-6,
+            "f64 phase wrapping: sin(2π×{n_revolutions}+{epsilon}) = {sin_full:.10e}, \
+             sin({epsilon}) = {sin_ref:.10e}, diff = {diff:.2e}");
+    }
+
+    #[test]
+    fn large_ray_count_diffraction() {
+        // 50000 rays to stress-test Kahan summation and parallelism
+        let n = 50000;
+        let rays: Vec<DiffractionRay> = (0..n)
+            .map(|i| {
+                let x = (i as f64 - n as f64 / 2.0) * 0.0001; // spread over 5mm
+                DiffractionRay {
+                    x, y: 0.0, z: 0.0,
+                    nx: 0.0, ny: 0.0, nz: 1.0, nl: 1.0,
+                    es: Complex64::new(1.0 / n as f64, 0.0),
+                    ep: Complex64::new(0.0, 0.0),
+                    energy: 10000.0,
+                }
+            })
+            .collect();
+
+        let pixels = vec![
+            PixelPoint { x: 0.0, y: 0.0, z: 100.0 },
+            PixelPoint { x: 0.1, y: 0.0, z: 100.0 },
+        ];
+
+        let result = diffraction_integral(&rays, &pixels);
+        assert_eq!(result.len(), 2);
+        // Center pixel should have higher intensity than off-center
+        assert!(result[0].es.norm() > result[1].es.norm() * 0.5,
+            "center should be brighter: {:.4e} vs {:.4e}",
+            result[0].es.norm(), result[1].es.norm());
+    }
+
+    #[test]
     fn polychromatic_diffraction() {
         // Rays with different energies should produce finite results
         let rays: Vec<DiffractionRay> = vec![
