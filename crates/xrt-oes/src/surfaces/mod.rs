@@ -31,3 +31,4 @@ pub mod conic;
 pub mod error_map;
 pub mod cylindrical;
 pub mod roughness;
+pub mod holographic;

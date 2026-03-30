@@ -1,6 +1,7 @@
 pub mod beam;
 pub mod consts;
 pub mod error;
+pub mod path;
 pub mod transforms;
 
 pub use beam::Beam;
