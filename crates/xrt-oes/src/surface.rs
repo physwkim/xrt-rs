@@ -20,6 +20,23 @@ pub trait Surface: Send + Sync {
     fn local_g(&self, _x: f64, _y: f64) -> Option<[f64; 3]> {
         None
     }
+
+    /// Optional Bragg-plane normal for bent crystal surfaces.
+    /// Returns `None` for non-crystal surfaces (default).
+    /// For bent crystals, returns the normal to the diffracting atomic planes,
+    /// which differs from the physical surface normal `local_n()`.
+    fn local_n_bragg(&self, _x: f64, _y: f64) -> Option<[f64; 3]> {
+        None
+    }
+}
+
+/// Bending cross-section for bent crystal/mirror surfaces.
+#[derive(Debug, Clone, Copy)]
+pub enum CrossSection {
+    /// Circular cross-section (exact)
+    Circular,
+    /// Parabolic approximation (valid for small sagitta)
+    Parabolic,
 }
 
 /// A surface defined parametrically: r = f(s, φ).
