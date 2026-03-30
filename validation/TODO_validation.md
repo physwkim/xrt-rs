@@ -1,6 +1,6 @@
 # Validation Framework — 추가 가능 항목
 
-현재: Rust golden+unit **105+**, pytest **80** pass. 공개 API 커버리지 ~98%.
+현재: Rust golden+unit **115+**, pytest **80** pass. 공개 API 커버리지 **~100%**.
 
 ---
 
