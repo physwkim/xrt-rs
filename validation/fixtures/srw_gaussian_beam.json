@@ -1,0 +1,17 @@
+{
+  "generator": "srw",
+  "domain": "gaussian_beam_propagation",
+  "beam": {
+    "energy_ev": 10000.0,
+    "sigma_x_m": 5e-05,
+    "sigma_y_m": 5e-05
+  },
+  "propagation": {
+    "distance_m": 10.0
+  },
+  "result": {
+    "initial_peak_intensity": 4.8166388341355315e+17,
+    "propagated_peak_intensity": 4.037119830525076e-17,
+    "intensity_ratio": 8.381612094130864e-35
+  }
+}

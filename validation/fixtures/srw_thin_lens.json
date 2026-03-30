@@ -1,0 +1,16 @@
+{
+  "generator": "srw",
+  "domain": "thin_lens_focusing",
+  "beam": {
+    "energy_ev": 10000.0,
+    "sigma_m": 0.0001
+  },
+  "optics": {
+    "focal_length_m": 5.0,
+    "drift_m": 5.0
+  },
+  "result": {
+    "peak_intensity": 1.8241869883323267e-18,
+    "focused": true
+  }
+}
