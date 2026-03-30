@@ -19,6 +19,8 @@ pub struct GratingOpticalElement<S: Surface> {
     pub params: OeParams,
     pub order: i32,
     pub material: Option<Material>,
+    /// Whether to apply sinc² blaze efficiency per ray.
+    pub apply_blaze_efficiency: bool,
 }
 
 impl<S: Surface> GratingOpticalElement<S> {
@@ -29,12 +31,23 @@ impl<S: Surface> GratingOpticalElement<S> {
             params,
             order,
             material: None,
+            apply_blaze_efficiency: false,
         }
     }
 
     /// Add a material coating for Fresnel amplitude calculation.
     pub fn with_material(mut self, material: Material) -> Self {
         self.material = Some(material);
+        self
+    }
+
+    /// Enable blaze efficiency calculation for this grating.
+    ///
+    /// When enabled, each diffracted ray is attenuated by the sinc²
+    /// blaze efficiency factor based on the incidence and exit angles
+    /// relative to the groove spacing.
+    pub fn with_blaze_efficiency(mut self) -> Self {
+        self.apply_blaze_efficiency = true;
         self
     }
 
@@ -101,6 +114,46 @@ impl<S: Surface> GratingOpticalElement<S> {
                         amp.rs.as_slice().unwrap(),
                         amp.rp.as_slice().unwrap(),
                     );
+                }
+            }
+        }
+
+        // Apply blaze efficiency if enabled
+        if self.apply_blaze_efficiency && !good_after.is_empty() {
+            // Groove spacing from the surface grating vector at origin
+            let groove_spacing = self
+                .surface
+                .local_g(0.0, 0.0)
+                .map(|g| 1.0 / (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt())
+                .unwrap_or(1.0);
+
+            for &i in &good_after {
+                let ri = good.iter().position(|&g| g == i).unwrap_or(0);
+                // sin(α): incidence angle from beam_in_dot_normal
+                let sin_alpha = -results[ri].beam_in_dot_normal;
+                // sin(β): exit angle from outgoing direction dot surface normal
+                let sin_beta = -(beam.a[i] * results[ri].nx
+                    + beam.b[i] * results[ri].ny
+                    + beam.c[i] * results[ri].nz);
+
+                let eff = crate::deflection::blaze_efficiency(
+                    sin_alpha,
+                    sin_beta,
+                    beam.e[i],
+                    self.order,
+                    groove_spacing,
+                );
+
+                // Apply efficiency as amplitude reduction (sqrt for coherency matrix)
+                beam.jss[i] *= eff;
+                beam.jpp[i] *= eff;
+                beam.jsp[i] *= eff;
+
+                if let Some(ref mut es) = beam.es {
+                    es[i] *= eff.sqrt();
+                }
+                if let Some(ref mut ep) = beam.ep {
+                    ep[i] *= eff.sqrt();
                 }
             }
         }

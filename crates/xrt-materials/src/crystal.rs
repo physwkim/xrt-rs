@@ -239,7 +239,64 @@ impl CrystalBase {
     /// Calculate crystal amplitude reflectivity/transmittivity.
     ///
     /// Based on Belyakov & Dmitrienko (1989).
+    /// If mosaicity > 0, applies Gaussian convolution over the rocking curve.
     pub fn get_amplitude(
+        &self,
+        e: &Array1<f64>,
+        beam_in_dot_normal: &Array1<f64>,
+        beam_out_dot_normal: Option<&Array1<f64>>,
+        beam_in_dot_h_normal: Option<&Array1<f64>>,
+        sf: &dyn StructureFactor,
+    ) -> Result<(Array1<Complex64>, Array1<Complex64>), XrtError> {
+        if self.mosaicity <= 0.0 {
+            return self.compute_amplitude_core(
+                e,
+                beam_in_dot_normal,
+                beam_out_dot_normal,
+                beam_in_dot_h_normal,
+                sf,
+            );
+        }
+
+        // Gaussian convolution with 7 points spanning -3σ to +3σ
+        let sigma = self.mosaicity;
+        let n_conv: i32 = 7;
+        let half = (n_conv - 1) / 2; // = 3
+        let len = e.len();
+        let mut total_s = Array1::<Complex64>::zeros(len);
+        let mut total_p = Array1::<Complex64>::zeros(len);
+        let mut w_sum = 0.0_f64;
+
+        for k in 0..n_conv {
+            let offset = (k - half) as f64 * sigma;
+            let weight = (-0.5 * ((k - half) as f64).powi(2)).exp();
+            w_sum += weight;
+
+            let bidn_shifted = beam_in_dot_normal.mapv(|bidn| {
+                let theta = (-bidn).acos();
+                -(theta + offset).cos()
+            });
+
+            let (s, p) = self.compute_amplitude_core(
+                e,
+                &bidn_shifted,
+                beam_out_dot_normal,
+                beam_in_dot_h_normal,
+                sf,
+            )?;
+            total_s = total_s + s.mapv(|v| v * weight);
+            total_p = total_p + p.mapv(|v| v * weight);
+        }
+
+        Ok((total_s / w_sum, total_p / w_sum))
+    }
+
+    /// Core amplitude computation without mosaicity convolution.
+    ///
+    /// This is the Belyakov & Dmitrienko dynamical diffraction calculation,
+    /// factored out so `get_amplitude` can call it at multiple shifted angles
+    /// for mosaic crystal convolution.
+    fn compute_amplitude_core(
         &self,
         e: &Array1<f64>,
         beam_in_dot_normal: &Array1<f64>,

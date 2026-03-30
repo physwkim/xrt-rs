@@ -195,6 +195,65 @@ impl Undulator {
         (intensity, amp_s, amp_p)
     }
 
+    /// Build intensity map, preferring GPU when the `gpu` feature is enabled.
+    ///
+    /// Falls back to CPU (`build_i_map`) if no GPU is available or the
+    /// feature is not compiled in.
+    pub fn build_i_map_auto(
+        &self,
+        energies: &[f64],
+        thetas: &[f64],
+        psis: &[f64],
+    ) -> (Vec<f64>, Vec<Complex64>, Vec<Complex64>) {
+        #[cfg(feature = "gpu")]
+        {
+            if let Some(ref ctx) = xrt_gpu::context::GpuContext::new() {
+                return self.build_i_map_gpu(ctx, energies, thetas, psis);
+            }
+        }
+        self.build_i_map(energies, thetas, psis)
+    }
+
+    /// Build intensity map on the GPU.
+    ///
+    /// Converts observation points to GPU format, dispatches the compute
+    /// shader, and converts results back to f64 precision.
+    #[cfg(feature = "gpu")]
+    fn build_i_map_gpu(
+        &self,
+        ctx: &xrt_gpu::context::GpuContext,
+        energies: &[f64],
+        thetas: &[f64],
+        psis: &[f64],
+    ) -> (Vec<f64>, Vec<Complex64>, Vec<Complex64>) {
+        let obs: Vec<xrt_gpu::undulator::GpuObsPoint> = energies
+            .iter()
+            .zip(thetas.iter())
+            .zip(psis.iter())
+            .map(|((&e, &t), &p)| xrt_gpu::undulator::GpuObsPoint {
+                energy: e as f32,
+                theta: t as f32,
+                psi: p as f32,
+                _pad: 0.0,
+            })
+            .collect();
+
+        let result = xrt_gpu::undulator::undulator_gpu(
+            ctx,
+            &obs,
+            self.kx,
+            self.ky,
+            self.period,
+            self.n_periods,
+            self.params.gamma,
+            self.params.beam_current,
+            64,
+            self.phase_deg,
+        );
+
+        (result.intensity, result.amp_s, result.amp_p)
+    }
+
     /// Generate a beam using Monte Carlo rejection sampling.
     pub fn shine(&mut self) -> Beam {
         let mut rng = rand::thread_rng();
@@ -216,7 +275,7 @@ impl Undulator {
             let psis: Vec<f64> = (0..mc_rays).map(|_| psi_dist.sample(&mut rng)).collect();
             let disc: Vec<f64> = (0..mc_rays).map(|_| rng.gen::<f64>()).collect();
 
-            let (int, a_s, a_p) = self.build_i_map(&energies, &thetas, &psis);
+            let (int, a_s, a_p) = self.build_i_map_auto(&energies, &thetas, &psis);
 
             for &val in &int {
                 if val > self.i_max {

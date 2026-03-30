@@ -222,6 +222,51 @@ impl Beamline {
         self
     }
 
+    /// Add a compound refractive lens (CRL) -- multiple paraboloid lenses in sequence.
+    ///
+    /// Each lens is a `MaterialOpticalElement` with `ParaboloidLensSurface` and
+    /// `DeflectionMode::Refract`. Lenses are separated by `spacing` mm.
+    ///
+    /// # Arguments
+    /// * `name_prefix` - Name prefix for each lens (suffixed with `_0`, `_1`, ...)
+    /// * `n_lenses` - Number of individual lenses
+    /// * `focus` - Focal length per lens [mm]
+    /// * `z_max` - Optional maximum sag (clipping height) [mm]
+    /// * `material` - Lens material (e.g. Be, Al)
+    /// * `n1_over_n2` - Refractive index ratio n1/n2 for Snell's law
+    /// * `spacing` - Distance between successive lenses [mm]
+    pub fn add_crl(
+        mut self,
+        name_prefix: &str,
+        n_lenses: usize,
+        focus: f64,
+        z_max: Option<f64>,
+        material: xrt_materials::material::Material,
+        n1_over_n2: f64,
+        spacing: f64,
+    ) -> Self {
+        use crate::surfaces::lens::ParaboloidLensSurface;
+
+        for i in 0..n_lenses {
+            let lens_name = format!("{name_prefix}_{i}");
+            let lens = MaterialOpticalElement::new(
+                ParaboloidLensSurface::new(focus, z_max),
+                OeParamsBuilder::new()
+                    .mode(DeflectionMode::Refract { n1_over_n2 })
+                    .build(),
+                material.clone(),
+            );
+            self.elements.push(NamedOe {
+                name: lens_name,
+                element: Box::new(lens),
+            });
+            if i < n_lenses - 1 {
+                self = self.drift(spacing);
+            }
+        }
+        self
+    }
+
     /// Number of optical elements.
     pub fn len(&self) -> usize {
         self.elements.len()
