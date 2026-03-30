@@ -267,6 +267,90 @@ impl Beamline {
         self
     }
 
+    /// Add a double crystal monochromator (DCM).
+    ///
+    /// Two crystal reflections separated by a drift gap.
+    /// Crystals are named `"{name_prefix}_1"` and `"{name_prefix}_2"`.
+    ///
+    /// # Arguments
+    /// * `name_prefix` - Name prefix (e.g. "DCM" → "DCM_1", "DCM_2")
+    /// * `crystal1` - First crystal optical element
+    /// * `sf1` - Structure factor for crystal 1
+    /// * `crystal2` - Second crystal optical element
+    /// * `sf2` - Structure factor for crystal 2
+    /// * `gap` - Drift distance between the two crystals [mm]
+    pub fn add_dcm<S: Surface + 'static>(
+        self,
+        name_prefix: &str,
+        crystal1: CrystalOpticalElement<S>,
+        sf1: Box<dyn StructureFactor + Send + Sync>,
+        crystal2: CrystalOpticalElement<S>,
+        sf2: Box<dyn StructureFactor + Send + Sync>,
+        gap: f64,
+    ) -> Self {
+        let n1 = format!("{name_prefix}_1");
+        let n2 = format!("{name_prefix}_2");
+        self.add_crystal(&n1, crystal1, sf1)
+            .drift(gap)
+            .add_crystal(&n2, crystal2, sf2)
+    }
+
+    /// Add a double paraboloid lens (bi-concave, front + back).
+    ///
+    /// Two paraboloid refracting surfaces separated by the lens thickness.
+    /// The front surface refracts vacuum → material (`n1_over_n2`),
+    /// the back surface refracts material → vacuum (`1.0 / n1_over_n2`).
+    ///
+    /// # Arguments
+    /// * `name_prefix` - Name prefix (e.g. "BiLens" → "BiLens_front", "BiLens_back")
+    /// * `focus` - Focal length per surface [mm]
+    /// * `z_max` - Optional maximum sag (clipping height) [mm]
+    /// * `material` - Lens material
+    /// * `n1_over_n2` - Refractive index ratio n1/n2 for the front surface
+    /// * `thickness` - Distance between front and back surfaces [mm]
+    pub fn add_double_lens(
+        mut self,
+        name_prefix: &str,
+        focus: f64,
+        z_max: Option<f64>,
+        material: xrt_materials::material::Material,
+        n1_over_n2: f64,
+        thickness: f64,
+    ) -> Self {
+        use crate::surfaces::lens::ParaboloidLensSurface;
+
+        let front_name = format!("{name_prefix}_front");
+        let back_name = format!("{name_prefix}_back");
+
+        let front = MaterialOpticalElement::new(
+            ParaboloidLensSurface::new(focus, z_max),
+            OeParamsBuilder::new()
+                .mode(DeflectionMode::Refract { n1_over_n2 })
+                .build(),
+            material.clone(),
+        );
+        self.elements.push(NamedOe {
+            name: front_name,
+            element: Box::new(front),
+        });
+
+        self = self.drift(thickness);
+
+        let back = MaterialOpticalElement::new(
+            ParaboloidLensSurface::new(focus, z_max),
+            OeParamsBuilder::new()
+                .mode(DeflectionMode::Refract { n1_over_n2: 1.0 / n1_over_n2 })
+                .build(),
+            material,
+        );
+        self.elements.push(NamedOe {
+            name: back_name,
+            element: Box::new(back),
+        });
+
+        self
+    }
+
     /// Number of optical elements.
     pub fn len(&self) -> usize {
         self.elements.len()

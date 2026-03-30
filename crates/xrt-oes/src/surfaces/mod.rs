@@ -15,3 +15,6 @@ pub mod vfm;
 pub mod vls_grating;
 pub mod capillary;
 pub mod johann;
+pub mod bent_laue;
+pub mod johann_toroid;
+pub mod diced;
