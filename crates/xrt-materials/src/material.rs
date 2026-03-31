@@ -378,13 +378,10 @@ mod tests {
             ScatteringTable::ChantlerTotal,
         );
         // Either returns error or produces finite result
-        match mat {
-            Ok(m) => {
-                let e = Array1::from_vec(vec![10000.0]);
-                let n = m.get_refractive_index(&e).unwrap();
-                assert!(n[0].re.is_finite(), "negative rho should still give finite n");
-            }
-            Err(_) => {} // Error is also acceptable
+        if let Ok(m) = mat {
+            let e = Array1::from_vec(vec![10000.0]);
+            let n = m.get_refractive_index(&e).unwrap();
+            assert!(n[0].re.is_finite(), "negative rho should still give finite n");
         }
     }
 
@@ -394,15 +391,12 @@ mod tests {
             &["Si"], None, 0.0, MaterialKind::Mirror, None,
             ScatteringTable::ChantlerTotal,
         );
-        match mat {
-            Ok(m) => {
-                let e = Array1::from_vec(vec![10000.0]);
-                let n = m.get_refractive_index(&e).unwrap();
-                // Zero density → n should be exactly 1 (vacuum)
-                assert!((n[0].re - 1.0).abs() < 1e-10,
-                    "zero density n.re should be 1.0: {}", n[0].re);
-            }
-            Err(_) => {} // Error is also acceptable
+        if let Ok(m) = mat {
+            let e = Array1::from_vec(vec![10000.0]);
+            let n = m.get_refractive_index(&e).unwrap();
+            // Zero density -> n should be exactly 1 (vacuum)
+            assert!((n[0].re - 1.0).abs() < 1e-10,
+                "zero density n.re should be 1.0: {}", n[0].re);
         }
     }
 
@@ -415,12 +409,9 @@ mod tests {
         ).unwrap();
         let e = Array1::from_vec(vec![50.0]);
         let n = mat.get_refractive_index(&e);
-        match n {
-            Ok(n_val) => {
-                assert!(n_val[0].re.is_finite(), "n.re at 50eV should be finite");
-                assert!(n_val[0].im.is_finite(), "n.im at 50eV should be finite");
-            }
-            Err(_) => {} // Out of range error is acceptable
+        if let Ok(n_val) = n {
+            assert!(n_val[0].re.is_finite(), "n.re at 50eV should be finite");
+            assert!(n_val[0].im.is_finite(), "n.im at 50eV should be finite");
         }
     }
 

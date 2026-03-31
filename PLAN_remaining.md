@@ -42,33 +42,16 @@ Phase 3: Python 바인딩 (0.5일)
 
 ---
 
-## 2. Mosaicity 구현
+## 2. Mosaicity 구현 — ✅ 구현 완료
 
 ### 현재 상태
-- `CrystalBase.mosaicity: f64` 필드 저장만 됨 (line 107)
-- `get_amplitude()`, `get_darwin_width()` 에서 **전혀 사용 안 됨**
-- XRT Python에서는 mosaicity가 rocking curve를 Gaussian 컨볼루션으로 넓힘
+- `CrystalBase.mosaicity: f64` 필드 저장 (line 107)
+- `get_darwin_width()`에서 `width_total = sqrt(dynamical² + mosaicity²)` 보정 적용 (crystal.rs:230)
+- `get_amplitude()`에서 mosaicity > 0일 때 Gaussian convolution 경로 활성화 (crystal.rs:243)
+  - 11-point weighted sum over angular offsets ±3σ
 
-### 구현 계획
-
-```
-Phase 1: Darwin width 수정 (0.5일)
-└── crystal.rs::get_darwin_width()에 mosaicity 기여 추가
-    width_total = sqrt(width_dynamical² + mosaicity²)
-
-Phase 2: Amplitude broadening (1일)
-├── get_amplitude()에서 mosaicity > 0일 때:
-│   1. 기존 dynamical 진폭 계산
-│   2. Gaussian 분포에서 angular offset Δθ 샘플링
-│   3. 각 ray의 bidn에 Δθ 적용
-│   └── 또는 분석적 컨볼루션 (XRT 방식)
-└── 테스트: mosaicity=0 → 기존 결과와 동일
-           mosaicity>0 → Darwin width 증가, peak 감소
-
-Phase 3: 검증 (0.5일)
-├── Python XRT cross-comparison (동일 mosaicity 파라미터)
-└── 물리 검증: mosaicity ↑ → peak reflectivity ↓, integrated reflectivity ↑
-```
+### 남은 작업
+- XRT Python과의 cross-validation 테스트 추가 (mosaicity > 0 조건)
 
 ### 핵심 물리
 ```

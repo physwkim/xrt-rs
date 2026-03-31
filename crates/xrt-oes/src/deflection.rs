@@ -259,7 +259,7 @@ mod tests {
         // At order 1, compute β that satisfies blaze condition
         // For simplicity, test that efficiency is between 0 and 1
         let eff = blaze_efficiency(sin_alpha, -0.05, energy, 1, d);
-        assert!(eff >= 0.0 && eff <= 1.0,
+        assert!((0.0..=1.0).contains(&eff),
             "efficiency should be in [0,1]: {eff}");
         assert!(eff.is_finite(), "efficiency should be finite");
     }
@@ -292,7 +292,7 @@ mod tests {
         let mut efficiencies = Vec::new();
         for energy in [500.0, 1000.0, 1500.0, 2000.0, 3000.0] {
             let eff = blaze_efficiency(sin_alpha, sin_beta, energy, 1, d);
-            assert!(eff >= 0.0 && eff <= 1.0 + 1e-10,
+            assert!((0.0..=1.0 + 1e-10).contains(&eff),
                 "efficiency at E={energy}: {eff}");
             efficiencies.push(eff);
         }

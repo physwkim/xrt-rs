@@ -372,7 +372,7 @@ mod tests {
         assert_eq!(beam.nrays(), 1000);
         // All energies in range
         for &e in beam.e.iter() {
-            assert!(e >= 5000.0 && e <= 15000.0, "energy {e} out of range");
+            assert!((5000.0..=15000.0).contains(&e), "energy {e} out of range");
         }
         // Direction vectors normalized
         for i in 0..beam.nrays() {

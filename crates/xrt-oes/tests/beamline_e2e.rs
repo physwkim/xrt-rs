@@ -105,7 +105,7 @@ fn two_mirror_focusing() {
     let output = bl.propagate(&mut beam);
     assert_eq!(output.elements.len(), 3);
     // Track efficiency through the beamline
-    for (i, el) in output.elements.iter().enumerate() {
+    for el in output.elements.iter() {
         if !el.results.is_empty() {
             assert!(
                 el.good_count <= 300,
@@ -326,7 +326,7 @@ fn golden_multi_element_beamline() {
 
 #[test]
 fn golden_crystal_beamline() {
-    use xrt_materials::crystal::{CrystalGeometry, StructureFactor};
+    use xrt_materials::crystal::CrystalGeometry;
     use xrt_materials::crystal_variants::CrystalSi;
     use xrt_materials::data::ScatteringTable;
 
@@ -508,6 +508,7 @@ fn golden_crl_pipeline() {
     // Build CRL: 3 lenses
     let names = ["L0", "L1", "L2"];
     let mut bl = Beamline::new();
+    #[allow(clippy::needless_range_loop)]
     for i in 0..3 {
         let lens_front = MaterialOpticalElement::new(
             ParaboloidLensSurface::new(0.5, Some(0.3)),

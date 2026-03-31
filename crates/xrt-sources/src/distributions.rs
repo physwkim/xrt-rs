@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn energy_flat_distribution() {
         let e = make_energy(&EnergyDist::Flat(8000.0, 12000.0), 1000);
-        assert!(e.iter().all(|&v| v >= 8000.0 && v <= 12000.0));
+        assert!(e.iter().all(|&v| (8000.0..=12000.0).contains(&v)));
     }
 
     #[test]
@@ -186,7 +186,7 @@ mod tests {
         for i in 0..n {
             let r = (x[i] * x[i] + z[i] * z[i]).sqrt();
             assert!(
-                r >= 4.99 && r <= 10.01,
+                (4.99..=10.01).contains(&r),
                 "r = {r} outside annulus [5, 10]"
             );
         }

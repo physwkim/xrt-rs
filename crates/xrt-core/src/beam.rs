@@ -595,7 +595,7 @@ mod tests {
         beam.x[0] = 1.0;
         beam.z[0] = 2.0;
         beam.state[1] = RayState::Dead as i32;
-        let (x, z) = beam.footprint();
+        let (x, _z) = beam.footprint();
         assert_eq!(x.len(), 4); // 4 good rays
         assert!((x[0] - 1.0).abs() < 1e-15);
     }

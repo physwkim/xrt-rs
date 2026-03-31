@@ -219,13 +219,10 @@ mod tests {
         let e = Array1::from_vec(vec![-100.0]);
         let result = si.get_f1f2(&e);
         // Should either return error or produce finite (extrapolated) values
-        match result {
-            Ok(f1f2) => {
-                // If it doesn't error, at least check finiteness
-                assert!(f1f2[0].re.is_finite() || f1f2[0].re.is_nan(),
-                    "negative energy f1 should be finite or NaN");
-            }
-            Err(_) => {} // Error is acceptable for non-physical input
+        if let Ok(f1f2) = result {
+            // If it doesn't error, at least check finiteness
+            assert!(f1f2[0].re.is_finite() || f1f2[0].re.is_nan(),
+                "negative energy f1 should be finite or NaN");
         }
     }
 }

@@ -243,7 +243,7 @@ mod tests {
         let rs_abs = result.rs[0].norm();
         // Should be a valid reflectivity in [0, 1]
         assert!(
-            rs_abs >= 0.0 && rs_abs <= 1.01,
+            (0.0..=1.01).contains(&rs_abs),
             "|rs| = {rs_abs}"
         );
     }

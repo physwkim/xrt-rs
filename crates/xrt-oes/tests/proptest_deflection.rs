@@ -9,7 +9,7 @@ proptest! {
     fn specular_preserves_norm(
         // Generate a normalized direction (a, b, c)
         theta in 0.001..1.5_f64,
-        phi in 0.0..6.28_f64,
+        phi in 0.0..std::f64::consts::TAU,
     ) {
         let a_in = theta.sin() * phi.cos();
         let b_in = theta.cos();
@@ -35,7 +35,7 @@ proptest! {
         let (nx, ny, nz) = (0.0, 0.0, 1.0);
         let bidn = c_in; // = -sin(grazing)
 
-        let (a, b, c) = reflect_specular(a_in, b_in, c_in, nx, ny, nz, bidn);
+        let (_a, b, c) = reflect_specular(a_in, b_in, c_in, nx, ny, nz, bidn);
 
         // Reflected c should be +sin(grazing)
         prop_assert!((c - grazing.sin()).abs() < 1e-10,

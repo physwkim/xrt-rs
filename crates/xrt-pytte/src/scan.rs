@@ -140,7 +140,7 @@ mod tests {
         assert_eq!(cs.len(), 3);
         assert_eq!(cp.len(), 3);
         // At exact Bragg angle (dθ=0), c0 should have small real part
-        assert!(cs[1].c0.re.abs() < cs[0].c0.re.abs() || true); // coefficients exist
+        assert!(cs[1].c0.re.is_finite()); // coefficients exist at exact Bragg angle
     }
 
     #[test]

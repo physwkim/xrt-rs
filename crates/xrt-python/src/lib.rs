@@ -28,6 +28,23 @@ mod py_material;
 mod py_oe;
 mod py_screen;
 mod py_source;
+
+/// Validate that all given arrays have the same length.
+fn check_equal_lengths(pairs: &[(&str, usize)]) -> PyResult<()> {
+    if pairs.len() < 2 {
+        return Ok(());
+    }
+    let (ref_name, ref_len) = pairs[0];
+    for &(name, len) in &pairs[1..] {
+        if len != ref_len {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "array length mismatch: {} has {} elements but {} has {}",
+                name, len, ref_name, ref_len
+            )));
+        }
+    }
+    Ok(())
+}
 mod surface_enum;
 
 use pyo3::prelude::*;
@@ -68,6 +85,11 @@ fn find_intersection_rs(
     invert_normal: i32,
 ) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>)> {
     let n = x.len();
+    check_equal_lengths(&[
+        ("x", n), ("y", y.len()), ("z", z.len()),
+        ("a", a.len()), ("b", b.len()), ("c", c.len()),
+        ("t1", t1.len()), ("t2", t2.len()),
+    ])?;
     let config = RootFindConfig::default();
 
     let mut t_out = vec![0.0; n];
@@ -199,6 +221,7 @@ fn find_intersection_parametric_rs(
     use xrt_oes::surface::ParametricSurface;
 
     let n = x.len();
+    check_equal_lengths(&[("x", n), ("y", y.len()), ("z", z.len())])?;
     let mut s_out = vec![0.0; n];
     let mut phi_out = vec![0.0; n];
     let mut r_out = vec![0.0; n];
@@ -270,6 +293,17 @@ fn diffraction_integral_rs(
     use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
 
     let n_rays = ray_x.len();
+    check_equal_lengths(&[
+        ("ray_x", n_rays), ("ray_y", ray_y.len()), ("ray_z", ray_z.len()),
+        ("ray_nx", ray_nx.len()), ("ray_ny", ray_ny.len()), ("ray_nz", ray_nz.len()),
+        ("ray_nl", ray_nl.len()),
+        ("ray_es_re", ray_es_re.len()), ("ray_es_im", ray_es_im.len()),
+        ("ray_ep_re", ray_ep_re.len()), ("ray_ep_im", ray_ep_im.len()),
+        ("ray_energy", ray_energy.len()),
+    ])?;
+    check_equal_lengths(&[
+        ("pix_x", pix_x.len()), ("pix_y", pix_y.len()), ("pix_z", pix_z.len()),
+    ])?;
     let rays: Vec<DiffractionRay> = (0..n_rays)
         .map(|i| DiffractionRay {
             x: ray_x[i], y: ray_y[i], z: ray_z[i],
@@ -319,6 +353,11 @@ fn tt_solve_rs(
     use xrt_pytte::solver::{BraggCoeffs, SolverConfig, solve_bragg_parallel};
 
     let n = cb_re.len();
+    check_equal_lengths(&[
+        ("cb_re", n), ("cb_im", cb_im.len()),
+        ("c0_re", c0_re.len()), ("c0_im", c0_im.len()),
+        ("ch_re", ch_re.len()), ("ch_im", ch_im.len()),
+    ])?;
     let coeffs: Vec<BraggCoeffs> = (0..n)
         .map(|i| BraggCoeffs {
             cb: Complex64::new(cb_re[i], cb_im[i]),
@@ -416,6 +455,7 @@ fn multilayer_amplitude_rs(
 
     let ml = Multilayer::new(t_mat, b_mat, s_mat, n_pairs, d_t, d_b, roughness, MultilayerGeom::Reflected);
 
+    check_equal_lengths(&[("energies", energies.len()), ("sin_theta", sin_theta.len())])?;
     let e_arr = Array1::from_vec(energies);
     let st_arr = Array1::from_vec(sin_theta);
     let result = ml.get_amplitude(&e_arr, &st_arr)

@@ -842,7 +842,7 @@ fn golden_si111_laue_reflected_cross() {
         let e_arr = array![energy];
         let b_arr = array![bidn];
 
-        let (rs, rp) = si
+        let (rs, _rp) = si
             .base
             .get_amplitude(&e_arr, &b_arr, None, None, &si)
             .unwrap();

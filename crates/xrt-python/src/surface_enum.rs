@@ -9,8 +9,6 @@ use xrt_oes::surfaces::cylindrical::CylindricalSurface;
 use xrt_oes::surfaces::elliptical::EllipticalSurface;
 use xrt_oes::surfaces::flat::FlatSurface;
 use xrt_oes::surfaces::grating::{BlazedGrating, LaminarGrating};
-use xrt_oes::surfaces::hyperbolic::HyperbolicSurface;
-use xrt_oes::surfaces::johann::JohannCylinderSurface;
 use xrt_oes::surfaces::lens::ParaboloidLensSurface;
 use xrt_oes::surfaces::parabolical::ParabolicalSurface;
 use xrt_oes::surfaces::spherical::SphericalSurface;
@@ -19,6 +17,10 @@ use xrt_oes::surfaces::vfm::VfmSurface;
 use xrt_oes::surfaces::vls_grating::VlsGrating;
 
 /// Enum wrapping all Surface-trait types for Python dispatch.
+///
+/// Only includes surfaces that have corresponding Py* classes registered
+/// in the Python module. Add new variants here when exposing new surface
+/// types to Python.
 #[derive(Clone)]
 pub enum SurfaceEnum {
     Flat(FlatSurface),
@@ -31,7 +33,6 @@ pub enum SurfaceEnum {
     BlazedGrating(BlazedGrating),
     LaminarGrating(LaminarGrating),
     VlsGrating(VlsGrating),
-    JohannCylinder(JohannCylinderSurface),
 }
 
 macro_rules! dispatch_surface {
@@ -47,7 +48,6 @@ macro_rules! dispatch_surface {
             SurfaceEnum::BlazedGrating(s) => s.$method($($arg),*),
             SurfaceEnum::LaminarGrating(s) => s.$method($($arg),*),
             SurfaceEnum::VlsGrating(s) => s.$method($($arg),*),
-            SurfaceEnum::JohannCylinder(s) => s.$method($($arg),*),
         }
     };
 }
@@ -79,7 +79,6 @@ impl Surface for SurfaceEnum {
 pub enum ParametricSurfaceEnum {
     Elliptical(EllipticalSurface),
     Parabolical(ParabolicalSurface),
-    Hyperbolic(HyperbolicSurface),
 }
 
 macro_rules! dispatch_parametric {
@@ -87,7 +86,6 @@ macro_rules! dispatch_parametric {
         match $self {
             ParametricSurfaceEnum::Elliptical(s) => s.$method($($arg),*),
             ParametricSurfaceEnum::Parabolical(s) => s.$method($($arg),*),
-            ParametricSurfaceEnum::Hyperbolic(s) => s.$method($($arg),*),
         }
     };
 }
