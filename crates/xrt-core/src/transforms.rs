@@ -199,6 +199,20 @@ impl RotationParams {
         }
     }
 
+    /// Reversed sequence "RxRyRz" — the inverse of `default_sequence`.
+    ///
+    /// For the inverse of a rotation composition R = Rz·Ry·Rx,
+    /// R⁻¹ = Rx⁻¹·Ry⁻¹·Rz⁻¹, which when applied sequentially
+    /// (code iterates the array) must be [X, Y, Z].
+    pub fn inverse_sequence(pitch: f64, roll: f64, yaw: f64) -> Self {
+        Self {
+            pitch,
+            roll,
+            yaw,
+            sequence: [Axis::X, Axis::Y, Axis::Z],
+        }
+    }
+
     fn angle_for(&self, axis: Axis) -> f64 {
         match axis {
             Axis::X => self.pitch,

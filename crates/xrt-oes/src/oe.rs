@@ -21,6 +21,10 @@ pub struct OeParams {
     pub roll: f64,
     /// Yaw angle [rad]
     pub yaw: f64,
+    /// Position roll: rotation around beam axis before OE orientation [rad].
+    /// Equivalent to XRT Python's `positionRoll`. Applied as Ry rotation
+    /// before the standard pitch/roll/yaw transform.
+    pub position_roll: f64,
     /// Aperture definition
     pub aperture: Aperture,
     /// Normal inversion (1 for vacuum→surface, -1 for surface→vacuum)
@@ -38,10 +42,29 @@ impl Default for OeParams {
             pitch: 0.0,
             roll: 0.0,
             yaw: 0.0,
+            position_roll: 0.0,
             aperture: Aperture::default(),
             invert_normal: 1,
             mode: DeflectionMode::Reflect,
             config: RootFindConfig::default(),
+        }
+    }
+}
+
+impl OeParams {
+    /// Apply forward position_roll rotation to beam (global → local).
+    pub fn apply_position_roll_fwd(&self, beam: &mut Beam, indices: &[usize]) {
+        if self.position_roll != 0.0 {
+            let pr = RotationParams::default_sequence(0.0, -self.position_roll, 0.0);
+            rotate_beam(beam, Some(indices), &pr, false, false);
+        }
+    }
+
+    /// Apply inverse position_roll rotation to beam (local → global).
+    pub fn apply_position_roll_inv(&self, beam: &mut Beam, indices: &[usize]) {
+        if self.position_roll != 0.0 {
+            let pr = RotationParams::default_sequence(0.0, self.position_roll, 0.0);
+            rotate_beam(beam, Some(indices), &pr, false, false);
         }
     }
 }
@@ -111,8 +134,8 @@ impl<S: Surface> OpticalElement<S> {
         // Apply results to beam
         reflect::apply_results(beam, &good, &results);
 
-        // Rotate back to global frame (inverse rotation)
-        let inv_rotation = RotationParams::default_sequence(
+        // Rotate back to global frame (inverse rotation — reversed sequence)
+        let inv_rotation = RotationParams::inverse_sequence(
             self.params.pitch,
             self.params.roll,
             self.params.yaw,

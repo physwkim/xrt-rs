@@ -56,6 +56,24 @@ impl OeInner {
             }
         }
     }
+
+    pub fn set_pitch(&mut self, pitch: f64) {
+        match self {
+            Self::Material(oe) => oe.params.pitch = pitch,
+            Self::Bare(oe) => oe.params.pitch = pitch,
+            Self::Grating(oe) => oe.params.pitch = pitch,
+            Self::Parametric(oe) => oe.params.pitch = pitch,
+        }
+    }
+
+    pub fn set_roll(&mut self, roll: f64) {
+        match self {
+            Self::Material(oe) => oe.params.roll = roll,
+            Self::Bare(oe) => oe.params.roll = roll,
+            Self::Grating(oe) => oe.params.roll = roll,
+            Self::Parametric(oe) => oe.params.roll = roll,
+        }
+    }
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -140,6 +158,18 @@ impl PyFlatMirror {
 
     fn reflect(&self, beam: Py<PyBeam>, py: Python<'_>) -> PyResult<Py<PyBeam>> {
         oe_reflect(&self.oe, beam, py)
+    }
+
+    /// Set pitch angle [rad] (for runtime adjustment, e.g. RL alignment).
+    #[setter]
+    fn set_pitch(&mut self, pitch: f64) {
+        self.oe.set_pitch(pitch);
+    }
+
+    /// Set roll angle [rad].
+    #[setter]
+    fn set_roll(&mut self, roll: f64) {
+        self.oe.set_roll(roll);
     }
 
     #[getter]

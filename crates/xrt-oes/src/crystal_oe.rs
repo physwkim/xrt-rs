@@ -94,8 +94,8 @@ impl<S: Surface> CrystalOpticalElement<S> {
             self.apply_crystal_amplitude(beam, &good_after, &results, &good, sf);
         }
 
-        // Rotate back to global
-        let inv_rotation = RotationParams::default_sequence(
+        // Rotate back to global (inverse rotation — reversed sequence)
+        let inv_rotation = RotationParams::inverse_sequence(
             self.params.pitch,
             self.params.roll,
             self.params.yaw,
@@ -134,9 +134,12 @@ impl<S: Surface> CrystalOpticalElement<S> {
         let mut bidn_arr = Array1::<f64>::zeros(n);
         let mut energy_arr = Array1::<f64>::zeros(n);
 
+        // Build O(1) lookup from ray index → result index
+        let idx_map: std::collections::HashMap<usize, usize> =
+            good_orig.iter().enumerate().map(|(j, &i)| (i, j)).collect();
+
         for (j, &i) in good_after.iter().enumerate() {
-            // Find the corresponding result index
-            let result_idx = good_orig.iter().position(|&g| g == i).unwrap_or(0);
+            let result_idx = idx_map[&i];
             bidn_arr[j] = results[result_idx].beam_in_dot_normal;
             energy_arr[j] = beam.e[i];
         }

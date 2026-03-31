@@ -23,6 +23,7 @@
 
 mod py_beam;
 mod py_beamline;
+mod py_crystal;
 mod py_material;
 mod py_oe;
 mod py_screen;
@@ -608,6 +609,10 @@ fn xrt_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Lens OEs
     m.add_class::<py_oe::PyParaboloidLens>()?;
+
+    // Crystal / DCM
+    m.add_class::<py_crystal::PyCrystalSi>()?;
+    m.add_class::<py_crystal::PyDCM>()?;
 
     Ok(())
 }

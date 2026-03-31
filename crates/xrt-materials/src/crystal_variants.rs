@@ -71,12 +71,25 @@ impl StructureFactor for CrystalFcc {
         let f0_struct = f0_arr.mapv(|f| f * 4.0 * dw);
 
         if self.hkl_all_even_or_odd() && need_fhkl {
-            let fhkl = ndarray::Zip::from(sin_theta_over_lambda)
-                .and(&anomalous)
-                .map_collect(|&stol, &ap| {
-                    let f0_val = f0_scalar(&elem.f0_coeffs, stol);
-                    (Complex64::new(f0_val, 0.0) + ap) * 4.0 * dw
-                });
+            // Fast path: when all stol values are the same (common for DCM/crystal),
+            // compute f0 once and broadcast
+            let n = e.len();
+            let stol0 = sin_theta_over_lambda[0];
+            let uniform_stol = n <= 1
+                || sin_theta_over_lambda.iter().all(|&s| s == stol0);
+
+            let fhkl = if uniform_stol && n > 1 {
+                let f0_val = f0_scalar(&elem.f0_coeffs, stol0);
+                let f0_c = Complex64::new(f0_val, 0.0);
+                anomalous.mapv(|ap| (f0_c + ap) * 4.0 * dw)
+            } else {
+                ndarray::Zip::from(sin_theta_over_lambda)
+                    .and(&anomalous)
+                    .map_collect(|&stol, &ap| {
+                        let f0_val = f0_scalar(&elem.f0_coeffs, stol);
+                        (Complex64::new(f0_val, 0.0) + ap) * 4.0 * dw
+                    })
+            };
             Ok((f0_struct, fhkl.clone(), fhkl))
         } else {
             let zeros = Array1::from_elem(e.len(), Complex64::new(0.0, 0.0));

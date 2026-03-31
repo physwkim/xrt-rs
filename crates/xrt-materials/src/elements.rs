@@ -103,6 +103,17 @@ impl Element {
             }
         }
 
+        let n = e.len();
+
+        // Fast path: monochromatic beam (all rays at same energy)
+        if n > 1 {
+            let e0 = e[0];
+            if e.iter().all(|&ei| ei == e0) {
+                let f = self.get_f1f2_scalar(e0)?;
+                return Ok(Array1::from_elem(n, f));
+            }
+        }
+
         let f1 = interp_linear(e, &self.e_table, &self.f1_table);
         let f2 = interp_linear(e, &self.e_table, &self.f2_table);
 

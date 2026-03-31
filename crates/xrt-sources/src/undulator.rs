@@ -479,49 +479,49 @@ mod tests {
 
     #[test]
     fn harmonic_peaks_detected() {
-        // Scan energy spectrum on-axis to find harmonic peaks
+        // Check that on-axis intensity peaks near the fundamental energy E₁.
+        // Use a focused energy scan around E₁ with fine spacing to reliably
+        // resolve the narrow undulator peak (ΔE/E ≈ 1/N_periods).
         let und = Undulator::new(
             6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
             1000.0, 50000.0, 1e-4, 1e-4,
         );
         let e1 = und.fundamental_energy();
 
-        // Fine energy scan around E₁ and 3×E₁
+        // Scan ±30% around E₁ with fine spacing
         let n_points = 200;
+        let e_lo = e1 * 0.7;
+        let e_hi = e1 * 1.3;
         let energies: Vec<f64> = (0..n_points)
-            .map(|i| 1000.0 + (50000.0 - 1000.0) * i as f64 / (n_points - 1) as f64)
+            .map(|i| e_lo + (e_hi - e_lo) * i as f64 / (n_points - 1) as f64)
             .collect();
-        let thetas = vec![0.0]; // on-axis
-        let psis = vec![0.0];
+        let thetas = vec![0.0; n_points]; // on-axis
+        let psis = vec![0.0; n_points];
 
         let (intensity, _, _) = und.build_i_map(&energies, &thetas, &psis);
 
-        // Find local maxima (peaks)
-        let mut peaks = Vec::new();
-        for i in 1..intensity.len() - 1 {
-            if intensity[i] > intensity[i - 1] && intensity[i] > intensity[i + 1]
-                && intensity[i] > 0.0
-            {
-                peaks.push((energies[i], intensity[i]));
-            }
-        }
+        // Find the energy with maximum intensity
+        let (i_max, _) = intensity
+            .iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .unwrap();
+        let peak_e = energies[i_max];
 
-        assert!(!peaks.is_empty(), "Should find at least one harmonic peak");
+        let rel_diff = (peak_e - e1).abs() / e1;
+        assert!(
+            rel_diff < 0.15,
+            "Peak at {peak_e:.0} eV should be near E₁={e1:.0} eV (rel={rel_diff:.2})"
+        );
 
-        // First peak should be near E₁
-        let (peak1_e, _peak1_i) = peaks[0];
-        let rel_diff = (peak1_e - e1).abs() / e1;
-        assert!(rel_diff < 0.3,
-            "First peak at {peak1_e:.0} eV should be near E₁={e1:.0} eV (rel={rel_diff:.2})");
-
-        // If we found multiple peaks, check they're at roughly odd harmonics
-        if peaks.len() >= 2 {
-            let (peak2_e, _) = peaks[1];
-            let harmonic_ratio = peak2_e / peak1_e;
-            // Should be near 3 (third harmonic) for on-axis
-            assert!(harmonic_ratio > 2.0 && harmonic_ratio < 4.5,
-                "Second peak ratio = {harmonic_ratio:.1}, expected ~3 (third harmonic)");
-        }
+        // Intensity at peak should be significantly above the scan edges
+        let edge_intensity = intensity[0].max(intensity[n_points - 1]);
+        assert!(
+            intensity[i_max] > edge_intensity * 2.0,
+            "Peak intensity ({:.2e}) should be well above edge ({:.2e})",
+            intensity[i_max],
+            edge_intensity
+        );
     }
 
     #[test]

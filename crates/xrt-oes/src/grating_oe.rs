@@ -158,8 +158,8 @@ impl<S: Surface> GratingOpticalElement<S> {
             }
         }
 
-        // Transform back to global
-        let inv_rotation = RotationParams::default_sequence(
+        // Transform back to global (inverse rotation — reversed sequence)
+        let inv_rotation = RotationParams::inverse_sequence(
             self.params.pitch,
             self.params.roll,
             self.params.yaw,

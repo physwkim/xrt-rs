@@ -193,10 +193,7 @@ impl Material {
             };
 
             let cos_alpha = beam_in_dot_normal[i].abs();
-            let mut sin_alpha2 = 1.0 - beam_in_dot_normal[i] * beam_in_dot_normal[i];
-            if sin_alpha2 < 0.0 {
-                sin_alpha2 = 0.0;
-            }
+            let sin_alpha2 = (1.0 - beam_in_dot_normal[i] * beam_in_dot_normal[i]).max(0.0);
 
             let n1_cos_alpha = n1 * cos_alpha;
             let cos_beta = (Complex64::new(1.0, 0.0) - (n1 / n2).powi(2) * sin_alpha2).sqrt();
