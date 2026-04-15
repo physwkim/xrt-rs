@@ -91,7 +91,7 @@ impl<S: Surface> OpticalElement<S> {
     pub fn reflect(&self, beam: &mut Beam) -> Vec<RayResult> {
         // Find good rays
         let good: Vec<usize> = (0..beam.nrays())
-            .filter(|&i| beam.state[i] > 0)
+            .filter(|&i| beam.state[i] == 1)
             .collect();
 
         if good.is_empty() {

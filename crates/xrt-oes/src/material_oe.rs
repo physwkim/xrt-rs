@@ -41,7 +41,7 @@ impl<S: Surface> MaterialOpticalElement<S> {
     /// 3. Apply amplitudes to beam coherency matrix
     pub fn reflect(&self, beam: &mut Beam) -> Vec<RayResult> {
         let good: Vec<usize> = (0..beam.nrays())
-            .filter(|&i| beam.state[i] > 0)
+            .filter(|&i| beam.state[i] == 1)
             .collect();
 
         if good.is_empty() {

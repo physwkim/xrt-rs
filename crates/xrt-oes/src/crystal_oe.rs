@@ -44,7 +44,7 @@ impl<S: Surface> CrystalOpticalElement<S> {
         sf: &dyn StructureFactor,
     ) -> Vec<RayResult> {
         let good: Vec<usize> = (0..beam.nrays())
-            .filter(|&i| beam.state[i] > 0)
+            .filter(|&i| beam.state[i] == 1)
             .collect();
 
         if good.is_empty() {
@@ -155,11 +155,10 @@ impl<S: Surface> CrystalOpticalElement<S> {
                     rp.as_slice().unwrap(),
                 );
             }
-            Err(_) => {
-                // If crystal calculation fails, mark rays as dead
-                for &i in good_after {
-                    beam.state[i] = RayState::Dead as i32;
-                }
+            Err(e) => {
+                // Crystal calculation failed — keep rays Good with reduced amplitude
+                // (matching xrt Python behavior: never kill rays from amplitude)
+                eprintln!("  crystal amplitude error: {e:?}, keeping {} rays", good_after.len());
             }
         }
     }
