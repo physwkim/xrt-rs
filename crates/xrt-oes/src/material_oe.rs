@@ -8,7 +8,7 @@
 use ndarray::Array1;
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{RotationParams, rotate_beam};
+use xrt_core::transforms::{rotate_beam, RotationParams};
 use xrt_materials::material::Material;
 
 use crate::oe::OeParams;
@@ -40,9 +40,7 @@ impl<S: Surface> MaterialOpticalElement<S> {
     /// 2. Compute Fresnel Rs/Rp from material refractive index
     /// 3. Apply amplitudes to beam coherency matrix
     pub fn reflect(&self, beam: &mut Beam) -> Vec<RayResult> {
-        let good: Vec<usize> = (0..beam.nrays())
-            .filter(|&i| beam.state[i] == 1)
-            .collect();
+        let good: Vec<usize> = (0..beam.nrays()).filter(|&i| beam.state[i] == 1).collect();
 
         if good.is_empty() {
             return vec![];
@@ -139,7 +137,10 @@ impl<S: Surface> MaterialOpticalElement<S> {
             energy_arr[j] = beam.e[i];
         }
 
-        match self.material.get_amplitude(&energy_arr, &bidn_arr, self.from_vacuum) {
+        match self
+            .material
+            .get_amplitude(&energy_arr, &bidn_arr, self.from_vacuum)
+        {
             Ok(amp) => {
                 reflect::apply_material_amplitude(
                     beam,
@@ -169,10 +170,14 @@ mod tests {
 
     fn si_mirror() -> Material {
         Material::new(
-            &["Si"], None, 2.33,
-            MaterialKind::Mirror, None,
+            &["Si"],
+            None,
+            2.33,
+            MaterialKind::Mirror,
+            None,
             ScatteringTable::ChantlerTotal,
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     #[test]
@@ -211,11 +216,14 @@ mod tests {
         // After material reflection, jss should be modified by |Rs|²
         let good_count = results.iter().filter(|r| r.state == RayState::Good).count();
         if good_count > 0 {
-            let i = (0..5).find(|&i| beam.state[i] == RayState::Good as i32).unwrap();
+            let i = (0..5)
+                .find(|&i| beam.state[i] == RayState::Good as i32)
+                .unwrap();
             // At 10 mrad grazing, Si mirror should have high reflectivity
             assert!(
                 beam.jss[i] > 0.0 && beam.jss[i].is_finite(),
-                "jss = {}", beam.jss[i]
+                "jss = {}",
+                beam.jss[i]
             );
         }
     }

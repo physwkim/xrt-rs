@@ -7,6 +7,6 @@
 //! 2. Undulator radiation (electron trajectory integration)
 
 pub mod context;
+pub mod fallback;
 pub mod kirchhoff;
 pub mod undulator;
-pub mod fallback;

@@ -15,8 +15,8 @@ fn load_fixture() -> serde_json::Value {
         env!("CARGO_MANIFEST_DIR"),
         "/../../validation/fixtures/intersection.json"
     );
-    let text = std::fs::read_to_string(path)
-        .expect("Run `python validation/generate_fixtures.py` first");
+    let text =
+        std::fs::read_to_string(path).expect("Run `python validation/generate_fixtures.py` first");
     serde_json::from_str(&text).unwrap()
 }
 
@@ -104,12 +104,8 @@ fn test_surface_numerical<S: Surface>(
         let t1 = ray["t1"].as_f64().unwrap();
         let t2 = ray["t2"].as_f64().unwrap();
 
-        let result =
-            find_intersection_surface(surface, t1, t2, x0, y0, z0, a, b, c, 1, &config);
-        assert!(
-            result.converged,
-            "{surf_name} ray{i}: did not converge"
-        );
+        let result = find_intersection_surface(surface, t1, t2, x0, y0, z0, a, b, c, 1, &config);
+        assert!(result.converged, "{surf_name} ray{i}: did not converge");
 
         let exp_t = expected["t"].as_f64().unwrap();
         let exp_x = expected["x"].as_f64().unwrap();

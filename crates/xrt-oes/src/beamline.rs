@@ -59,7 +59,9 @@ impl BeamlineOutput {
 
 impl std::fmt::Display for BeamlineOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Beamline: {} elements, {} → {} rays ({:.1}%)",
+        writeln!(
+            f,
+            "Beamline: {} elements, {} → {} rays ({:.1}%)",
             self.elements.len(),
             self.initial_count,
             self.final_good_count,
@@ -69,8 +71,11 @@ impl std::fmt::Display for BeamlineOutput {
             if el.results.is_empty() {
                 writeln!(f, "  {:20} (drift)", el.name)?;
             } else {
-                writeln!(f, "  {:20} good={:6}  lost={:4}",
-                    el.name, el.good_count, el.lost_count)?;
+                writeln!(
+                    f,
+                    "  {:20} good={:6}  lost={:4}",
+                    el.name, el.good_count, el.lost_count
+                )?;
             }
         }
         Ok(())
@@ -339,7 +344,9 @@ impl Beamline {
         let back = MaterialOpticalElement::new(
             ParaboloidLensSurface::new(focus, z_max),
             OeParamsBuilder::new()
-                .mode(DeflectionMode::Refract { n1_over_n2: 1.0 / n1_over_n2 })
+                .mode(DeflectionMode::Refract {
+                    n1_over_n2: 1.0 / n1_over_n2,
+                })
                 .build(),
             material,
         );
@@ -378,7 +385,9 @@ impl Beamline {
         let back = MaterialOpticalElement::new(
             ParabolicCylinderLensSurface::new(focus, z_max),
             OeParamsBuilder::new()
-                .mode(DeflectionMode::Refract { n1_over_n2: 1.0 / n1_over_n2 })
+                .mode(DeflectionMode::Refract {
+                    n1_over_n2: 1.0 / n1_over_n2,
+                })
                 .build(),
             material,
         );
@@ -604,13 +613,14 @@ mod tests {
         use crate::surfaces::elliptical::EllipticalSurface;
 
         let ellipse = EllipticalSurface::from_pq(10_000.0, 5_000.0, 0.003);
-        let oe = ParametricOpticalElement::new(
-            ellipse,
-            OeParamsBuilder::new().pitch(0.003).build(),
-        );
+        let oe =
+            ParametricOpticalElement::new(ellipse, OeParamsBuilder::new().pitch(0.003).build());
 
         let bl = Beamline::new()
-            .add("M1", OpticalElement::new(FlatSurface, OeParamsBuilder::new().pitch(0.01).build()))
+            .add(
+                "M1",
+                OpticalElement::new(FlatSurface, OeParamsBuilder::new().pitch(0.01).build()),
+            )
             .add_parametric("Elliptical", oe);
 
         assert_eq!(bl.len(), 2);
@@ -628,9 +638,14 @@ mod tests {
         use xrt_materials::material::{Material, MaterialKind};
 
         let si = Material::new(
-            &["Si"], None, 2.33,
-            MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal,
-        ).unwrap();
+            &["Si"],
+            None,
+            2.33,
+            MaterialKind::Mirror,
+            None,
+            ScatteringTable::ChantlerTotal,
+        )
+        .unwrap();
 
         let m1 = crate::material_oe::MaterialOpticalElement::new(
             FlatSurface,
@@ -641,7 +656,10 @@ mod tests {
         let bl = Beamline::new()
             .add_material("Si_Mirror", m1)
             .drift(2000.0)
-            .add("Screen_Mirror", OpticalElement::new(FlatSurface, OeParamsBuilder::new().build()));
+            .add(
+                "Screen_Mirror",
+                OpticalElement::new(FlatSurface, OeParamsBuilder::new().build()),
+            );
 
         assert_eq!(bl.len(), 3);
 
@@ -657,8 +675,8 @@ mod tests {
         use ndarray::Array1;
         use num_complex::Complex64;
         use xrt_materials::crystal::{CrystalBase, CrystalGeometry, StructureFactor as SF};
-        use xrt_materials::material::{Material, MaterialKind};
         use xrt_materials::data::ScatteringTable;
+        use xrt_materials::material::{Material, MaterialKind};
 
         struct TestSf;
         impl SF for TestSf {
@@ -667,7 +685,10 @@ mod tests {
                 e: &Array1<f64>,
                 _stol: &Array1<f64>,
                 _need_fhkl: bool,
-            ) -> Result<(Array1<Complex64>, Array1<Complex64>, Array1<Complex64>), xrt_core::error::XrtError> {
+            ) -> Result<
+                (Array1<Complex64>, Array1<Complex64>, Array1<Complex64>),
+                xrt_core::error::XrtError,
+            > {
                 let n = e.len();
                 Ok((
                     Array1::from_elem(n, Complex64::new(14.0, -0.5)),
@@ -678,13 +699,24 @@ mod tests {
         }
 
         let si = Material::new(
-            &["Si"], None, 2.33,
-            MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal,
-        ).unwrap();
+            &["Si"],
+            None,
+            2.33,
+            MaterialKind::Mirror,
+            None,
+            ScatteringTable::ChantlerTotal,
+        )
+        .unwrap();
 
         let crystal = CrystalBase::new(
-            si, [1, 1, 1], 3.1356, Some(160.18),
-            CrystalGeometry::BraggReflected, 1.0, None, 0.0,
+            si,
+            [1, 1, 1],
+            3.1356,
+            Some(160.18),
+            CrystalGeometry::BraggReflected,
+            1.0,
+            None,
+            0.0,
         );
 
         let crystal_oe = crate::crystal_oe::CrystalOpticalElement::new(
@@ -693,8 +725,7 @@ mod tests {
             crystal,
         );
 
-        let bl = Beamline::new()
-            .add_crystal("Si111", crystal_oe, Box::new(TestSf));
+        let bl = Beamline::new().add_crystal("Si111", crystal_oe, Box::new(TestSf));
 
         assert_eq!(bl.len(), 1);
 

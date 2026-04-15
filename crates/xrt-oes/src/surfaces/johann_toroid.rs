@@ -19,7 +19,12 @@ pub struct JohannToroidSurface {
 
 impl JohannToroidSurface {
     pub fn new(rm: f64, rs: f64, cross_section: CrossSection, alpha: f64) -> Self {
-        Self { rm, rs, cross_section, alpha }
+        Self {
+            rm,
+            rs,
+            cross_section,
+            alpha,
+        }
     }
 }
 
@@ -29,7 +34,11 @@ impl Surface for JohannToroidSurface {
         let z_mer = match self.cross_section {
             CrossSection::Circular => {
                 let r2 = self.rm * self.rm;
-                if y * y < r2 { self.rm - (r2 - y * y).sqrt() } else { self.rm }
+                if y * y < r2 {
+                    self.rm - (r2 - y * y).sqrt()
+                } else {
+                    self.rm
+                }
             }
             CrossSection::Parabolic => y * y / (2.0 * self.rm),
         };
@@ -79,19 +88,22 @@ pub struct JohanssonToroidSurface {
 
 impl JohanssonToroidSurface {
     pub fn new(rm: f64, rs: f64, cross_section: CrossSection, alpha: f64) -> Self {
-        Self { rm, rs, cross_section, alpha }
+        Self {
+            rm,
+            rs,
+            cross_section,
+            alpha,
+        }
     }
 }
 
 impl Surface for JohanssonToroidSurface {
     fn local_z(&self, x: f64, y: f64) -> f64 {
-        JohannToroidSurface::new(self.rm, self.rs, self.cross_section, self.alpha)
-            .local_z(x, y)
+        JohannToroidSurface::new(self.rm, self.rs, self.cross_section, self.alpha).local_z(x, y)
     }
 
     fn local_n(&self, x: f64, y: f64) -> [f64; 3] {
-        JohannToroidSurface::new(self.rm, self.rs, self.cross_section, self.alpha)
-            .local_n(x, y)
+        JohannToroidSurface::new(self.rm, self.rs, self.cross_section, self.alpha).local_n(x, y)
     }
 
     fn local_n_bragg(&self, _x: f64, y: f64) -> Option<[f64; 3]> {
@@ -128,27 +140,36 @@ pub struct GeneralBraggToroidSurface {
 }
 
 impl GeneralBraggToroidSurface {
-    pub fn new(rm: f64, rs: f64, rm_bragg: f64, rs_bragg: f64, cross_section: CrossSection) -> Self {
-        Self { rm, rs, rm_bragg, rs_bragg, cross_section }
+    pub fn new(
+        rm: f64,
+        rs: f64,
+        rm_bragg: f64,
+        rs_bragg: f64,
+        cross_section: CrossSection,
+    ) -> Self {
+        Self {
+            rm,
+            rs,
+            rm_bragg,
+            rs_bragg,
+            cross_section,
+        }
     }
 }
 
 impl Surface for GeneralBraggToroidSurface {
     fn local_z(&self, x: f64, y: f64) -> f64 {
-        JohannToroidSurface::new(self.rm, self.rs, self.cross_section, 0.0)
-            .local_z(x, y)
+        JohannToroidSurface::new(self.rm, self.rs, self.cross_section, 0.0).local_z(x, y)
     }
 
     fn local_n(&self, x: f64, y: f64) -> [f64; 3] {
-        JohannToroidSurface::new(self.rm, self.rs, self.cross_section, 0.0)
-            .local_n(x, y)
+        JohannToroidSurface::new(self.rm, self.rs, self.cross_section, 0.0).local_n(x, y)
     }
 
     fn local_n_bragg(&self, x: f64, y: f64) -> Option<[f64; 3]> {
         // Use Bragg radii for the Bragg plane normal
-        let bragg_surf = JohannToroidSurface::new(
-            self.rm_bragg, self.rs_bragg, self.cross_section, 0.0
-        );
+        let bragg_surf =
+            JohannToroidSurface::new(self.rm_bragg, self.rs_bragg, self.cross_section, 0.0);
         Some(bragg_surf.local_n(x, y))
     }
 }
@@ -172,8 +193,10 @@ mod tests {
     #[test]
     fn general_bragg_toroid_different_radii() {
         let s = GeneralBraggToroidSurface::new(
-            5000.0, 500.0,   // surface
-            4000.0, 400.0,   // Bragg
+            5000.0,
+            500.0, // surface
+            4000.0,
+            400.0, // Bragg
             CrossSection::Parabolic,
         );
         let n_surf = s.local_n(0.0, 10.0);

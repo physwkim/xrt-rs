@@ -71,8 +71,7 @@ impl ParametricSurface for HyperbolicSurface {
 
         let r = self.sign * self.b * (arg2 - 1.0).sqrt();
         // dr/ds = sign * b * s / (a² * sqrt(s²/a² - 1))
-        let dr_ds =
-            self.sign * self.b * s_shifted / (self.a * self.a * (arg2 - 1.0).sqrt());
+        let dr_ds = self.sign * self.b * s_shifted / (self.a * self.a * (arg2 - 1.0).sqrt());
 
         let (sin_phi, cos_phi) = phi.sin_cos();
 

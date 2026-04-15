@@ -33,7 +33,13 @@ pub struct TripodParams {
 
 impl TripodParams {
     pub fn new(jack1: f64, jack2: f64, jack3: f64, jack_sep_y: f64, jack_sep_x: f64) -> Self {
-        Self { jack1, jack2, jack3, jack_sep_y, jack_sep_x }
+        Self {
+            jack1,
+            jack2,
+            jack3,
+            jack_sep_y,
+            jack_sep_x,
+        }
     }
 
     /// Compute pitch angle from jack positions [rad]

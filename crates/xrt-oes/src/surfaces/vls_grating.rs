@@ -19,7 +19,12 @@ pub struct VlsGrating {
 
 impl VlsGrating {
     pub fn new(rho0: f64, coeffs: Vec<f64>, depth: f64, duty: f64) -> Self {
-        Self { rho0, coeffs, depth, duty }
+        Self {
+            rho0,
+            coeffs,
+            depth,
+            duty,
+        }
     }
 
     /// Compute local groove density at position y.
@@ -71,7 +76,12 @@ pub struct VlsBlazedGrating {
 
 impl VlsBlazedGrating {
     pub fn new(rho0: f64, coeffs: Vec<f64>, blaze: f64, anti_blaze: f64) -> Self {
-        Self { rho0, coeffs, blaze, anti_blaze }
+        Self {
+            rho0,
+            coeffs,
+            blaze,
+            anti_blaze,
+        }
     }
 
     pub fn rho_at(&self, y: f64) -> f64 {
@@ -90,8 +100,7 @@ impl Surface for VlsBlazedGrating {
         let rho = self.rho_at(y);
         let d = 1.0 / rho;
         let y_mod = ((y % d) + d) % d;
-        let blaze_width = d * self.anti_blaze.tan()
-            / (self.blaze.tan() + self.anti_blaze.tan());
+        let blaze_width = d * self.anti_blaze.tan() / (self.blaze.tan() + self.anti_blaze.tan());
         if y_mod < blaze_width {
             y_mod * self.blaze.tan()
         } else {
@@ -103,8 +112,7 @@ impl Surface for VlsBlazedGrating {
         let rho = self.rho_at(y);
         let d = 1.0 / rho;
         let y_mod = ((y % d) + d) % d;
-        let blaze_width = d * self.anti_blaze.tan()
-            / (self.blaze.tan() + self.anti_blaze.tan());
+        let blaze_width = d * self.anti_blaze.tan() / (self.blaze.tan() + self.anti_blaze.tan());
         let dz_dy = if y_mod < blaze_width {
             self.blaze.tan()
         } else {

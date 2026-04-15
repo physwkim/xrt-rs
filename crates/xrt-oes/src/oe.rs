@@ -3,7 +3,7 @@
 //! Ported from oes_base.py:1064-1181.
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{RotationParams, rotate_beam};
+use xrt_core::transforms::{rotate_beam, RotationParams};
 use xrt_math::rootfind::RootFindConfig;
 
 use crate::aperture::Aperture;
@@ -90,9 +90,7 @@ impl<S: Surface> OpticalElement<S> {
     /// Returns the reflected beam (modifies in place).
     pub fn reflect(&self, beam: &mut Beam) -> Vec<RayResult> {
         // Find good rays
-        let good: Vec<usize> = (0..beam.nrays())
-            .filter(|&i| beam.state[i] == 1)
-            .collect();
+        let good: Vec<usize> = (0..beam.nrays()).filter(|&i| beam.state[i] == 1).collect();
 
         if good.is_empty() {
             return vec![];

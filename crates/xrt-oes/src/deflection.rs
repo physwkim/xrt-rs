@@ -86,8 +86,8 @@ pub fn blaze_efficiency(
     order: i32,
     groove_spacing: f64, // d = 1/rho [mm]
 ) -> f64 {
-    use xrt_core::consts::CH;
     use std::f64::consts::PI;
+    use xrt_core::consts::CH;
 
     let wavelength = CH / energy * 1e-7; // Å → mm
     let path_diff = groove_spacing * (sin_alpha + sin_beta) / wavelength;
@@ -188,28 +188,36 @@ mod tests {
         // When angle exceeds critical angle, result should be NaN
         // (n1/n2 > 1, grazing angle too small)
         let (a, b, c) = refract_snell(
-            0.0, 1.0, 0.0,    // beam along y
-            0.0, 0.0, 1.0,    // normal along z
-            0.0,               // beam_in_dot_normal = 0 (grazing)
-            1.5,               // n1/n2 > 1 (dense to less dense)
+            0.0, 1.0, 0.0, // beam along y
+            0.0, 0.0, 1.0, // normal along z
+            0.0, // beam_in_dot_normal = 0 (grazing)
+            1.5, // n1/n2 > 1 (dense to less dense)
         );
         // Should produce NaN (total internal reflection)
-        assert!(a.is_nan() || b.is_nan() || c.is_nan(),
-            "Expected NaN for total internal reflection, got ({a}, {b}, {c})");
+        assert!(
+            a.is_nan() || b.is_nan() || c.is_nan(),
+            "Expected NaN for total internal reflection, got ({a}, {b}, {c})"
+        );
     }
 
     #[test]
     fn snell_dense_to_sparse() {
         // n1/n2 > 1 but above critical angle → valid refraction
         let (a, b, c) = refract_snell(
-            0.0, 0.5_f64.sqrt(), -0.5_f64.sqrt(), // 45° to normal
-            0.0, 0.0, 1.0,          // normal along z
-            -0.5_f64.sqrt(),         // beam_in_dot_normal
-            1.1,                     // slight density change
+            0.0,
+            0.5_f64.sqrt(),
+            -0.5_f64.sqrt(), // 45° to normal
+            0.0,
+            0.0,
+            1.0,             // normal along z
+            -0.5_f64.sqrt(), // beam_in_dot_normal
+            1.1,             // slight density change
         );
-        assert!(a.is_finite() && b.is_finite() && c.is_finite(),
-            "Should refract for angle above critical");
-        let norm = (a*a + b*b + c*c).sqrt();
+        assert!(
+            a.is_finite() && b.is_finite() && c.is_finite(),
+            "Should refract for angle above critical"
+        );
+        let norm = (a * a + b * b + c * c).sqrt();
         assert!((norm - 1.0).abs() < 1e-10, "output should be unit vector");
     }
 
@@ -217,18 +225,20 @@ mod tests {
     fn grating_deflection_basic() {
         // Simple grating deflection test: order +1 at modest angle
         let (a, b, c) = grating_deflection(
-            0.0, 0.99, -0.14,        // beam direction (shallow incidence)
-            0.0, -600.0, 0.0,        // grating vector [mm⁻¹]
-            0.0, 0.0, 1.0,           // surface normal
-            -0.14,                     // beam_in_dot_normal
-            1000.0,                    // energy [eV]
-            1,                         // order
-            None,                      // auto sign
+            0.0, 0.99, -0.14, // beam direction (shallow incidence)
+            0.0, -600.0, 0.0, // grating vector [mm⁻¹]
+            0.0, 0.0, 1.0,    // surface normal
+            -0.14,  // beam_in_dot_normal
+            1000.0, // energy [eV]
+            1,      // order
+            None,   // auto sign
         );
         // Output should be finite unit vector
-        assert!(a.is_finite() && b.is_finite() && c.is_finite(),
-            "grating deflection should be finite");
-        let norm = (a*a + b*b + c*c).sqrt();
+        assert!(
+            a.is_finite() && b.is_finite() && c.is_finite(),
+            "grating deflection should be finite"
+        );
+        let norm = (a * a + b * b + c * c).sqrt();
         assert!((norm - 1.0).abs() < 1e-10, "output should be unit: {norm}");
     }
 
@@ -243,8 +253,10 @@ mod tests {
         // Verify with specular at normal incidence that direction changes
         let (_a_r, _b_r, c_r) = reflect_specular(a_in, b_in, c_in, 0.0, 0.0, 1.0, c_in);
         // Reflected c should flip sign
-        assert!((c_r - (-c_in)).abs() < 0.1,
-            "specular should flip c: got {c_r}");
+        assert!(
+            (c_r - (-c_in)).abs() < 0.1,
+            "specular should flip c: got {c_r}"
+        );
         // PassThrough would NOT flip c (it's a no-op on direction)
     }
 
@@ -259,8 +271,10 @@ mod tests {
         // At order 1, compute β that satisfies blaze condition
         // For simplicity, test that efficiency is between 0 and 1
         let eff = blaze_efficiency(sin_alpha, -0.05, energy, 1, d);
-        assert!((0.0..=1.0).contains(&eff),
-            "efficiency should be in [0,1]: {eff}");
+        assert!(
+            (0.0..=1.0).contains(&eff),
+            "efficiency should be in [0,1]: {eff}"
+        );
         assert!(eff.is_finite(), "efficiency should be finite");
     }
 
@@ -278,8 +292,10 @@ mod tests {
         // Both should be valid
         assert!(eff1.is_finite() && eff3.is_finite());
         // Order 1 at this geometry should have different efficiency than order 3
-        assert!((eff1 - eff3).abs() > 1e-10,
-            "orders 1 and 3 should have different efficiency: {eff1:.4} vs {eff3:.4}");
+        assert!(
+            (eff1 - eff3).abs() > 1e-10,
+            "orders 1 and 3 should have different efficiency: {eff1:.4} vs {eff3:.4}"
+        );
     }
 
     #[test]
@@ -292,15 +308,22 @@ mod tests {
         let mut efficiencies = Vec::new();
         for energy in [500.0, 1000.0, 1500.0, 2000.0, 3000.0] {
             let eff = blaze_efficiency(sin_alpha, sin_beta, energy, 1, d);
-            assert!((0.0..=1.0 + 1e-10).contains(&eff),
-                "efficiency at E={energy}: {eff}");
+            assert!(
+                (0.0..=1.0 + 1e-10).contains(&eff),
+                "efficiency at E={energy}: {eff}"
+            );
             efficiencies.push(eff);
         }
 
         // Not all the same (energy-dependent)
         let min = efficiencies.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max = efficiencies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        assert!(max > min + 1e-6,
-            "efficiency should vary with energy: min={min:.4}, max={max:.4}");
+        let max = efficiencies
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!(
+            max > min + 1e-6,
+            "efficiency should vary with energy: min={min:.4}, max={max:.4}"
+        );
     }
 }

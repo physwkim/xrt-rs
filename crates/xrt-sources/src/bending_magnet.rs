@@ -10,9 +10,7 @@ use rand::Rng;
 use rand_distr::{Distribution, Normal, Uniform};
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::consts::{
-    C, E0, FINE_STR, M0, M0C2, PI, SIE0, SIM0, E2W,
-};
+use xrt_core::consts::{C, E0, E2W, FINE_STR, M0, M0C2, PI, SIE0, SIM0};
 
 /// Synchrotron source parameters common to BM/Wiggler/Undulator.
 #[derive(Debug, Clone)]
@@ -179,14 +177,11 @@ impl BendingMagnet {
             let k23 = bessel_k_approx(2.0 / 3.0, eta);
             let k13 = bessel_k_approx(1.0 / 3.0, eta);
 
-            let amp_sp = Complex64::new(0.0, -0.5) * sq3_over_pi * gamma * e
-                * E2W
-                / w_cr
-                * gamma2_psi2_p1;
+            let amp_sp =
+                Complex64::new(0.0, -0.5) * sq3_over_pi * gamma * e * E2W / w_cr * gamma2_psi2_p1;
 
             let as_val = amp_sp * k23;
-            let ap_val = Complex64::i() * gamma_psi * amp_sp * k13
-                / gamma2_psi2_p1.sqrt();
+            let ap_val = Complex64::i() * gamma_psi * amp_sp * k13 / gamma2_psi2_p1.sqrt();
 
             let inv_e = 1.0 / e;
             let is_val = (as_val * as_val.conj()).re;
@@ -374,13 +369,13 @@ mod tests {
     #[test]
     fn bending_magnet_create() {
         let bm = BendingMagnet::new(
-            3.0,  // 3 GeV
-            0.3,  // 300 mA
-            1.0,  // 1 T
-            100,  // rays
+            3.0, // 3 GeV
+            0.3, // 300 mA
+            1.0, // 1 T
+            100, // rays
             5000.0, 15000.0, // energy range
-            0.001,  // theta_max
-            0.001,  // psi_max
+            0.001,   // theta_max
+            0.001,   // psi_max
         );
         assert!(bm.rho > 0.0);
         assert!(bm.params.gamma > 1000.0);
@@ -394,11 +389,7 @@ mod tests {
         let psis = vec![0.0; 10];
         let (intensity, _, _) = bm.build_i_map(&energies, &thetas, &psis);
         // On-axis intensity should be non-zero
-        assert!(
-            intensity[0] > 0.0,
-            "intensity = {}",
-            intensity[0]
-        );
+        assert!(intensity[0] > 0.0, "intensity = {}", intensity[0]);
     }
 
     #[test]
@@ -446,9 +437,7 @@ mod tests {
     fn bending_magnet_from_rho() {
         // from_rho should create a valid BM from bending radius
         let rho = 5729.58; // mm, corresponds to B ≈ 1.747T for 3GeV
-        let mut bm = BendingMagnet::from_rho(
-            3.0, 0.3, rho, 1000, 5000.0, 15000.0, 1e-3, 1e-3,
-        );
+        let mut bm = BendingMagnet::from_rho(3.0, 0.3, rho, 1000, 5000.0, 15000.0, 1e-3, 1e-3);
         let beam = bm.shine();
         assert_eq!(beam.nrays(), 1000);
         // Check direction normalization
@@ -456,16 +445,14 @@ mod tests {
             let a = beam.a[i];
             let b = beam.b[i];
             let c = beam.c[i];
-            let norm = (a*a + b*b + c*c).sqrt();
+            let norm = (a * a + b * b + c * c).sqrt();
             assert!((norm - 1.0).abs() < 1e-12, "ray[{i}] |dir| = {norm}");
         }
     }
 
     #[test]
     fn bending_magnet_polarization_output() {
-        let mut bm = BendingMagnet::new(
-            3.0, 0.3, 1.0, 1000, 5000.0, 15000.0, 1e-3, 1e-3,
-        );
+        let mut bm = BendingMagnet::new(3.0, 0.3, 1.0, 1000, 5000.0, 15000.0, 1e-3, 1e-3);
         let beam = bm.shine();
         // BM should produce polarization info (jss, jpp)
         assert_eq!(beam.jss.len(), beam.nrays());

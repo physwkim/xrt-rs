@@ -5,9 +5,9 @@
 //! - BendingMagnet: synchrotron bending magnet with Monte Carlo sampling
 //! - Distribution utilities and polarization initialization
 
-pub mod distributions;
-pub mod polarization;
-pub mod geometric;
 pub mod bending_magnet;
-pub mod wiggler;
+pub mod distributions;
+pub mod geometric;
+pub mod polarization;
 pub mod undulator;
+pub mod wiggler;

@@ -54,7 +54,10 @@ mod tests {
     fn conical_at_vertex() {
         let s = ConicalSurface::new(0.01, 1000.0);
         let n = s.local_n(0.0, 1000.0);
-        assert!((n[2] - 1.0).abs() < 0.01, "normal at vertex should be ~vertical");
+        assert!(
+            (n[2] - 1.0).abs() < 0.01,
+            "normal at vertex should be ~vertical"
+        );
     }
 
     #[test]

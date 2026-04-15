@@ -5,16 +5,16 @@
 use num_complex::Complex64;
 
 use xrt_pytte::crystal::TtCrystal;
-use xrt_pytte::scan::{ScanMode, compute_bragg_coeffs};
-use xrt_pytte::solver::{tt_solve, SolverConfig, solve_bragg_riccati, BraggCoeffs};
-use xrt_pytte::deformation::{NoDeformation, IsotropicPlate};
-use xrt_pytte::quantity::{ev_to_angstrom, rad_to_arcsec, arcsec_to_rad};
+use xrt_pytte::deformation::{IsotropicPlate, NoDeformation};
+use xrt_pytte::quantity::{arcsec_to_rad, ev_to_angstrom, rad_to_arcsec};
+use xrt_pytte::scan::{compute_bragg_coeffs, ScanMode};
+use xrt_pytte::solver::{solve_bragg_riccati, tt_solve, BraggCoeffs, SolverConfig};
 
 fn si111() -> TtCrystal {
     TtCrystal::new(
         [1, 1, 1],
-        3.1356,       // Si(111) d-spacing [Å]
-        1_000_000.0,  // 100 μm thick
+        3.1356,      // Si(111) d-spacing [Å]
+        1_000_000.0, // 100 μm thick
         Complex64::new(-1.5e-5, 1e-7),
         Complex64::new(-8e-6, 5e-8),
         Complex64::new(-8e-6, 5e-8),
@@ -25,9 +25,7 @@ fn si111() -> TtCrystal {
 #[test]
 fn thick_bragg_peak_reflectivity() {
     let crystal = si111();
-    let d_theta: Vec<f64> = (-50..=50)
-        .map(|i| arcsec_to_rad(i as f64 * 0.1))
-        .collect();
+    let d_theta: Vec<f64> = (-50..=50).map(|i| arcsec_to_rad(i as f64 * 0.1)).collect();
     let scan = ScanMode::Angle {
         energy_ev: 10000.0,
         d_theta,
@@ -58,9 +56,7 @@ fn thick_bragg_peak_reflectivity() {
 #[test]
 fn deformation_shifts_rocking_curve() {
     let crystal = si111();
-    let d_theta: Vec<f64> = (-20..=20)
-        .map(|i| arcsec_to_rad(i as f64 * 0.5))
-        .collect();
+    let d_theta: Vec<f64> = (-20..=20).map(|i| arcsec_to_rad(i as f64 * 0.5)).collect();
     let scan = ScanMode::Angle {
         energy_ev: 10000.0,
         d_theta: d_theta.clone(),
@@ -70,7 +66,10 @@ fn deformation_shifts_rocking_curve() {
 
     // Without deformation
     let results_flat = tt_solve(
-        &cs, &cp, 0.0, crystal.thickness,
+        &cs,
+        &cp,
+        0.0,
+        crystal.thickness,
         Complex64::new(0.0, 0.0),
         &SolverConfig::default(),
         &NoDeformation,
@@ -79,7 +78,10 @@ fn deformation_shifts_rocking_curve() {
     // With bending deformation
     let deform = IsotropicPlate::new(1000.0, 100.0, 0.28, 3.1356);
     let results_bent = tt_solve(
-        &cs, &cp, 0.0, crystal.thickness,
+        &cs,
+        &cp,
+        0.0,
+        crystal.thickness,
         Complex64::new(0.0, 0.0),
         &SolverConfig::default(),
         &deform,
@@ -100,7 +102,9 @@ fn deformation_shifts_rocking_curve() {
         .0;
 
     // Deformation should modify reflectivity (even slightly)
-    let diff_sum: f64 = results_flat.iter().zip(results_bent.iter())
+    let diff_sum: f64 = results_flat
+        .iter()
+        .zip(results_bent.iter())
         .map(|(a, b)| (a.rs.norm() - b.rs.norm()).abs())
         .sum();
     assert!(
@@ -120,7 +124,10 @@ fn sigma_pi_differ_in_rocking_curve() {
 
     let (cs, cp) = compute_bragg_coeffs(&crystal, &scan);
     let results = tt_solve(
-        &cs, &cp, 0.0, crystal.thickness,
+        &cs,
+        &cp,
+        0.0,
+        crystal.thickness,
         Complex64::new(0.0, 0.0),
         &SolverConfig::default(),
         &NoDeformation,

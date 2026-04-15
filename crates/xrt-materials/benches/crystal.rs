@@ -6,27 +6,37 @@ use xrt_materials::data::ScatteringTable;
 
 fn bench_bragg_angle(c: &mut Criterion) {
     let si = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
     let mut group = c.benchmark_group("bragg_angle");
     for n in [100, 1000, 10000] {
         let energies = Array1::linspace(5000.0, 30000.0, n);
-        group.bench_with_input(
-            BenchmarkId::new("n_energies", n),
-            &energies,
-            |b, e| b.iter(|| si.base.get_bragg_angle(black_box(e))),
-        );
+        group.bench_with_input(BenchmarkId::new("n_energies", n), &energies, |b, e| {
+            b.iter(|| si.base.get_bragg_angle(black_box(e)))
+        });
     }
     group.finish();
 }
 
 fn bench_amplitude(c: &mut Criterion) {
     let si = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
     let mut group = c.benchmark_group("crystal_amplitude");
     for n in [10, 100, 1000] {
@@ -35,7 +45,12 @@ fn bench_amplitude(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("n_angles", n),
             &(energies, bidn),
-            |b, (e, bd)| b.iter(|| si.base.get_amplitude(black_box(e), black_box(bd), None, None, &si)),
+            |b, (e, bd)| {
+                b.iter(|| {
+                    si.base
+                        .get_amplitude(black_box(e), black_box(bd), None, None, &si)
+                })
+            },
         );
     }
     group.finish();

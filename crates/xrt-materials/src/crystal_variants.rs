@@ -37,14 +37,7 @@ impl CrystalFcc {
         mosaicity: f64,
         table: ScatteringTable,
     ) -> Result<Self, XrtError> {
-        let material = Material::new(
-            &[element],
-            None,
-            rho,
-            MaterialKind::Mirror,
-            None,
-            table,
-        )?;
+        let material = Material::new(&[element], None, rho, MaterialKind::Mirror, None, table)?;
         let base = CrystalBase::new(material, hkl, d, v, geom, fact_dw, thickness, mosaicity);
         Ok(Self { base })
     }
@@ -75,8 +68,7 @@ impl StructureFactor for CrystalFcc {
             // compute f0 once and broadcast
             let n = e.len();
             let stol0 = sin_theta_over_lambda[0];
-            let uniform_stol = n <= 1
-                || sin_theta_over_lambda.iter().all(|&s| s == stol0);
+            let uniform_stol = n <= 1 || sin_theta_over_lambda.iter().all(|&s| s == stol0);
 
             let fhkl = if uniform_stol && n > 1 {
                 let f0_val = f0_scalar(&elem.f0_coeffs, stol0);
@@ -122,24 +114,14 @@ impl CrystalDiamond {
         mosaicity: f64,
         table: ScatteringTable,
     ) -> Result<Self, XrtError> {
-        let sqrt_hkl2 =
-            ((hkl[0] * hkl[0] + hkl[1] * hkl[1] + hkl[2] * hkl[2]) as f64).sqrt();
+        let sqrt_hkl2 = ((hkl[0] * hkl[0] + hkl[1] * hkl[1] + hkl[2] * hkl[2]) as f64).sqrt();
         let d = lattice_a / sqrt_hkl2;
         let v = Some(lattice_a.powi(3));
 
-        let material = Material::new(
-            &[element],
-            None,
-            rho,
-            MaterialKind::Mirror,
-            None,
-            table,
-        )?;
+        let material = Material::new(&[element], None, rho, MaterialKind::Mirror, None, table)?;
         let base = CrystalBase::new(material, hkl, d, v, geom, fact_dw, thickness, mosaicity);
 
-        let fcc = CrystalFcc {
-            base: base.clone(),
-        };
+        let fcc = CrystalFcc { base: base.clone() };
 
         Ok(Self {
             base,
@@ -150,8 +132,7 @@ impl CrystalDiamond {
 
     fn diamond_to_fcc_factor(&self) -> Complex64 {
         let hkl_sum: i32 = self.base.hkl.iter().sum();
-        Complex64::new(1.0, 0.0)
-            + (Complex64::i() * PI * hkl_sum as f64 / 2.0).exp()
+        Complex64::new(1.0, 0.0) + (Complex64::i() * PI * hkl_sum as f64 / 2.0).exp()
     }
 }
 
@@ -259,16 +240,13 @@ fn dl_l_swenson(t: f64) -> f64 {
     if (0.0..30.0).contains(&t) {
         -2.154_537e-4
     } else if (30.0..130.0).contains(&t) {
-        -2.303_956e-14 * t.powi(4) + 7.834_799e-11 * t.powi(3)
-            - 1.724_143e-8 * t.powi(2)
+        -2.303_956e-14 * t.powi(4) + 7.834_799e-11 * t.powi(3) - 1.724_143e-8 * t.powi(2)
             + 8.396_104e-7 * t
             - 2.276_144e-4
     } else if (130.0..293.0).contains(&t) {
-        -1.223_001e-11 * t.powi(3) + 1.532_991e-8 * t.powi(2) - 3.263_667e-6 * t
-            - 5.217_231e-5
+        -1.223_001e-11 * t.powi(3) + 1.532_991e-8 * t.powi(2) - 3.263_667e-6 * t - 5.217_231e-5
     } else if (293.0..=1000.0).contains(&t) {
-        -1.161_022e-12 * t.powi(3) + 3.311_476e-9 * t.powi(2) + 1.124_129e-6 * t
-            - 5.844_535e-4
+        -1.161_022e-12 * t.powi(3) + 3.311_476e-9 * t.powi(2) + 1.124_129e-6 * t - 5.844_535e-4
     } else {
         1.0e100
     }
@@ -337,7 +315,7 @@ impl CrystalFromCell {
                 + 2.0 * h * k * (ca * cb - cg) / (a * b_val)
                 + 2.0 * h * l * (ca * cg - cb) / (a * c_val)
                 + 2.0 * k * l * (cb * cg - ca) / (b_val * c_val))
-            .powf(-0.5);
+                .powf(-0.5);
 
         // Build elements
         let mut elements = Vec::with_capacity(atoms.len());
@@ -435,12 +413,7 @@ impl StructureFactor for CrystalFromCell {
         let mut cache: std::collections::HashMap<usize, (Array1<f64>, Array1<Complex64>)> =
             std::collections::HashMap::new();
 
-        for (idx, (elem, xyz)) in self
-            .elements
-            .iter()
-            .zip(self.atoms_xyz.iter())
-            .enumerate()
-        {
+        for (idx, (elem, xyz)) in self.elements.iter().zip(self.atoms_xyz.iter()).enumerate() {
             let af = self.atoms_fraction[idx];
 
             let (f0_vals, anomalous) = if let Some(cached) = cache.get(&elem.z) {
@@ -466,8 +439,7 @@ impl StructureFactor for CrystalFromCell {
                 });
 
             // exp(2πi × hkl · xyz)
-            let hkl_dot_xyz =
-                hkl_f[0] * xyz[0] + hkl_f[1] * xyz[1] + hkl_f[2] * xyz[2];
+            let hkl_dot_xyz = hkl_f[0] * xyz[0] + hkl_f[1] * xyz[1] + hkl_f[2] * xyz[2];
             let exp_ihr = (Complex64::i() * 2.0 * PI * hkl_dot_xyz).exp();
             let exp_ihr_inv = Complex64::new(1.0, 0.0) / exp_ihr;
 
@@ -510,10 +482,7 @@ mod tests {
         .unwrap();
         let a = si.get_a();
         // Si lattice constant at room temp ≈ 5.4310 Å
-        assert!(
-            (a - 5.431).abs() < 0.002,
-            "a = {a:.6} Å, expected ~5.431 Å"
-        );
+        assert!((a - 5.431).abs() < 0.002, "a = {a:.6} Å, expected ~5.431 Å");
     }
 
     #[test]
@@ -529,11 +498,7 @@ mod tests {
         )
         .unwrap();
         // d_111 = a / sqrt(3) ≈ 3.1356 Å
-        assert!(
-            (si.base.d - 3.1356).abs() < 0.01,
-            "d = {:.4} Å",
-            si.base.d
-        );
+        assert!((si.base.d - 3.1356).abs() < 0.01, "d = {:.4} Å", si.base.d);
     }
 
     #[test]
@@ -609,9 +574,7 @@ mod tests {
 
         let e = array![10000.0];
         let stol = array![0.5 / si_from_cell.base.d];
-        let (f0, fhkl, _) = si_from_cell
-            .get_structure_factor(&e, &stol, true)
-            .unwrap();
+        let (f0, fhkl, _) = si_from_cell.get_structure_factor(&e, &stol, true).unwrap();
 
         // F0 should be ~8 × (14 + f1 + if2) since 8 atoms
         assert!(f0[0].norm() > 100.0, "F0 = {}", f0[0]);
@@ -632,23 +595,30 @@ mod tests {
     fn crystal_from_cell_simple_cubic() {
         // Simple cubic crystal: single atom at origin
         let cr = CrystalFromCell::new(
-            [1, 0, 0],           // hkl
-            5.43,                // a [Å]
-            None, None,          // b, c (defaults to a)
-            90.0, 90.0, 90.0,   // alpha, beta, gamma
+            [1, 0, 0], // hkl
+            5.43,      // a [Å]
+            None,
+            None, // b, c (defaults to a)
+            90.0,
+            90.0,
+            90.0, // alpha, beta, gamma
             &["Si"],
             &[[0.0, 0.0, 0.0]], // atom at origin
-            None,                // occupancy = 1.0
+            None,               // occupancy = 1.0
             CrystalGeometry::BraggReflected,
-            1.0,                 // DW
-            None,                // thickness
-            0.0,                 // mosaicity
+            1.0,  // DW
+            None, // thickness
+            0.0,  // mosaicity
             ScatteringTable::ChantlerTotal,
-        ).unwrap();
+        )
+        .unwrap();
 
         let e = array![10000.0];
         let theta = cr.base.get_bragg_angle(&e);
-        assert!(theta[0] > 0.0 && theta[0] < std::f64::consts::FRAC_PI_2,
-            "Bragg angle should be in (0, π/2): {}", theta[0]);
+        assert!(
+            theta[0] > 0.0 && theta[0] < std::f64::consts::FRAC_PI_2,
+            "Bragg angle should be in (0, π/2): {}",
+            theta[0]
+        );
     }
 }

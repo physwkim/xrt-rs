@@ -401,8 +401,16 @@ fn test_darwin_width(fixture_name: &str, hkl: [i32; 3]) {
         .unwrap();
 
     // Both should be positive
-    assert!(dw_s[0] > 0.0, "darwin_width_s should be positive: {:.6e}", dw_s[0]);
-    assert!(dw_p[0] > 0.0, "darwin_width_p should be positive: {:.6e}", dw_p[0]);
+    assert!(
+        dw_s[0] > 0.0,
+        "darwin_width_s should be positive: {:.6e}",
+        dw_s[0]
+    );
+    assert!(
+        dw_p[0] > 0.0,
+        "darwin_width_p should be positive: {:.6e}",
+        dw_p[0]
+    );
 
     // S-polarization width should be >= P-polarization width
     assert!(
@@ -471,19 +479,34 @@ fn golden_si111_bragg_transmitted() {
         .unwrap();
 
     // Physical constraints: transmitted amplitude should be finite and bounded
-    assert!(rs[0].re.is_finite() && rs[0].im.is_finite(),
-            "Bragg transmitted rs not finite: {:?}", rs[0]);
-    assert!(rp[0].re.is_finite() && rp[0].im.is_finite(),
-            "Bragg transmitted rp not finite: {:?}", rp[0]);
+    assert!(
+        rs[0].re.is_finite() && rs[0].im.is_finite(),
+        "Bragg transmitted rs not finite: {:?}",
+        rs[0]
+    );
+    assert!(
+        rp[0].re.is_finite() && rp[0].im.is_finite(),
+        "Bragg transmitted rp not finite: {:?}",
+        rp[0]
+    );
 
     // Transmitted intensity should be <= 1
-    assert!(rs[0].norm() <= 1.0 + 1e-6,
-            "Bragg transmitted |rs| = {:.6} > 1", rs[0].norm());
-    assert!(rp[0].norm() <= 1.0 + 1e-6,
-            "Bragg transmitted |rp| = {:.6} > 1", rp[0].norm());
+    assert!(
+        rs[0].norm() <= 1.0 + 1e-6,
+        "Bragg transmitted |rs| = {:.6} > 1",
+        rs[0].norm()
+    );
+    assert!(
+        rp[0].norm() <= 1.0 + 1e-6,
+        "Bragg transmitted |rp| = {:.6} > 1",
+        rp[0].norm()
+    );
 
     // If fixture has cross-comparison data, use it
-    if let Some(tc) = fix["test_cases"].as_array().unwrap().iter()
+    if let Some(tc) = fix["test_cases"]
+        .as_array()
+        .unwrap()
+        .iter()
         .find(|t| t["id"].as_str().unwrap().contains("bragg_transmitted"))
     {
         let exp_rs_re = tc["rs_real"].as_f64().unwrap();
@@ -492,7 +515,8 @@ fn golden_si111_bragg_transmitted() {
         assert!(
             (rs[0].re - exp_rs_re).abs() < tol && (rs[0].im - exp_rs_im).abs() < tol,
             "Bragg transmitted rs: ({:.6e},{:.6e}) != ({exp_rs_re:.6e},{exp_rs_im:.6e})",
-            rs[0].re, rs[0].im
+            rs[0].re,
+            rs[0].im
         );
     }
 }
@@ -522,14 +546,26 @@ fn golden_si111_laue_reflected() {
 
     // Physical constraints: finite and bounded (Laue amplitude can exceed 1
     // due to different normalization including asymmetry parameter)
-    assert!(rs[0].re.is_finite() && rs[0].im.is_finite(),
-            "Laue reflected rs not finite: {:?}", rs[0]);
-    assert!(rp[0].re.is_finite() && rp[0].im.is_finite(),
-            "Laue reflected rp not finite: {:?}", rp[0]);
-    assert!(rs[0].norm() < 100.0,
-            "Laue reflected |rs| = {:.6} unreasonably large", rs[0].norm());
-    assert!(rp[0].norm() < 100.0,
-            "Laue reflected |rp| = {:.6} unreasonably large", rp[0].norm());
+    assert!(
+        rs[0].re.is_finite() && rs[0].im.is_finite(),
+        "Laue reflected rs not finite: {:?}",
+        rs[0]
+    );
+    assert!(
+        rp[0].re.is_finite() && rp[0].im.is_finite(),
+        "Laue reflected rp not finite: {:?}",
+        rp[0]
+    );
+    assert!(
+        rs[0].norm() < 100.0,
+        "Laue reflected |rs| = {:.6} unreasonably large",
+        rs[0].norm()
+    );
+    assert!(
+        rp[0].norm() < 100.0,
+        "Laue reflected |rp| = {:.6} unreasonably large",
+        rp[0].norm()
+    );
 }
 
 #[test]
@@ -554,39 +590,67 @@ fn golden_si111_laue_transmitted() {
         .get_amplitude(&e_arr, &bidn, None, None, &si)
         .unwrap();
 
-    assert!(rs[0].re.is_finite() && rs[0].im.is_finite(),
-            "Laue transmitted rs not finite: {:?}", rs[0]);
-    assert!(rp[0].re.is_finite() && rp[0].im.is_finite(),
-            "Laue transmitted rp not finite: {:?}", rp[0]);
-    assert!(rs[0].norm() < 100.0,
-            "Laue transmitted |rs| = {:.6} unreasonably large", rs[0].norm());
+    assert!(
+        rs[0].re.is_finite() && rs[0].im.is_finite(),
+        "Laue transmitted rs not finite: {:?}",
+        rs[0]
+    );
+    assert!(
+        rp[0].re.is_finite() && rp[0].im.is_finite(),
+        "Laue transmitted rp not finite: {:?}",
+        rp[0]
+    );
+    assert!(
+        rs[0].norm() < 100.0,
+        "Laue transmitted |rs| = {:.6} unreasonably large",
+        rs[0].norm()
+    );
 }
 
 #[test]
 fn golden_crystal_thickness_dependence() {
     // Thicker crystal in Laue -> different amplitude (pendelloesung)
     let thin = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::LaueReflected,
-        1.0, Some(0.01), 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::LaueReflected,
+        1.0,
+        Some(0.01),
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
     let thick = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::LaueReflected,
-        1.0, Some(1.0), 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::LaueReflected,
+        1.0,
+        Some(1.0),
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
     let e_arr = array![10000.0];
     let theta_b = thin.base.get_bragg_angle(&e_arr);
     let bidn = array![theta_b[0].sin()];
 
-    let (rs_thin, _) = thin.base.get_amplitude(&e_arr, &bidn, None, None, &thin).unwrap();
-    let (rs_thick, _) = thick.base.get_amplitude(&e_arr, &bidn, None, None, &thick).unwrap();
+    let (rs_thin, _) = thin
+        .base
+        .get_amplitude(&e_arr, &bidn, None, None, &thin)
+        .unwrap();
+    let (rs_thick, _) = thick
+        .base
+        .get_amplitude(&e_arr, &bidn, None, None, &thick)
+        .unwrap();
 
     // Amplitudes should differ for different thicknesses (pendelloesung oscillation)
     let diff = (rs_thin[0].norm() - rs_thick[0].norm()).abs();
     assert!(
         diff > 1e-6,
         "Laue amplitude should depend on thickness: thin={:.6e}, thick={:.6e}",
-        rs_thin[0].norm(), rs_thick[0].norm()
+        rs_thin[0].norm(),
+        rs_thick[0].norm()
     );
 }
 
@@ -603,24 +667,42 @@ fn golden_ge111_bragg_angle() {
         .unwrap();
 
     let ge = CrystalDiamond::new(
-        "Ge", [1, 1, 1], 5.6579, 5.323,
-        CrystalGeometry::BraggReflected, 1.0, None, 0.0,
+        "Ge",
+        [1, 1, 1],
+        5.6579,
+        5.323,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
         ScatteringTable::ChantlerTotal,
-    ).unwrap();
+    )
+    .unwrap();
 
-    let energies: Vec<f64> = tc["energies_ev"].as_array().unwrap()
-        .iter().map(|v| v.as_f64().unwrap()).collect();
-    let expected: Vec<f64> = tc["theta_b_rad"].as_array().unwrap()
-        .iter().map(|v| v.as_f64().unwrap()).collect();
+    let energies: Vec<f64> = tc["energies_ev"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect();
+    let expected: Vec<f64> = tc["theta_b_rad"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect();
 
     let e_arr = Array1::from_vec(energies.clone());
     let theta = ge.base.get_bragg_angle(&e_arr);
 
     for (i, energy) in energies.iter().enumerate() {
         let diff = (theta[i] - expected[i]).abs();
-        assert!(diff < 1e-12,
+        assert!(
+            diff < 1e-12,
             "Ge theta_B(E={energy}): {:.15e} != {:.15e} (diff={diff:.2e})",
-            theta[i], expected[i]);
+            theta[i],
+            expected[i]
+        );
     }
 }
 
@@ -635,23 +717,40 @@ fn golden_si333_bragg_angle() {
         .unwrap();
 
     let si = CrystalSi::new(
-        [3, 3, 3], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [3, 3, 3],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
-    let energies: Vec<f64> = tc["energies_ev"].as_array().unwrap()
-        .iter().map(|v| v.as_f64().unwrap()).collect();
-    let expected: Vec<f64> = tc["theta_b_rad"].as_array().unwrap()
-        .iter().map(|v| v.as_f64().unwrap()).collect();
+    let energies: Vec<f64> = tc["energies_ev"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect();
+    let expected: Vec<f64> = tc["theta_b_rad"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect();
 
     let e_arr = Array1::from_vec(energies.clone());
     let theta = si.base.get_bragg_angle(&e_arr);
 
     for (i, energy) in energies.iter().enumerate() {
         let diff = (theta[i] - expected[i]).abs();
-        assert!(diff < 1e-12,
+        assert!(
+            diff < 1e-12,
             "Si333 theta_B(E={energy}): {:.15e} != {:.15e} (diff={diff:.2e})",
-            theta[i], expected[i]);
+            theta[i],
+            expected[i]
+        );
     }
 }
 
@@ -666,23 +765,40 @@ fn golden_si444_bragg_angle() {
         .unwrap();
 
     let si = CrystalSi::new(
-        [4, 4, 4], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [4, 4, 4],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
-    let energies: Vec<f64> = tc["energies_ev"].as_array().unwrap()
-        .iter().map(|v| v.as_f64().unwrap()).collect();
-    let expected: Vec<f64> = tc["theta_b_rad"].as_array().unwrap()
-        .iter().map(|v| v.as_f64().unwrap()).collect();
+    let energies: Vec<f64> = tc["energies_ev"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect();
+    let expected: Vec<f64> = tc["theta_b_rad"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect();
 
     let e_arr = Array1::from_vec(energies.clone());
     let theta = si.base.get_bragg_angle(&e_arr);
 
     for (i, energy) in energies.iter().enumerate() {
         let diff = (theta[i] - expected[i]).abs();
-        assert!(diff < 1e-12,
+        assert!(
+            diff < 1e-12,
             "Si444 theta_B(E={energy}): {:.15e} != {:.15e} (diff={diff:.2e})",
-            theta[i], expected[i]);
+            theta[i],
+            expected[i]
+        );
     }
 }
 
@@ -690,13 +806,25 @@ fn golden_si444_bragg_angle() {
 fn golden_debye_waller_effect() {
     // DW factor should change chi values (structure factor scaling)
     let si_dw1 = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
     let si_dw01 = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
-        0.1, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        0.1,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
     let e_arr = array![10000.0];
     let theta_b = si_dw1.base.get_bragg_angle(&e_arr);
@@ -708,8 +836,10 @@ fn golden_debye_waller_effect() {
     // DW=0.1 should reduce |chih| compared to DW=1.0
     let chih_1 = chi1.chih[0].norm();
     let chih_01 = chi01.chih[0].norm();
-    assert!(chih_01 < chih_1,
-        "DW=0.1 |chih|={chih_01:.6e} should be < DW=1.0 |chih|={chih_1:.6e}");
+    assert!(
+        chih_01 < chih_1,
+        "DW=0.1 |chih|={chih_01:.6e} should be < DW=1.0 |chih|={chih_1:.6e}"
+    );
 
     // Both DW factors produce finite chi values
     assert!(chi01.chi0[0].re.is_finite(), "DW=0.1 chi0 should be finite");
@@ -717,25 +847,38 @@ fn golden_debye_waller_effect() {
     // Bragg angle should NOT change with DW (it's geometric)
     let theta1 = si_dw1.base.get_bragg_angle(&e_arr);
     let theta01 = si_dw01.base.get_bragg_angle(&e_arr);
-    assert!((theta1[0] - theta01[0]).abs() < 1e-15,
-        "DW should not affect Bragg angle");
+    assert!(
+        (theta1[0] - theta01[0]).abs() < 1e-15,
+        "DW should not affect Bragg angle"
+    );
 }
 
 // Property-based test: Bragg angle decreases with energy
 #[test]
 fn bragg_angle_decreases_with_energy() {
     let si = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
     let energies = Array1::from_vec(vec![5000.0, 10000.0, 15000.0, 20000.0, 30000.0]);
     let theta = si.base.get_bragg_angle(&energies);
 
     for i in 1..theta.len() {
-        assert!(theta[i] < theta[i-1],
+        assert!(
+            theta[i] < theta[i - 1],
             "theta({}) = {:.6e} should be < theta({}) = {:.6e}",
-            energies[i], theta[i], energies[i-1], theta[i-1]);
+            energies[i],
+            theta[i],
+            energies[i - 1],
+            theta[i - 1]
+        );
     }
 }
 
@@ -743,9 +886,15 @@ fn bragg_angle_decreases_with_energy() {
 fn golden_laue_rocking_curve_scan() {
     // Scan Laue reflected amplitude over multiple angles around Bragg
     let si = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::LaueReflected,
-        1.0, Some(0.1), 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::LaueReflected,
+        1.0,
+        Some(0.1),
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
     let e_arr = array![10000.0];
     let theta_b = si.base.get_bragg_angle(&e_arr)[0];
@@ -754,65 +903,108 @@ fn golden_laue_rocking_curve_scan() {
     for dtheta_urad in [-50, -25, -10, 0, 10, 25, 50] {
         let theta = theta_b + dtheta_urad as f64 * 1e-6;
         let bidn = array![theta.sin()]; // positive for Laue
-        let (rs, _) = si.base.get_amplitude(&e_arr, &bidn, None, None, &si).unwrap();
-        assert!(rs[0].re.is_finite(), "Laue rs at dθ={dtheta_urad}µrad not finite");
+        let (rs, _) = si
+            .base
+            .get_amplitude(&e_arr, &bidn, None, None, &si)
+            .unwrap();
+        assert!(
+            rs[0].re.is_finite(),
+            "Laue rs at dθ={dtheta_urad}µrad not finite"
+        );
         amplitudes.push(rs[0].norm());
     }
 
     // Amplitude should vary across the rocking curve (not all identical)
     let min_amp = amplitudes.iter().cloned().fold(f64::INFINITY, f64::min);
     let max_amp = amplitudes.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    assert!(max_amp > min_amp * 1.01 || (max_amp - min_amp).abs() > 1e-6,
-        "Laue rocking curve should vary: min={min_amp:.4e}, max={max_amp:.4e}");
+    assert!(
+        max_amp > min_amp * 1.01 || (max_amp - min_amp).abs() > 1e-6,
+        "Laue rocking curve should vary: min={min_amp:.4e}, max={max_amp:.4e}"
+    );
 }
 
 #[test]
 fn golden_mosaicity_broadens_darwin_width() {
     // Mosaicity should increase the Darwin width
     let si_no_mos = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
-    let si_mos = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 50e-6, // 50 µrad mosaicity
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
         ScatteringTable::ChantlerTotal,
-    ).unwrap();
+    )
+    .unwrap();
+    let si_mos = CrystalSi::new(
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        50e-6, // 50 µrad mosaicity
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
     let e_arr = array![10000.0];
 
-    let dw_no = si_no_mos.base.get_darwin_width(
-        &e_arr, -1.0, xrt_materials::crystal::Polarization::S, &si_no_mos
-    ).unwrap();
-    let dw_mos = si_mos.base.get_darwin_width(
-        &e_arr, -1.0, xrt_materials::crystal::Polarization::S, &si_mos
-    ).unwrap();
+    let dw_no = si_no_mos
+        .base
+        .get_darwin_width(
+            &e_arr,
+            -1.0,
+            xrt_materials::crystal::Polarization::S,
+            &si_no_mos,
+        )
+        .unwrap();
+    let dw_mos = si_mos
+        .base
+        .get_darwin_width(
+            &e_arr,
+            -1.0,
+            xrt_materials::crystal::Polarization::S,
+            &si_mos,
+        )
+        .unwrap();
 
     // Mosaicity should increase width
-    assert!(dw_mos[0] > dw_no[0],
+    assert!(
+        dw_mos[0] > dw_no[0],
         "mosaicity should broaden: {:.6e} > {:.6e}",
-        dw_mos[0], dw_no[0]);
+        dw_mos[0],
+        dw_no[0]
+    );
 
     // Width should be approximately sqrt(dw² + m²)
     let expected = (dw_no[0] * dw_no[0] + (50e-6_f64).powi(2)).sqrt();
     let rel = (dw_mos[0] - expected).abs() / expected;
-    assert!(rel < 0.01,
+    assert!(
+        rel < 0.01,
         "broadened width {:.6e} should match sqrt(dw²+m²) = {expected:.6e}",
-        dw_mos[0]);
+        dw_mos[0]
+    );
 }
 
 #[test]
 fn golden_zero_mosaicity_unchanged() {
     // Zero mosaicity should give same result as before
     let si = CrystalSi::new(
-        [1, 1, 1], 297.15, CrystalGeometry::BraggReflected,
-        1.0, None, 0.0, ScatteringTable::ChantlerTotal,
-    ).unwrap();
+        [1, 1, 1],
+        297.15,
+        CrystalGeometry::BraggReflected,
+        1.0,
+        None,
+        0.0,
+        ScatteringTable::ChantlerTotal,
+    )
+    .unwrap();
 
     let e_arr = array![10000.0];
-    let dw = si.base.get_darwin_width(
-        &e_arr, -1.0, xrt_materials::crystal::Polarization::S, &si
-    ).unwrap();
+    let dw = si
+        .base
+        .get_darwin_width(&e_arr, -1.0, xrt_materials::crystal::Polarization::S, &si)
+        .unwrap();
 
     assert!(dw[0] > 0.0, "darwin width should be positive");
 }
@@ -903,21 +1095,11 @@ fn golden_darwin_width_vs_xrt() {
 
         let dw_s = si
             .base
-            .get_darwin_width(
-                &e_arr,
-                -1.0,
-                xrt_materials::crystal::Polarization::S,
-                &si,
-            )
+            .get_darwin_width(&e_arr, -1.0, xrt_materials::crystal::Polarization::S, &si)
             .unwrap();
         let dw_p = si
             .base
-            .get_darwin_width(
-                &e_arr,
-                -1.0,
-                xrt_materials::crystal::Polarization::P,
-                &si,
-            )
+            .get_darwin_width(&e_arr, -1.0, xrt_materials::crystal::Polarization::P, &si)
             .unwrap();
 
         let xrt_s = tc["xrt_darwin_s_rad"].as_f64().unwrap();
@@ -926,9 +1108,15 @@ fn golden_darwin_width_vs_xrt() {
         // Compare Rust vs XRT Darwin width (5% tolerance)
         let rel_s = (dw_s[0] - xrt_s).abs() / xrt_s.abs().max(1e-20);
         let rel_p = (dw_p[0] - xrt_p).abs() / xrt_p.abs().max(1e-20);
-        assert!(rel_s < 0.05,
-            "Darwin S: Rust={:.6e} vs XRT={xrt_s:.6e} (rel={rel_s:.2e})", dw_s[0]);
-        assert!(rel_p < 0.05,
-            "Darwin P: Rust={:.6e} vs XRT={xrt_p:.6e} (rel={rel_p:.2e})", dw_p[0]);
+        assert!(
+            rel_s < 0.05,
+            "Darwin S: Rust={:.6e} vs XRT={xrt_s:.6e} (rel={rel_s:.2e})",
+            dw_s[0]
+        );
+        assert!(
+            rel_p < 0.05,
+            "Darwin P: Rust={:.6e} vs XRT={xrt_p:.6e} (rel={rel_p:.2e})",
+            dw_p[0]
+        );
     }
 }

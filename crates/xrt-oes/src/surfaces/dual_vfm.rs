@@ -22,11 +22,21 @@ pub struct DualVfmSurface {
 
 impl DualVfmSurface {
     pub fn new(r_major: f64, r_minor_1: f64, r_minor_2: f64, x_boundary: f64, y_min: f64) -> Self {
-        Self { r_major, r_minor_1, r_minor_2, x_boundary, y_min }
+        Self {
+            r_major,
+            r_minor_1,
+            r_minor_2,
+            x_boundary,
+            y_min,
+        }
     }
 
     fn r_minor_at(&self, x: f64) -> f64 {
-        if x < self.x_boundary { self.r_minor_1 } else { self.r_minor_2 }
+        if x < self.x_boundary {
+            self.r_minor_1
+        } else {
+            self.r_minor_2
+        }
     }
 }
 
@@ -78,7 +88,9 @@ mod tests {
         let z_neg = s.local_z(-5.0, 0.0);
         let z_pos = s.local_z(5.0, 0.0);
         // Different sagittal radii → different z
-        assert!((z_neg - z_pos).abs() > 1e-6,
-            "different radii should give different z: {z_neg} vs {z_pos}");
+        assert!(
+            (z_neg - z_pos).abs() > 1e-6,
+            "different radii should give different z: {z_neg} vs {z_pos}"
+        );
     }
 }

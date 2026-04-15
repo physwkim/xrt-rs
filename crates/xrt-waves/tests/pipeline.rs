@@ -7,8 +7,8 @@ use num_complex::Complex64;
 use xrt_core::beam::RayState;
 use xrt_sources::distributions::{EnergyDist, SpatialDist};
 use xrt_sources::geometric::GeometricSource;
-use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
-use xrt_waves::prepare_wave::{WaveParams, prepare_wave, beam_to_diffraction_rays};
+use xrt_waves::diffraction::{diffraction_integral, DiffractionRay, PixelPoint};
+use xrt_waves::prepare_wave::{beam_to_diffraction_rays, prepare_wave, WaveParams};
 
 /// Test: GeometricSource → flat mirror → diffraction screen.
 #[test]
@@ -77,9 +77,21 @@ fn diffraction_symmetry() {
 
     // Symmetric pixel positions
     let pixels = vec![
-        PixelPoint { x: -0.5, y: 1000.0, z: 0.0 },
-        PixelPoint { x: 0.0, y: 1000.0, z: 0.0 },
-        PixelPoint { x: 0.5, y: 1000.0, z: 0.0 },
+        PixelPoint {
+            x: -0.5,
+            y: 1000.0,
+            z: 0.0,
+        },
+        PixelPoint {
+            x: 0.0,
+            y: 1000.0,
+            z: 0.0,
+        },
+        PixelPoint {
+            x: 0.5,
+            y: 1000.0,
+            z: 0.0,
+        },
     ];
 
     let results = diffraction_integral(&rays, &pixels);
@@ -194,15 +206,13 @@ fn bm_source_to_diffraction() {
     let rays = beam_to_diffraction_rays(&beam, &normals, &good);
 
     // Create screen
-    let pixels = vec![
-        PixelPoint { x: 0.0, y: 1000.0, z: 0.0 },
-    ];
+    let pixels = vec![PixelPoint {
+        x: 0.0,
+        y: 1000.0,
+        z: 0.0,
+    }];
     let results = diffraction_integral(&rays, &pixels);
 
     assert_eq!(results.len(), 1);
-    assert!(
-        results[0].es.norm().is_finite(),
-        "Es = {}",
-        results[0].es
-    );
+    assert!(results[0].es.norm().is_finite(), "Es = {}", results[0].es);
 }

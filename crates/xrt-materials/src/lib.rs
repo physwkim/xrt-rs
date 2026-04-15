@@ -6,9 +6,9 @@
 //! - Crystal: dynamical diffraction theory (Bragg/Laue)
 //! - Data: file parsers for scattering factor tables
 
+pub mod crystal;
+pub mod crystal_variants;
 pub mod data;
 pub mod elements;
 pub mod material;
-pub mod crystal;
-pub mod crystal_variants;
 pub mod multilayer;

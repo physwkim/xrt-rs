@@ -17,7 +17,7 @@ use rand::Rng;
 use rand_distr::{Distribution, Normal, Uniform};
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::consts::{FINE_STR, PI2, SIE0, SIC, SIHPLANCK, E2W};
+use xrt_core::consts::{E2W, FINE_STR, PI2, SIC, SIE0, SIHPLANCK};
 
 use crate::bending_magnet::SynchrotronParams;
 
@@ -93,8 +93,9 @@ impl Undulator {
     pub fn fundamental_energy(&self) -> f64 {
         let gamma = self.params.gamma;
         let lambda_u = self.period * 1e-3; // mm → m
-        // E₁ = 2γ²hc / (λ_u(1 + K²/2))
-        let e1 = 2.0 * gamma * gamma * SIHPLANCK * SIC / (lambda_u * (1.0 + self.k_squared() / 2.0));
+                                           // E₁ = 2γ²hc / (λ_u(1 + K²/2))
+        let e1 =
+            2.0 * gamma * gamma * SIHPLANCK * SIC / (lambda_u * (1.0 + self.k_squared() / 2.0));
         e1 / SIE0 // J → eV
     }
 
@@ -119,8 +120,7 @@ impl Undulator {
         let lambda_u = self.period * 1e-3; // mm → m
         let phase_rad = self.phase_deg.to_radians();
 
-        let amp2flux = FINE_STR * self.params.beam_current / SIE0
-            * (self.n_periods as f64);
+        let amp2flux = FINE_STR * self.params.beam_current / SIE0 * (self.n_periods as f64);
 
         // Number of integration steps per period
         let n_steps = 64;
@@ -162,8 +162,8 @@ impl Undulator {
                 let phase_term = omega / SIC * path;
 
                 // Correction for average velocity
-                let avg_correction = omega / SIC * lambda_u * t
-                    * (1.0 + self.k_squared() / 2.0) / (2.0 * gamma2);
+                let avg_correction =
+                    omega / SIC * lambda_u * t * (1.0 + self.k_squared() / 2.0) / (2.0 * gamma2);
 
                 let total_phase = phase_term - avg_correction;
                 let exp_phase = Complex64::new(total_phase.cos(), total_phase.sin());
@@ -373,17 +373,11 @@ mod tests {
             100,    // 100 periods
             100,    // rays
             5000.0, // energy range
-            20000.0,
-            0.0001,
-            0.0001,
+            20000.0, 0.0001, 0.0001,
         );
         let e1 = u.fundamental_energy();
         // E₁ should be in the keV range for these parameters
-        assert!(
-            e1 > 1000.0 && e1 < 100000.0,
-            "E₁ = {} eV",
-            e1
-        );
+        assert!(e1 > 1000.0 && e1 < 100000.0, "E₁ = {} eV", e1);
     }
 
     #[test]
@@ -434,16 +428,18 @@ mod tests {
 
     #[test]
     fn k_squared() {
-        let u = Undulator::new(3.0, 0.3, 1.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 0.001, 0.001);
+        let u = Undulator::new(
+            3.0, 0.3, 1.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 0.001, 0.001,
+        );
         assert!((u.k_squared() - 5.0).abs() < 1e-10);
     }
 
     #[test]
     fn with_phase_sets_phase() {
         let und = Undulator::new(
-            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
-            5000.0, 20000.0, 1e-4, 1e-4,
-        ).with_phase(90.0);
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100, 5000.0, 20000.0, 1e-4, 1e-4,
+        )
+        .with_phase(90.0);
         assert!((und.phase_deg - 90.0).abs() < 1e-15);
     }
 
@@ -451,14 +447,15 @@ mod tests {
     fn with_phase_circular_produces_rays() {
         // K_x = K_y with phase=90° → circular polarization
         let mut und = Undulator::new(
-            6.0, 0.2, 1.0, 1.0, 20.0, 100, 1000,
-            5000.0, 20000.0, 1e-4, 1e-4,
-        ).with_phase(90.0);
+            6.0, 0.2, 1.0, 1.0, 20.0, 100, 1000, 5000.0, 20000.0, 1e-4, 1e-4,
+        )
+        .with_phase(90.0);
         let beam = und.shine();
         assert_eq!(beam.nrays(), 1000);
         // Direction should be unit vectors
         for i in 0..beam.nrays() {
-            let norm = (beam.a[i]*beam.a[i] + beam.b[i]*beam.b[i] + beam.c[i]*beam.c[i]).sqrt();
+            let norm =
+                (beam.a[i] * beam.a[i] + beam.b[i] * beam.b[i] + beam.c[i] * beam.c[i]).sqrt();
             assert!((norm - 1.0).abs() < 1e-12);
         }
     }
@@ -467,14 +464,15 @@ mod tests {
     fn harmonic_energy_scaling() {
         // E_n = n × E_1 for odd harmonics
         let und = Undulator::new(
-            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
-            5000.0, 50000.0, 1e-4, 1e-4,
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100, 5000.0, 50000.0, 1e-4, 1e-4,
         );
         let e1 = und.fundamental_energy();
         assert!(e1 > 0.0, "fundamental energy should be positive");
         // E1 = 950 * E_GeV^2 / (period_mm * (1 + K^2/2)) = 950*36/(20*2.125) ≈ 8044 eV
-        assert!(e1 > 5000.0 && e1 < 15000.0,
-            "E1 = {e1} should be ~8044 eV for 6GeV, K=1.5, λ=20mm");
+        assert!(
+            e1 > 5000.0 && e1 < 15000.0,
+            "E1 = {e1} should be ~8044 eV for 6GeV, K=1.5, λ=20mm"
+        );
     }
 
     #[test]
@@ -483,8 +481,7 @@ mod tests {
         // Use a focused energy scan around E₁ with fine spacing to reliably
         // resolve the narrow undulator peak (ΔE/E ≈ 1/N_periods).
         let und = Undulator::new(
-            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
-            1000.0, 50000.0, 1e-4, 1e-4,
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100, 1000.0, 50000.0, 1e-4, 1e-4,
         );
         let e1 = und.fundamental_energy();
 
@@ -528,8 +525,7 @@ mod tests {
     fn on_axis_odd_harmonics_only() {
         // On-axis: only odd harmonics should appear
         let und = Undulator::new(
-            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
-            1000.0, 50000.0, 1e-4, 1e-4,
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100, 1000.0, 50000.0, 1e-4, 1e-4,
         );
         let e1 = und.fundamental_energy();
 
@@ -549,8 +545,10 @@ mod tests {
         // Allow it to be small but not zero (finite N effects)
         if i_e1[0] > 1e-30 {
             let ratio_2nd = i_2e1[0] / i_e1[0];
-            assert!(ratio_2nd < 0.5,
-                "On-axis 2nd harmonic should be suppressed: I(2E₁)/I(E₁) = {ratio_2nd:.3}");
+            assert!(
+                ratio_2nd < 0.5,
+                "On-axis 2nd harmonic should be suppressed: I(2E₁)/I(E₁) = {ratio_2nd:.3}"
+            );
         }
     }
 
@@ -558,8 +556,7 @@ mod tests {
     fn off_axis_even_harmonics_appear() {
         // Off-axis: even harmonics become visible
         let und = Undulator::new(
-            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100,
-            1000.0, 50000.0, 1e-4, 1e-4,
+            6.0, 0.2, 0.0, 1.5, 20.0, 100, 100, 1000.0, 50000.0, 1e-4, 1e-4,
         );
         let e1 = und.fundamental_energy();
 
@@ -570,7 +567,10 @@ mod tests {
         let (i_2e1_off, _, _) = und.build_i_map(&[2.0 * e1], &thetas, &psis);
 
         // Off-axis 2nd harmonic should have some intensity
-        assert!(i_2e1_off[0].is_finite(),
-            "Off-axis I(2E₁) should be finite: {}", i_2e1_off[0]);
+        assert!(
+            i_2e1_off[0].is_finite(),
+            "Off-axis I(2E₁) should be finite: {}",
+            i_2e1_off[0]
+        );
     }
 }

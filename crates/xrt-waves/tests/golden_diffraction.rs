@@ -10,8 +10,8 @@ fn load_fixture() -> serde_json::Value {
         env!("CARGO_MANIFEST_DIR"),
         "/../../validation/fixtures/diffraction_ref.json"
     );
-    let text = std::fs::read_to_string(path)
-        .expect("Run `python validation/generate_fixtures.py` first");
+    let text =
+        std::fs::read_to_string(path).expect("Run `python validation/generate_fixtures.py` first");
     serde_json::from_str(&text).unwrap()
 }
 
@@ -79,24 +79,30 @@ fn golden_diffraction_finite_results() {
 #[test]
 fn golden_diffraction_symmetry() {
     // Symmetric rays should produce symmetric pixel intensities
-    let rays = vec![
-        DiffractionRay {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            nx: 0.0,
-            ny: 0.0,
-            nz: 1.0,
-            nl: 1.0,
-            es: Complex64::new(1.0, 0.0),
-            ep: Complex64::new(1.0, 0.0),
-            energy: 10000.0,
-        },
-    ];
+    let rays = vec![DiffractionRay {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        nx: 0.0,
+        ny: 0.0,
+        nz: 1.0,
+        nl: 1.0,
+        es: Complex64::new(1.0, 0.0),
+        ep: Complex64::new(1.0, 0.0),
+        energy: 10000.0,
+    }];
 
     let pixels = vec![
-        PixelPoint { x: -0.01, y: 0.0, z: 1000.0 },
-        PixelPoint { x: 0.01, y: 0.0, z: 1000.0 },
+        PixelPoint {
+            x: -0.01,
+            y: 0.0,
+            z: 1000.0,
+        },
+        PixelPoint {
+            x: 0.01,
+            y: 0.0,
+            z: 1000.0,
+        },
     ];
 
     let results = diffraction_integral(&rays, &pixels);

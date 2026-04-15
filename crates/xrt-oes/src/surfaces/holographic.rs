@@ -24,7 +24,11 @@ pub struct HolographicGrating {
 
 impl HolographicGrating {
     pub fn new(recording_wavelength: f64, source1: [f64; 3], source2: [f64; 3]) -> Self {
-        Self { recording_wavelength, source1, source2 }
+        Self {
+            recording_wavelength,
+            source1,
+            source2,
+        }
     }
 
     /// Compute the local grating density at (x, y, z=0).
@@ -85,11 +89,7 @@ mod tests {
 
     #[test]
     fn holographic_has_grating_vector() {
-        let g = HolographicGrating::new(
-            0.0005,
-            [0.0, -1000.0, 100.0],
-            [0.0, -1000.0, -100.0],
-        );
+        let g = HolographicGrating::new(0.0005, [0.0, -1000.0, 100.0], [0.0, -1000.0, -100.0]);
         let gv = g.local_g(0.0, 0.0).unwrap();
         // Should have nonzero gz component (from z-separated sources)
         assert!(gv[2].abs() > 0.0, "should have grating vector");
@@ -97,14 +97,11 @@ mod tests {
 
     #[test]
     fn holographic_varies_with_position() {
-        let g = HolographicGrating::new(
-            0.0005,
-            [100.0, -1000.0, 100.0],
-            [-100.0, -1000.0, -100.0],
-        );
+        let g = HolographicGrating::new(0.0005, [100.0, -1000.0, 100.0], [-100.0, -1000.0, -100.0]);
         let g1 = g.local_g(0.0, 0.0).unwrap();
         let g2 = g.local_g(10.0, 50.0).unwrap();
-        let diff = ((g1[0]-g2[0]).powi(2) + (g1[1]-g2[1]).powi(2) + (g1[2]-g2[2]).powi(2)).sqrt();
+        let diff =
+            ((g1[0] - g2[0]).powi(2) + (g1[1] - g2[1]).powi(2) + (g1[2] - g2[2]).powi(2)).sqrt();
         assert!(diff > 1e-6, "grating vector should vary with position");
     }
 }

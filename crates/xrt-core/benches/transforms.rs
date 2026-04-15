@@ -44,11 +44,8 @@ fn bench_rotate_xyz(c: &mut Criterion) {
                 let mut x = Array1::from_elem(n, 1.0);
                 let mut y = Array1::zeros(n);
                 let mut z = Array1::zeros(n);
-                let params = RotationParams::default_sequence(
-                    0.0,
-                    0.0,
-                    std::f64::consts::FRAC_PI_2,
-                );
+                let params =
+                    RotationParams::default_sequence(0.0, 0.0, std::f64::consts::FRAC_PI_2);
                 b.iter(|| {
                     rotate_xyz(
                         black_box(&mut x),

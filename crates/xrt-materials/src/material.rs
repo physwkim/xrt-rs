@@ -141,10 +141,7 @@ impl Material {
     /// Calculate linear absorption coefficient μ [cm⁻¹].
     ///
     /// μ = 2 × |Im(n)| × E/cℏ × 1e8
-    pub fn get_absorption_coefficient(
-        &self,
-        e: &Array1<f64>,
-    ) -> Result<Array1<f64>, XrtError> {
+    pub fn get_absorption_coefficient(&self, e: &Array1<f64>) -> Result<Array1<f64>, XrtError> {
         let n = self.get_refractive_index(e)?;
         Ok(ndarray::Zip::from(&n)
             .and(e)
@@ -201,16 +198,14 @@ impl Material {
 
             match kind {
                 MaterialKind::Mirror | MaterialKind::ThinMirror | MaterialKind::Grating => {
-                    let rs_val =
-                        (n1_cos_alpha - n2_cos_beta) / (n1_cos_alpha + n2_cos_beta);
-                    let rp_val = (n2 * cos_alpha - n1 * cos_beta)
-                        / (n2 * cos_alpha + n1 * cos_beta);
+                    let rs_val = (n1_cos_alpha - n2_cos_beta) / (n1_cos_alpha + n2_cos_beta);
+                    let rp_val =
+                        (n2 * cos_alpha - n1 * cos_beta) / (n2 * cos_alpha + n1 * cos_beta);
 
                     if kind == MaterialKind::ThinMirror {
                         let t = self.thickness.unwrap_or(0.0);
-                        let p2 = (Complex64::new(0.0, 2.0) * e[i] / CHBAR * n2_cos_beta * t
-                            * 1e7)
-                            .exp();
+                        let p2 =
+                            (Complex64::new(0.0, 2.0) * e[i] / CHBAR * n2_cos_beta * t * 1e7).exp();
                         rs[i] = rs_val * (Complex64::new(1.0, 0.0) - p2)
                             / (Complex64::new(1.0, 0.0) - rs_val * rs_val * p2);
                         rp[i] = rp_val * (Complex64::new(1.0, 0.0) - p2)
@@ -223,8 +218,7 @@ impl Material {
                 MaterialKind::Plate | MaterialKind::Lens => {
                     let tf = ((n2_cos_beta * n1.conj()).re / cos_alpha).sqrt() / n1.norm();
                     rs[i] =
-                        Complex64::new(2.0, 0.0) * n1_cos_alpha / (n1_cos_alpha + n2_cos_beta)
-                            * tf;
+                        Complex64::new(2.0, 0.0) * n1_cos_alpha / (n1_cos_alpha + n2_cos_beta) * tf;
                     rp[i] = Complex64::new(2.0, 0.0) * n1_cos_alpha
                         / (n2 * cos_alpha + n1 * cos_beta)
                         * tf;
@@ -296,11 +290,7 @@ mod tests {
         let e = array![10000.0];
         let mu = si.get_absorption_coefficient(&e).unwrap();
         // μ for Si at 10 keV should be ~150 cm⁻¹
-        assert!(
-            mu[0] > 50.0 && mu[0] < 500.0,
-            "mu = {} cm⁻¹",
-            mu[0]
-        );
+        assert!(mu[0] > 50.0 && mu[0] < 500.0, "mu = {} cm⁻¹", mu[0]);
     }
 
     #[test]
@@ -358,45 +348,66 @@ mod tests {
             MaterialKind::Mirror,
             None,
             ScatteringTable::ChantlerTotal,
-        ).unwrap();
+        )
+        .unwrap();
 
         let e = Array1::from_vec(vec![10000.0]);
         let n = mat.get_refractive_index(&e).unwrap();
         // Real part should be close to 1 (1 - delta)
-        assert!(n[0].re < 1.0 && n[0].re > 0.999,
-            "LaAlO3 n.re at 10keV should be ~1: {}", n[0].re);
+        assert!(
+            n[0].re < 1.0 && n[0].re > 0.999,
+            "LaAlO3 n.re at 10keV should be ~1: {}",
+            n[0].re
+        );
         // Imaginary part should be small (absorption, sign depends on convention)
-        assert!(n[0].im.abs() < 1e-3,
-            "LaAlO3 n.im at 10keV should be small: {}", n[0].im);
+        assert!(
+            n[0].im.abs() < 1e-3,
+            "LaAlO3 n.im at 10keV should be small: {}",
+            n[0].im
+        );
     }
 
     #[test]
     fn negative_density_handled() {
         // Negative density might produce physically wrong but finite results
         let mat = Material::new(
-            &["Si"], None, -2.33, MaterialKind::Mirror, None,
+            &["Si"],
+            None,
+            -2.33,
+            MaterialKind::Mirror,
+            None,
             ScatteringTable::ChantlerTotal,
         );
         // Either returns error or produces finite result
         if let Ok(m) = mat {
             let e = Array1::from_vec(vec![10000.0]);
             let n = m.get_refractive_index(&e).unwrap();
-            assert!(n[0].re.is_finite(), "negative rho should still give finite n");
+            assert!(
+                n[0].re.is_finite(),
+                "negative rho should still give finite n"
+            );
         }
     }
 
     #[test]
     fn zero_density_handled() {
         let mat = Material::new(
-            &["Si"], None, 0.0, MaterialKind::Mirror, None,
+            &["Si"],
+            None,
+            0.0,
+            MaterialKind::Mirror,
+            None,
             ScatteringTable::ChantlerTotal,
         );
         if let Ok(m) = mat {
             let e = Array1::from_vec(vec![10000.0]);
             let n = m.get_refractive_index(&e).unwrap();
             // Zero density -> n should be exactly 1 (vacuum)
-            assert!((n[0].re - 1.0).abs() < 1e-10,
-                "zero density n.re should be 1.0: {}", n[0].re);
+            assert!(
+                (n[0].re - 1.0).abs() < 1e-10,
+                "zero density n.re should be 1.0: {}",
+                n[0].re
+            );
         }
     }
 
@@ -404,9 +415,14 @@ mod tests {
     fn low_energy_scattering() {
         // Test at very low energy (50 eV) — near limits of tabulated data
         let mat = Material::new(
-            &["Si"], None, 2.33, MaterialKind::Mirror, None,
+            &["Si"],
+            None,
+            2.33,
+            MaterialKind::Mirror,
+            None,
             ScatteringTable::ChantlerTotal,
-        ).unwrap();
+        )
+        .unwrap();
         let e = Array1::from_vec(vec![50.0]);
         let n = mat.get_refractive_index(&e);
         if let Ok(n_val) = n {
@@ -419,18 +435,29 @@ mod tests {
     fn fresnel_reflectivity_bounded() {
         // For any material and angle, |Rs| ≤ 1 and |Rp| ≤ 1
         let mat = Material::new(
-            &["Si"], None, 2.33, MaterialKind::Mirror, None,
+            &["Si"],
+            None,
+            2.33,
+            MaterialKind::Mirror,
+            None,
             ScatteringTable::ChantlerTotal,
-        ).unwrap();
+        )
+        .unwrap();
 
         let e = Array1::from_vec(vec![10000.0]);
         for sin_theta in [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.9] {
             let bidn = Array1::from_vec(vec![sin_theta]);
             let result = mat.get_amplitude(&e, &bidn, true).unwrap();
-            assert!(result.rs[0].norm() <= 1.0 + 1e-10,
-                "Si |Rs| at sin_θ={sin_theta}: {:.6} > 1", result.rs[0].norm());
-            assert!(result.rp[0].norm() <= 1.0 + 1e-10,
-                "Si |Rp| at sin_θ={sin_theta}: {:.6} > 1", result.rp[0].norm());
+            assert!(
+                result.rs[0].norm() <= 1.0 + 1e-10,
+                "Si |Rs| at sin_θ={sin_theta}: {:.6} > 1",
+                result.rs[0].norm()
+            );
+            assert!(
+                result.rp[0].norm() <= 1.0 + 1e-10,
+                "Si |Rp| at sin_θ={sin_theta}: {:.6} > 1",
+                result.rp[0].norm()
+            );
         }
     }
 }

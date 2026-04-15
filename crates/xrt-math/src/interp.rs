@@ -103,8 +103,7 @@ impl CubicSpline {
         let mut coeffs = Vec::with_capacity(m);
         for i in 0..m {
             let a = ys[i];
-            let b_coeff =
-                (ys[i + 1] - ys[i]) / h[i] - h[i] * (2.0 * c_arr[i] + c_arr[i + 1]) / 3.0;
+            let b_coeff = (ys[i + 1] - ys[i]) / h[i] - h[i] * (2.0 * c_arr[i] + c_arr[i + 1]) / 3.0;
             let c_coeff = c_arr[i];
             let d_coeff = (c_arr[i + 1] - c_arr[i]) / (3.0 * h[i]);
             coeffs.push([a, b_coeff, c_coeff, d_coeff]);
@@ -304,10 +303,7 @@ mod tests {
 
         for (&x, &y) in xs.iter().zip(ys.iter()) {
             let got = spline.eval(x);
-            assert!(
-                (got - y).abs() < 1e-12,
-                "at x={x}: got {got}, expected {y}"
-            );
+            assert!((got - y).abs() < 1e-12, "at x={x}: got {got}, expected {y}");
         }
     }
 

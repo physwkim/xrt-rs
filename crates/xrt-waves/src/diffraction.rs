@@ -197,20 +197,31 @@ mod tests {
     fn ray_at_pixel_location_skipped() {
         // Ray exactly at pixel location: path = 0, should be skipped
         let ray = DiffractionRay {
-            x: 1.0, y: 2.0, z: 3.0,
-            nx: 0.0, ny: 0.0, nz: 1.0,
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+            nx: 0.0,
+            ny: 0.0,
+            nz: 1.0,
             nl: 1.0,
             es: Complex64::new(1.0, 0.0),
             ep: Complex64::new(1.0, 0.0),
             energy: 10000.0,
         };
-        let pixel = PixelPoint { x: 1.0, y: 2.0, z: 3.0 }; // same as ray
+        let pixel = PixelPoint {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        }; // same as ray
 
         let result = diffraction_integral(&[ray], &[pixel]);
         // Should be zero (ray at pixel is skipped, not a singularity)
         assert_eq!(result.len(), 1);
-        assert!(result[0].es.norm() < 1e-30,
-            "ray at pixel should give zero: {}", result[0].es);
+        assert!(
+            result[0].es.norm() < 1e-30,
+            "ray at pixel should give zero: {}",
+            result[0].es
+        );
     }
 
     #[test]
@@ -235,7 +246,11 @@ mod tests {
             })
             .collect();
 
-        let pixel = PixelPoint { x: 0.0, y: 0.0, z: 100.0 };
+        let pixel = PixelPoint {
+            x: 0.0,
+            y: 0.0,
+            z: 100.0,
+        };
         let result = diffraction_integral(&rays, &[pixel]);
 
         // Result should be finite and non-zero
@@ -247,8 +262,13 @@ mod tests {
             .map(|i| {
                 let x = (i as f64 - 50.0) * 0.001;
                 DiffractionRay {
-                    x, y: 0.0, z: 0.0,
-                    nx: 0.0, ny: 0.0, nz: 1.0, nl: 1.0,
+                    x,
+                    y: 0.0,
+                    z: 0.0,
+                    nx: 0.0,
+                    ny: 0.0,
+                    nz: 1.0,
+                    nl: 1.0,
                     es: Complex64::new(1.0 / 100.0, 0.0),
                     ep: Complex64::new(0.0, 0.0),
                     energy: 10000.0,
@@ -258,8 +278,10 @@ mod tests {
         let result_small = diffraction_integral(&rays_small, &[pixel]);
         // Both should have similar order of magnitude
         let ratio = result[0].es.norm() / result_small[0].es.norm();
-        assert!(ratio > 0.01 && ratio < 100.0,
-            "10000 vs 100 rays ratio = {ratio:.2}, should be reasonable");
+        assert!(
+            ratio > 0.01 && ratio < 100.0,
+            "10000 vs 100 rays ratio = {ratio:.2}, should be reasonable"
+        );
     }
 
     #[test]
@@ -275,9 +297,11 @@ mod tests {
 
         // f64 should maintain precision: sin(2πN + ε) ≈ sin(ε)
         let diff = (sin_full - sin_ref).abs();
-        assert!(diff < 1e-6,
+        assert!(
+            diff < 1e-6,
             "f64 phase wrapping: sin(2π×{n_revolutions}+{epsilon}) = {sin_full:.10e}, \
-             sin({epsilon}) = {sin_ref:.10e}, diff = {diff:.2e}");
+             sin({epsilon}) = {sin_ref:.10e}, diff = {diff:.2e}"
+        );
     }
 
     #[test]
@@ -288,8 +312,13 @@ mod tests {
             .map(|i| {
                 let x = (i as f64 - n as f64 / 2.0) * 0.0001; // spread over 5mm
                 DiffractionRay {
-                    x, y: 0.0, z: 0.0,
-                    nx: 0.0, ny: 0.0, nz: 1.0, nl: 1.0,
+                    x,
+                    y: 0.0,
+                    z: 0.0,
+                    nx: 0.0,
+                    ny: 0.0,
+                    nz: 1.0,
+                    nl: 1.0,
                     es: Complex64::new(1.0 / n as f64, 0.0),
                     ep: Complex64::new(0.0, 0.0),
                     energy: 10000.0,
@@ -298,16 +327,27 @@ mod tests {
             .collect();
 
         let pixels = vec![
-            PixelPoint { x: 0.0, y: 0.0, z: 100.0 },
-            PixelPoint { x: 0.1, y: 0.0, z: 100.0 },
+            PixelPoint {
+                x: 0.0,
+                y: 0.0,
+                z: 100.0,
+            },
+            PixelPoint {
+                x: 0.1,
+                y: 0.0,
+                z: 100.0,
+            },
         ];
 
         let result = diffraction_integral(&rays, &pixels);
         assert_eq!(result.len(), 2);
         // Center pixel should have higher intensity than off-center
-        assert!(result[0].es.norm() > result[1].es.norm() * 0.5,
+        assert!(
+            result[0].es.norm() > result[1].es.norm() * 0.5,
             "center should be brighter: {:.4e} vs {:.4e}",
-            result[0].es.norm(), result[1].es.norm());
+            result[0].es.norm(),
+            result[1].es.norm()
+        );
     }
 
     #[test]
@@ -315,24 +355,44 @@ mod tests {
         // Rays with different energies should produce finite results
         let rays: Vec<DiffractionRay> = vec![
             DiffractionRay {
-                x: 0.0, y: 0.0, z: 0.0,
-                nx: 0.0, ny: 0.0, nz: 1.0, nl: 1.0,
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                nx: 0.0,
+                ny: 0.0,
+                nz: 1.0,
+                nl: 1.0,
                 es: Complex64::new(1.0, 0.0),
                 ep: Complex64::new(0.0, 0.0),
                 energy: 8000.0,
             },
             DiffractionRay {
-                x: 0.01, y: 0.0, z: 0.0,
-                nx: 0.0, ny: 0.0, nz: 1.0, nl: 1.0,
+                x: 0.01,
+                y: 0.0,
+                z: 0.0,
+                nx: 0.0,
+                ny: 0.0,
+                nz: 1.0,
+                nl: 1.0,
                 es: Complex64::new(1.0, 0.0),
                 ep: Complex64::new(0.0, 0.0),
                 energy: 12000.0,
             },
         ];
-        let pixels = vec![PixelPoint { x: 0.0, y: 0.0, z: 100.0 }];
+        let pixels = vec![PixelPoint {
+            x: 0.0,
+            y: 0.0,
+            z: 100.0,
+        }];
 
         let result = diffraction_integral(&rays, &pixels);
-        assert!(result[0].es.re.is_finite(), "polychromatic Es should be finite");
-        assert!(result[0].es.norm() > 0.0, "polychromatic should be non-zero");
+        assert!(
+            result[0].es.re.is_finite(),
+            "polychromatic Es should be finite"
+        );
+        assert!(
+            result[0].es.norm() > 0.0,
+            "polychromatic should be non-zero"
+        );
     }
 }

@@ -79,8 +79,7 @@ pub fn secant_method<S: SurfaceEval>(
     config: &RootFindConfig,
 ) -> IntersectionResult {
     let (mut dz1, _, _, _) = surface.find_dz(t1, x0, y0, z0, a, b, c, invert_normal);
-    let (mut dz2, mut x2, mut y2, mut z2) =
-        surface.find_dz(t2, x0, y0, z0, a, b, c, invert_normal);
+    let (mut dz2, mut x2, mut y2, mut z2) = surface.find_dz(t2, x0, y0, z0, a, b, c, invert_normal);
 
     let mut numit = 2;
     while dz2.abs() > config.z_eps && numit < config.max_iter {
@@ -143,8 +142,7 @@ pub fn brent_method<S: SurfaceEval>(
     config: &RootFindConfig,
 ) -> IntersectionResult {
     let (mut dz1, _, _, _) = surface.find_dz(t1, x0, y0, z0, a, b, c, invert_normal);
-    let (mut dz2, mut x2, mut y2, mut z2) =
-        surface.find_dz(t2, x0, y0, z0, a, b, c, invert_normal);
+    let (mut dz2, mut x2, mut y2, mut z2) = surface.find_dz(t2, x0, y0, z0, a, b, c, invert_normal);
 
     // Ensure |dz1| >= |dz2| (swap if needed)
     if dz1.abs() < dz2.abs() {
@@ -275,11 +273,7 @@ mod tests {
             let y = y0 + b * t;
             let z = z0 + c * t;
             let r2 = self.r * self.r - x * x - y * y;
-            let surface_z = if r2 > 0.0 {
-                self.r - r2.sqrt()
-            } else {
-                self.r
-            };
+            let surface_z = if r2 > 0.0 { self.r - r2.sqrt() } else { self.r };
             (surface_z - z, x, y, z)
         }
     }

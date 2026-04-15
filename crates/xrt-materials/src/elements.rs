@@ -45,8 +45,7 @@ impl Element {
                 .ok_or_else(|| XrtError::ElementNotFound(format!("Z={z_num}")))?;
             (z_num, name.to_string())
         } else {
-            let z = element_z(elem)
-                .ok_or_else(|| XrtError::ElementNotFound(elem.to_string()))?;
+            let z = element_z(elem).ok_or_else(|| XrtError::ElementNotFound(elem.to_string()))?;
             (z, elem.to_string())
         };
 
@@ -221,8 +220,10 @@ mod tests {
         // Should either return error or produce finite (extrapolated) values
         if let Ok(f1f2) = result {
             // If it doesn't error, at least check finiteness
-            assert!(f1f2[0].re.is_finite() || f1f2[0].re.is_nan(),
-                "negative energy f1 should be finite or NaN");
+            assert!(
+                f1f2[0].re.is_finite() || f1f2[0].re.is_nan(),
+                "negative energy f1 should be finite or NaN"
+            );
         }
     }
 }

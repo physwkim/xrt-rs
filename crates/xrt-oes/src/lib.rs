@@ -23,17 +23,17 @@
 //! Chain OEs with [`Beamline`](beamline::Beamline):
 //! `Beamline::new().add_material("M1", m1).drift(2000.0).add_grating("G1", g1).propagate(&mut beam)`
 
-pub mod surface;
-pub mod surfaces;
-pub mod intersection;
 pub mod aperture;
+pub mod beamline;
 pub mod bracketing;
+pub mod crystal_oe;
 pub mod deflection;
-pub mod reflect;
+pub mod grating_oe;
+pub mod intersection;
+pub mod material_oe;
 pub mod oe;
 pub mod param_oe;
-pub mod crystal_oe;
-pub mod material_oe;
-pub mod grating_oe;
+pub mod reflect;
 pub mod screen;
-pub mod beamline;
+pub mod surface;
+pub mod surfaces;

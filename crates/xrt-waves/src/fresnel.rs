@@ -79,55 +79,84 @@ pub fn fresnel_propagate(
         .into_par_iter()
         .flat_map(|iz| {
             let zp = z_pixels[iz];
-            (0..nx).map(|ix| {
-                let xp = x_ref[ix];
-                let mut sum = Complex64::new(0.0, 0.0);
-                for j in 0..ray_x.len() {
-                    let dx = xp - ray_x[j];
-                    let dz = zp - ray_z[j];
-                    let r2 = dx * dx + dz * dz;
-                    let phase = prefactor * r2;
-                    sum += ray_es[j] * phase.exp();
-                }
-                sum
-            }).collect::<Vec<_>>()
+            (0..nx)
+                .map(|ix| {
+                    let xp = x_ref[ix];
+                    let mut sum = Complex64::new(0.0, 0.0);
+                    for j in 0..ray_x.len() {
+                        let dx = xp - ray_x[j];
+                        let dz = zp - ray_z[j];
+                        let r2 = dx * dx + dz * dz;
+                        let phase = prefactor * r2;
+                        sum += ray_es[j] * phase.exp();
+                    }
+                    sum
+                })
+                .collect::<Vec<_>>()
         })
         .collect();
 
-    FresnelResult { amplitude, x_pixels, z_pixels, nx, nz }
+    FresnelResult {
+        amplitude,
+        x_pixels,
+        z_pixels,
+        nx,
+        nz,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn screen(x_min: f64, x_max: f64, nx: usize, z_min: f64, z_max: f64, nz: usize) -> FresnelScreen {
-        FresnelScreen { x_min, x_max, nx, z_min, z_max, nz }
+    fn screen(
+        x_min: f64,
+        x_max: f64,
+        nx: usize,
+        z_min: f64,
+        z_max: f64,
+        nz: usize,
+    ) -> FresnelScreen {
+        FresnelScreen {
+            x_min,
+            x_max,
+            nx,
+            z_min,
+            z_max,
+            nz,
+        }
     }
 
     #[test]
     fn fresnel_single_point_source() {
         let result = fresnel_propagate(
-            &[0.0], &[0.0],
+            &[0.0],
+            &[0.0],
             &[Complex64::new(1.0, 0.0)],
-            10000.0, 1000.0,
+            10000.0,
+            1000.0,
             &screen(-0.1, 0.1, 21, -0.1, 0.1, 21),
         );
 
         assert_eq!(result.amplitude.len(), 21 * 21);
         let center = &result.amplitude[10 * 21 + 10];
         let corner = &result.amplitude[0];
-        assert!(center.norm() >= corner.norm(),
+        assert!(
+            center.norm() >= corner.norm(),
             "center should be brighter: {:.4e} vs {:.4e}",
-            center.norm(), corner.norm());
+            center.norm(),
+            corner.norm()
+        );
     }
 
     #[test]
     fn fresnel_two_slit() {
         let result = fresnel_propagate(
-            &[-0.01, 0.01], &[0.0, 0.0],
+            &[-0.01, 0.01],
+            &[0.0, 0.0],
             &[Complex64::new(1.0, 0.0), Complex64::new(1.0, 0.0)],
-            10000.0, 1000.0,
+            10000.0,
+            1000.0,
             &screen(-0.1, 0.1, 101, 0.0, 0.0, 1),
         );
 

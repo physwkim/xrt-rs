@@ -44,8 +44,8 @@ pub struct IsotropicPlate {
 impl IsotropicPlate {
     pub fn new(radius_mm: f64, thickness_um: f64, poisson: f64, d_spacing: f64) -> Self {
         Self {
-            radius: radius_mm * 1e7,        // mm → Å
-            thickness: thickness_um * 1e4,    // μm → Å
+            radius: radius_mm * 1e7,       // mm → Å
+            thickness: thickness_um * 1e4, // μm → Å
             poisson,
             d_spacing,
         }
@@ -78,12 +78,7 @@ pub struct AnisotropicPlate {
 }
 
 impl AnisotropicPlate {
-    pub fn new(
-        radius_mm: f64,
-        thickness_um: f64,
-        compliance_ratio: f64,
-        d_spacing: f64,
-    ) -> Self {
+    pub fn new(radius_mm: f64, thickness_um: f64, compliance_ratio: f64, d_spacing: f64) -> Self {
         Self {
             radius: radius_mm * 1e7,
             thickness: thickness_um * 1e4,
@@ -120,7 +115,7 @@ mod tests {
             3.1356, // Si(111)
         );
         let s = d.strain(5e5); // mid-crystal
-        // Should be non-zero for bent crystal
+                               // Should be non-zero for bent crystal
         assert!(s != 0.0, "strain = {s}");
         assert!(s.abs() < 1.0, "strain should be small: {s}");
     }
@@ -128,9 +123,9 @@ mod tests {
     #[test]
     fn anisotropic_plate_strain() {
         let d = AnisotropicPlate::new(
-            1000.0,  // R = 1 m
-            100.0,   // t = 100 μm
-            -0.073,  // s₁₃/s₁₁ for Si
+            1000.0, // R = 1 m
+            100.0,  // t = 100 μm
+            -0.073, // s₁₃/s₁₁ for Si
             3.1356,
         );
         let s = d.strain(0.0);

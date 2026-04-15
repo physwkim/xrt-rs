@@ -153,15 +153,12 @@ pub fn reflect_local<S: Surface>(
 
             // Deflection
             let (a_out, b_out, c_out) = match mode {
-                DeflectionMode::Reflect => {
-                    deflection::reflect_specular(a, b, c, nx, ny, nz, bidn)
-                }
+                DeflectionMode::Reflect => deflection::reflect_specular(a, b, c, nx, ny, nz, bidn),
                 DeflectionMode::Grating { order } => {
                     // Get grating vector from surface
                     if let Some([gx, gy, gz]) = surface.local_g(ix, iy) {
                         deflection::grating_deflection(
-                            a, b, c, gx, gy, gz, nx, ny, nz,
-                            bidn, beam.e[i], order, None,
+                            a, b, c, gx, gy, gz, nx, ny, nz, bidn, beam.e[i], order, None,
                         )
                     } else {
                         // No grating vector → fall back to specular

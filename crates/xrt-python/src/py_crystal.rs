@@ -163,17 +163,11 @@ impl PyDCM {
             mode: DeflectionMode::Reflect,
             ..Default::default()
         };
-        let crystal1 =
-            CrystalOpticalElement::new(FlatSurface, params1, crystal.inner.base.clone());
+        let crystal1 = CrystalOpticalElement::new(FlatSurface, params1, crystal.inner.base.clone());
 
         // Crystal 2: offset by fixed_exit
-        let crystal2 = Self::make_crystal2(
-            c,
-            bragg,
-            cryst2_fine_pitch,
-            fixed_exit,
-            &crystal.inner.base,
-        );
+        let crystal2 =
+            Self::make_crystal2(c, bragg, cryst2_fine_pitch, fixed_exit, &crystal.inner.base);
 
         Ok(Self {
             name: name.to_string(),
@@ -205,8 +199,13 @@ impl PyDCM {
     #[setter]
     fn set_cryst2_fine_pitch(&mut self, value: f64) {
         self.fine_pitch = value;
-        self.crystal2 =
-            Self::make_crystal2(self.center, self.bragg, value, self.fixed_exit, &self.crystal_base);
+        self.crystal2 = Self::make_crystal2(
+            self.center,
+            self.bragg,
+            value,
+            self.fixed_exit,
+            &self.crystal_base,
+        );
     }
 
     /// Get the fine pitch offset on crystal 2.

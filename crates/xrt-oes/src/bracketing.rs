@@ -53,13 +53,29 @@ pub fn bracket_ray(
 
     let (t_min, t_max) = if max_abc == abs_a {
         let lims = phys_x.unwrap_or([-MAX_HALF_SIZE, MAX_HALF_SIZE]);
-        let lim_min = if lims[0] > f64::NEG_INFINITY { lims[0] } else { -MAX_HALF_SIZE };
-        let lim_max = if lims[1] < f64::INFINITY { lims[1] } else { MAX_HALF_SIZE };
+        let lim_min = if lims[0] > f64::NEG_INFINITY {
+            lims[0]
+        } else {
+            -MAX_HALF_SIZE
+        };
+        let lim_max = if lims[1] < f64::INFINITY {
+            lims[1]
+        } else {
+            MAX_HALF_SIZE
+        };
         set_t(x, a, lim_min, lim_max)
     } else if max_abc == abs_b {
         let lims = phys_y.unwrap_or([-MAX_HALF_SIZE, MAX_HALF_SIZE]);
-        let lim_min = if lims[0] > f64::NEG_INFINITY { lims[0] } else { -MAX_HALF_SIZE };
-        let lim_max = if lims[1] < f64::INFINITY { lims[1] } else { MAX_HALF_SIZE };
+        let lim_min = if lims[0] > f64::NEG_INFINITY {
+            lims[0]
+        } else {
+            -MAX_HALF_SIZE
+        };
+        let lim_max = if lims[1] < f64::INFINITY {
+            lims[1]
+        } else {
+            MAX_HALF_SIZE
+        };
         set_t(y, b, lim_min, lim_max)
     } else {
         set_t(z, c, -MAX_DEPTH, MAX_DEPTH)
@@ -81,9 +97,7 @@ mod tests {
     #[test]
     fn bracket_ray_going_down() {
         // Ray at (0, 0, 10) going straight down
-        let (t_min, t_max) = bracket_ray(
-            0.0, 0.0, 10.0, 0.0, 0.0, -1.0, None, None,
-        );
+        let (t_min, t_max) = bracket_ray(0.0, 0.0, 10.0, 0.0, 0.0, -1.0, None, None);
         assert!(t_min < 10.0);
         assert!(t_max > 10.0);
     }

@@ -76,7 +76,10 @@ impl GeometricSource {
         make_polarization(&self.polarization, &mut beam);
 
         // Position distributions
-        apply_distribution(beam.y.as_slice_mut().expect("contiguous array"), &self.dist_y);
+        apply_distribution(
+            beam.y.as_slice_mut().expect("contiguous array"),
+            &self.dist_y,
+        );
 
         // Handle annulus for x/z pair
         match (&self.dist_x, &self.dist_z) {
@@ -95,8 +98,14 @@ impl GeometricSource {
                 );
             }
             _ => {
-                apply_distribution(beam.x.as_slice_mut().expect("contiguous array"), &self.dist_x);
-                apply_distribution(beam.z.as_slice_mut().expect("contiguous array"), &self.dist_z);
+                apply_distribution(
+                    beam.x.as_slice_mut().expect("contiguous array"),
+                    &self.dist_x,
+                );
+                apply_distribution(
+                    beam.z.as_slice_mut().expect("contiguous array"),
+                    &self.dist_z,
+                );
             }
         }
 
@@ -117,8 +126,14 @@ impl GeometricSource {
                 );
             }
             _ => {
-                apply_distribution(beam.a.as_slice_mut().expect("contiguous array"), &self.dist_xprime);
-                apply_distribution(beam.c.as_slice_mut().expect("contiguous array"), &self.dist_zprime);
+                apply_distribution(
+                    beam.a.as_slice_mut().expect("contiguous array"),
+                    &self.dist_xprime,
+                );
+                apply_distribution(
+                    beam.c.as_slice_mut().expect("contiguous array"),
+                    &self.dist_zprime,
+                );
             }
         }
 
@@ -143,8 +158,7 @@ impl GeometricSource {
 
         // Optional rotation
         if self.pitch != 0.0 || self.roll != 0.0 || self.yaw != 0.0 {
-            let params =
-                RotationParams::default_sequence(self.pitch, self.roll, self.yaw);
+            let params = RotationParams::default_sequence(self.pitch, self.roll, self.yaw);
             let indices: Vec<usize> = (0..n).collect();
             rotate_beam(&mut beam, Some(&indices), &params, false, false);
         }
@@ -306,10 +320,7 @@ mod tests {
         // Two energy lines: 8000 eV (weight 0.9) and 12000 eV (weight 0.1)
         let source = GeometricSource {
             nrays: 10000,
-            dist_e: EnergyDist::Lines(
-                vec![8000.0, 12000.0],
-                Some(vec![0.9, 0.1]),
-            ),
+            dist_e: EnergyDist::Lines(vec![8000.0, 12000.0], Some(vec![0.9, 0.1])),
             ..Default::default()
         };
         let beam = source.shine();
@@ -317,12 +328,18 @@ mod tests {
 
         // Count rays at each energy
         let n_8k = beam.e.iter().filter(|&&e| (e - 8000.0).abs() < 1.0).count();
-        let n_12k = beam.e.iter().filter(|&&e| (e - 12000.0).abs() < 1.0).count();
+        let n_12k = beam
+            .e
+            .iter()
+            .filter(|&&e| (e - 12000.0).abs() < 1.0)
+            .count();
 
         // Should roughly follow 9:1 ratio
         let ratio = n_8k as f64 / n_12k as f64;
-        assert!(ratio > 5.0 && ratio < 15.0,
-            "Expected ~9:1 ratio, got {n_8k}:{n_12k} = {ratio:.1}");
+        assert!(
+            ratio > 5.0 && ratio < 15.0,
+            "Expected ~9:1 ratio, got {n_8k}:{n_12k} = {ratio:.1}"
+        );
     }
 
     #[test]
@@ -337,6 +354,9 @@ mod tests {
         assert_eq!(beam.nrays(), 1000);
         // After pitch rotation, mean b should still be ~1 (forward)
         let mean_b: f64 = beam.b.iter().sum::<f64>() / 1000.0;
-        assert!(mean_b > 0.99, "mean(b) after small pitch should be ~1: {mean_b}");
+        assert!(
+            mean_b > 0.99,
+            "mean(b) after small pitch should be ~1: {mean_b}"
+        );
     }
 }

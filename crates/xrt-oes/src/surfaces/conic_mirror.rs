@@ -62,7 +62,9 @@ impl HyperbolicMirrorSurface {
     fn curvature_meridional(&self) -> f64 {
         // For hyperbolic (virtual focus): R = 2|p*q| sin(θ) / |p-q|
         let denom = (self.p - self.q).abs();
-        if denom < 1e-30 { return 1e30; }
+        if denom < 1e-30 {
+            return 1e30;
+        }
         2.0 * (self.p * self.q).abs() * self.theta.sin() / denom
     }
 }

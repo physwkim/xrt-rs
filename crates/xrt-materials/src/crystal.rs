@@ -155,8 +155,7 @@ impl CrystalBase {
         sin_theta_over_lambda: &Array1<f64>,
         sf: &dyn StructureFactor,
     ) -> Result<FChiResult, XrtError> {
-        let (f0, fhkl, fhkl_bar) =
-            sf.get_structure_factor(e, sin_theta_over_lambda, true)?;
+        let (f0, fhkl, fhkl_bar) = sf.get_structure_factor(e, sin_theta_over_lambda, true)?;
 
         let result = ndarray::Zip::from(e)
             .and(&f0)
@@ -326,15 +325,13 @@ impl CrystalBase {
         let h2 = hh * hh;
 
         // b = k0s / kHs (asymmetry ratio)
-        let b_arr = ndarray::Zip::from(&k0s)
-            .and(&k_hs)
-            .map_collect(|&k0, &kh| {
-                if kh.abs() < 1e-300 {
-                    -1.0
-                } else {
-                    k0 / kh
-                }
-            });
+        let b_arr = ndarray::Zip::from(&k0s).and(&k_hs).map_collect(|&k0, &kh| {
+            if kh.abs() < 1e-300 {
+                -1.0
+            } else {
+                k0 / kh
+            }
+        });
 
         // k0H = |beamInDotHNormal| * HH * k
         let k0h = ndarray::Zip::from(beam_in_hn)
@@ -374,8 +371,7 @@ impl CrystalBase {
             1.0, // C_s = 1
         );
 
-        let curve_p = ndarray::Zip::from(&theta_b)
-            .map_collect(|&tb| (2.0 * tb).cos());
+        let curve_p = ndarray::Zip::from(&theta_b).map_collect(|&tb| (2.0 * tb).cos());
         let curve_p = self.for_one_polarization_array(
             &alpha,
             &fchi.chih,
@@ -440,11 +436,7 @@ impl CrystalBase {
                 // Thick Bragg crystal
                 let ra = ch * pf / (a + delta);
                 let ad = a - delta;
-                let rb = if ad.norm() > 1e-100 {
-                    ch * pf / ad
-                } else {
-                    ra
-                };
+                let rb = if ad.norm() > 1e-100 { ch * pf / ad } else { ra };
 
                 let mut r = if ra.is_nan() { rb } else { ra };
                 if rb.norm() < ra.norm() && !rb.is_nan() {
@@ -463,13 +455,10 @@ impl CrystalBase {
                     if self.geom.is_transmitted() {
                         let cos_l = l_t.cos();
                         let sin_l = l_t.sin();
-                        result[i] = exp_factor
-                            / (cos_l - Complex64::i() * a * sin_l / delta);
+                        result[i] = exp_factor / (cos_l - Complex64::i() * a * sin_l / delta);
                     } else {
                         let cot_l = l_t.cos() / l_t.sin();
-                        result[i] = ch * pf
-                            / (a + Complex64::i() * delta * cot_l)
-                            / b.abs().sqrt();
+                        result[i] = ch * pf / (a + Complex64::i() * delta * cot_l) / b.abs().sqrt();
                     }
                 } else {
                     // Laue

@@ -18,7 +18,11 @@ pub struct BentLaueCylinderSurface {
 
 impl BentLaueCylinderSurface {
     pub fn new(r: f64, cross_section: CrossSection, alpha: f64) -> Self {
-        Self { r, cross_section, alpha }
+        Self {
+            r,
+            cross_section,
+            alpha,
+        }
     }
 }
 
@@ -143,9 +147,7 @@ impl Surface for BentLaueSphereSurface {
                     self.r
                 }
             }
-            CrossSection::Parabolic => {
-                (x * x + y * y) / (2.0 * self.r)
-            }
+            CrossSection::Parabolic => (x * x + y * y) / (2.0 * self.r),
         }
     }
 
@@ -192,7 +194,11 @@ pub struct GroundBentLaueCylinderSurface {
 
 impl GroundBentLaueCylinderSurface {
     pub fn new(r: f64, cross_section: CrossSection, alpha: f64) -> Self {
-        Self { r, cross_section, alpha }
+        Self {
+            r,
+            cross_section,
+            alpha,
+        }
     }
 }
 
@@ -245,7 +251,10 @@ mod tests {
         let [_, ny_s, nz_s] = s.local_n(0.0, 10.0);
         let [_, ny_b, nz_b] = bragg.unwrap();
         let dot = ny_s * ny_b + nz_s * nz_b;
-        assert!(dot.abs() < 0.1, "Bragg should be ~perpendicular to surface: dot={dot}");
+        assert!(
+            dot.abs() < 0.1,
+            "Bragg should be ~perpendicular to surface: dot={dot}"
+        );
     }
 
     #[test]

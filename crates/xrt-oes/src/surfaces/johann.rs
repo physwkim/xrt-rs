@@ -18,7 +18,11 @@ pub struct JohannCylinderSurface {
 
 impl JohannCylinderSurface {
     pub fn new(rm: f64, cross_section: CrossSection, alpha: f64) -> Self {
-        Self { rm, cross_section, alpha }
+        Self {
+            rm,
+            cross_section,
+            alpha,
+        }
     }
 }
 
@@ -33,9 +37,7 @@ impl Surface for JohannCylinderSurface {
                     self.rm
                 }
             }
-            CrossSection::Parabolic => {
-                y * y / (2.0 * self.rm)
-            }
+            CrossSection::Parabolic => y * y / (2.0 * self.rm),
         }
     }
 
@@ -95,21 +97,23 @@ pub struct JohanssonCylinderSurface {
 
 impl JohanssonCylinderSurface {
     pub fn new(rm: f64, cross_section: CrossSection, alpha: f64) -> Self {
-        Self { rm, cross_section, alpha }
+        Self {
+            rm,
+            cross_section,
+            alpha,
+        }
     }
 }
 
 impl Surface for JohanssonCylinderSurface {
     fn local_z(&self, x: f64, y: f64) -> f64 {
         // Same surface shape as Johann
-        JohannCylinderSurface::new(self.rm, self.cross_section, self.alpha)
-            .local_z(x, y)
+        JohannCylinderSurface::new(self.rm, self.cross_section, self.alpha).local_z(x, y)
     }
 
     fn local_n(&self, x: f64, y: f64) -> [f64; 3] {
         // Same surface normal as Johann
-        JohannCylinderSurface::new(self.rm, self.cross_section, self.alpha)
-            .local_n(x, y)
+        JohannCylinderSurface::new(self.rm, self.cross_section, self.alpha).local_n(x, y)
     }
 
     fn local_n_bragg(&self, _x: f64, y: f64) -> Option<[f64; 3]> {
@@ -154,7 +158,10 @@ mod tests {
         let para = JohannCylinderSurface::new(r, CrossSection::Parabolic, 0.0);
         let y = 10.0; // small compared to R
         let diff = (circ.local_z(0.0, y) - para.local_z(0.0, y)).abs();
-        assert!(diff < 1e-6, "parabolic should approximate circular: diff={diff}");
+        assert!(
+            diff < 1e-6,
+            "parabolic should approximate circular: diff={diff}"
+        );
     }
 
     #[test]

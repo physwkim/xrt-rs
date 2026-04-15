@@ -7,7 +7,7 @@
 use rayon::prelude::*;
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{RotationParams, rotate_beam};
+use xrt_core::transforms::{rotate_beam, RotationParams};
 use xrt_math::rootfind::RootFindConfig;
 
 use crate::aperture::Aperture;
@@ -31,9 +31,7 @@ impl<P: ParametricSurface> ParametricOpticalElement<P> {
 
     /// Reflect a beam off this parametric optical element.
     pub fn reflect(&self, beam: &mut Beam) -> Vec<RayResult> {
-        let good: Vec<usize> = (0..beam.nrays())
-            .filter(|&i| beam.state[i] > 0)
-            .collect();
+        let good: Vec<usize> = (0..beam.nrays()).filter(|&i| beam.state[i] > 0).collect();
 
         if good.is_empty() {
             return vec![];
@@ -96,11 +94,8 @@ impl<P: ParametricSurface> ParametricOpticalElement<P> {
         }
 
         // Rotate back to global (inverse rotation — reversed sequence)
-        let inv_rotation = RotationParams::inverse_sequence(
-            self.params.pitch,
-            self.params.roll,
-            self.params.yaw,
-        );
+        let inv_rotation =
+            RotationParams::inverse_sequence(self.params.pitch, self.params.roll, self.params.yaw);
 
         let good_after: Vec<usize> = good
             .iter()
@@ -145,16 +140,31 @@ impl<P: ParametricSurface> ParametricOpticalElement<P> {
 
                 let isect = find_intersection_parametric(
                     &self.surface,
-                    t_min, t_max, x0, y0, z0, a, b, c,
-                    invert_normal, config,
+                    t_min,
+                    t_max,
+                    x0,
+                    y0,
+                    z0,
+                    a,
+                    b,
+                    c,
+                    invert_normal,
+                    config,
                 );
 
                 if !isect.converged {
                     return RayResult {
                         state: RayState::Out,
-                        x: x0, y: y0, z: z0, a, b, c,
+                        x: x0,
+                        y: y0,
+                        z: z0,
+                        a,
+                        b,
+                        c,
                         path_delta: 0.0,
-                        nx: 0.0, ny: 0.0, nz: 1.0,
+                        nx: 0.0,
+                        ny: 0.0,
+                        nz: 1.0,
                         beam_in_dot_normal: 0.0,
                     };
                 }
@@ -168,9 +178,16 @@ impl<P: ParametricSurface> ParametricOpticalElement<P> {
                 if state != RayState::Good {
                     return RayResult {
                         state,
-                        x: ix, y: iy, z: iz, a, b, c,
+                        x: ix,
+                        y: iy,
+                        z: iz,
+                        a,
+                        b,
+                        c,
                         path_delta: isect.t,
-                        nx: 0.0, ny: 0.0, nz: 1.0,
+                        nx: 0.0,
+                        ny: 0.0,
+                        nz: 1.0,
                         beam_in_dot_normal: 0.0,
                     };
                 }
@@ -190,10 +207,16 @@ impl<P: ParametricSurface> ParametricOpticalElement<P> {
 
                 RayResult {
                     state: RayState::Good,
-                    x: ix, y: iy, z: iz,
-                    a: a_out, b: b_out, c: c_out,
+                    x: ix,
+                    y: iy,
+                    z: iz,
+                    a: a_out,
+                    b: b_out,
+                    c: c_out,
                     path_delta: isect.t,
-                    nx, ny, nz,
+                    nx,
+                    ny,
+                    nz,
                     beam_in_dot_normal: bidn,
                 }
             })
@@ -235,10 +258,7 @@ mod tests {
     #[test]
     fn parametric_oe_stores_coords() {
         let surface = EllipticalSurface::new(100.0, 50.0, 0.0);
-        let oe = ParametricOpticalElement::new(
-            surface,
-            OeParamsBuilder::new().pitch(0.01).build(),
-        );
+        let oe = ParametricOpticalElement::new(surface, OeParamsBuilder::new().pitch(0.01).build());
 
         let mut beam = Beam::new(3);
         for i in 0..3 {

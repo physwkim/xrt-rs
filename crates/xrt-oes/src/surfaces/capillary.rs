@@ -65,8 +65,8 @@ impl ParametricSurface for ParaboloidCapillary {
 /// Ellipsoid capillary mirror.
 #[derive(Debug, Clone, Copy)]
 pub struct EllipsoidCapillary {
-    pub a: f64,  // semi-major axis [mm]
-    pub b: f64,  // semi-minor axis [mm]
+    pub a: f64,   // semi-major axis [mm]
+    pub b: f64,   // semi-minor axis [mm]
     pub ctd: f64, // center-to-device distance [mm]
 }
 

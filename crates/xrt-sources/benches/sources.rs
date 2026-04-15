@@ -1,8 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
+use xrt_sources::bending_magnet::BendingMagnet;
 use xrt_sources::distributions::{EnergyDist, SpatialDist};
 use xrt_sources::geometric::GeometricSource;
-use xrt_sources::bending_magnet::BendingMagnet;
 
 fn bench_geometric_source(c: &mut Criterion) {
     let mut group = c.benchmark_group("geometric_source");
@@ -21,9 +21,7 @@ fn bench_geometric_source(c: &mut Criterion) {
                     dist_e: EnergyDist::Lines(vec![10000.0], None),
                     ..Default::default()
                 };
-                b.iter(|| {
-                    black_box(source.shine())
-                });
+                b.iter(|| black_box(source.shine()));
             },
         );
     }
@@ -39,10 +37,8 @@ fn bench_bending_magnet(c: &mut Criterion) {
             &nrays,
             |b, &n| {
                 b.iter(|| {
-                    let mut bm = BendingMagnet::new(
-                        3.0, 0.3, 1.0, n,
-                        5000.0, 15000.0, 0.002, 0.002,
-                    );
+                    let mut bm =
+                        BendingMagnet::new(3.0, 0.3, 1.0, n, 5000.0, 15000.0, 0.002, 0.002);
                     black_box(bm.shine())
                 });
             },
@@ -55,22 +51,21 @@ fn bench_build_i_map(c: &mut Criterion) {
     let mut group = c.benchmark_group("build_i_map");
 
     for n in [100, 1_000, 10_000] {
-        group.bench_with_input(
-            criterion::BenchmarkId::new("bm", n),
-            &n,
-            |b, &n| {
-                let bm = BendingMagnet::new(3.0, 0.3, 1.0, 100, 5000.0, 15000.0, 0.002, 0.002);
-                let energies: Vec<f64> = (0..n).map(|i| 5000.0 + i as f64 * 10.0).collect();
-                let thetas = vec![0.0; n];
-                let psis = vec![0.0; n];
-                b.iter(|| {
-                    black_box(bm.build_i_map(&energies, &thetas, &psis))
-                });
-            },
-        );
+        group.bench_with_input(criterion::BenchmarkId::new("bm", n), &n, |b, &n| {
+            let bm = BendingMagnet::new(3.0, 0.3, 1.0, 100, 5000.0, 15000.0, 0.002, 0.002);
+            let energies: Vec<f64> = (0..n).map(|i| 5000.0 + i as f64 * 10.0).collect();
+            let thetas = vec![0.0; n];
+            let psis = vec![0.0; n];
+            b.iter(|| black_box(bm.build_i_map(&energies, &thetas, &psis)));
+        });
     }
     group.finish();
 }
 
-criterion_group!(benches, bench_geometric_source, bench_bending_magnet, bench_build_i_map);
+criterion_group!(
+    benches,
+    bench_geometric_source,
+    bench_bending_magnet,
+    bench_build_i_map
+);
 criterion_main!(benches);

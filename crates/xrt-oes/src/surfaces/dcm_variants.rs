@@ -31,6 +31,10 @@ pub struct DcmSagittalConfig {
 
 impl DcmSagittalConfig {
     pub fn new(bragg_angle: f64, gap: f64, rs_crystal2: f64) -> Self {
-        Self { bragg_angle, gap, rs_crystal2 }
+        Self {
+            bragg_angle,
+            gap,
+            rs_crystal2,
+        }
     }
 }

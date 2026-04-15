@@ -16,10 +16,7 @@ use crate::kirchhoff::{self, GpuPixel, GpuRay};
 /// handles any distance correctly. Falls back to CPU only if no GPU.
 ///
 /// Returns (Es, Ep) per pixel, same as `kirchhoff_gpu`.
-pub fn kirchhoff_auto(
-    rays: &[GpuRay],
-    pixels: &[GpuPixel],
-) -> Vec<(Complex64, Complex64)> {
+pub fn kirchhoff_auto(rays: &[GpuRay], pixels: &[GpuPixel]) -> Vec<(Complex64, Complex64)> {
     if let Some(ctx) = GpuContext::new() {
         return kirchhoff::kirchhoff_gpu(&ctx, rays, pixels);
     }
@@ -53,8 +50,7 @@ fn kirchhoff_cpu_from_gpu_types(
                 }
 
                 let inv_path = 1.0 / path;
-                let ns = (ray.nx as f64 * dx + ray.ny as f64 * dy + ray.nz as f64 * dz)
-                    * inv_path;
+                let ns = (ray.nx as f64 * dx + ray.ny as f64 * dy + ray.nz as f64 * dz) * inv_path;
                 let k = ray.energy as f64 / CHBAR * 1e7;
                 let phase = k * path;
                 let (sin_p, cos_p) = phase.sin_cos();
@@ -81,14 +77,24 @@ mod tests {
     #[test]
     fn cpu_fallback_produces_results() {
         let rays = vec![GpuRay {
-            x: 0.0, y: 0.0, z: 0.0,
-            nx: 0.0, ny: 0.0, nz: 1.0,
-            nl: 1.0, energy: 10000.0,
-            es_re: 1.0, es_im: 0.0,
-            ep_re: 0.0, ep_im: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            nx: 0.0,
+            ny: 0.0,
+            nz: 1.0,
+            nl: 1.0,
+            energy: 10000.0,
+            es_re: 1.0,
+            es_im: 0.0,
+            ep_re: 0.0,
+            ep_im: 0.0,
         }];
         let pixels = vec![GpuPixel {
-            x: 0.0, y: 1000.0, z: 0.0, _pad: 0.0,
+            x: 0.0,
+            y: 1000.0,
+            z: 0.0,
+            _pad: 0.0,
         }];
 
         let results = kirchhoff_cpu_from_gpu_types(&rays, &pixels);
@@ -99,14 +105,24 @@ mod tests {
     #[test]
     fn auto_dispatch_works() {
         let rays = vec![GpuRay {
-            x: 0.0, y: 0.0, z: 0.0,
-            nx: 0.0, ny: 0.0, nz: 1.0,
-            nl: 1.0, energy: 10000.0,
-            es_re: 1.0, es_im: 0.0,
-            ep_re: 0.0, ep_im: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            nx: 0.0,
+            ny: 0.0,
+            nz: 1.0,
+            nl: 1.0,
+            energy: 10000.0,
+            es_re: 1.0,
+            es_im: 0.0,
+            ep_re: 0.0,
+            ep_im: 0.0,
         }];
         let pixels = vec![GpuPixel {
-            x: 0.0, y: 1000.0, z: 0.0, _pad: 0.0,
+            x: 0.0,
+            y: 1000.0,
+            z: 0.0,
+            _pad: 0.0,
         }];
 
         // This will use GPU if available, otherwise CPU

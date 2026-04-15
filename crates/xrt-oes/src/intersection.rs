@@ -245,11 +245,7 @@ mod tests {
 
         assert!(result.converged);
         // At x=0, y=0: surface_z = 0, so intersection at z=0, t=10
-        assert!(
-            (result.t - 10.0).abs() < 1e-8,
-            "t = {}",
-            result.t
-        );
+        assert!((result.t - 10.0).abs() < 1e-8, "t = {}", result.t);
     }
 
     #[test]

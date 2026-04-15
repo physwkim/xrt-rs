@@ -165,7 +165,9 @@ mod tests {
             &EnergyDist::Lines(vec![8000.0, 10000.0, 12000.0], None),
             1000,
         );
-        assert!(e.iter().all(|&v| v == 8000.0 || v == 10000.0 || v == 12000.0));
+        assert!(e
+            .iter()
+            .all(|&v| v == 8000.0 || v == 10000.0 || v == 12000.0));
     }
 
     #[test]

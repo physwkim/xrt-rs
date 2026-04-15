@@ -18,7 +18,11 @@ pub struct GeneralFzpSurface {
 
 impl GeneralFzpSurface {
     pub fn new(focus: f64, wavelength: f64, n_zones: usize) -> Self {
-        Self { focus, wavelength, n_zones }
+        Self {
+            focus,
+            wavelength,
+            n_zones,
+        }
     }
 
     /// Outer radius of the FZP [mm]
@@ -28,7 +32,9 @@ impl GeneralFzpSurface {
 
     /// Local zone density (lines/mm) at radius rho
     fn local_rho(&self, rho: f64) -> f64 {
-        if rho < 1e-30 { return 0.0; }
+        if rho < 1e-30 {
+            return 0.0;
+        }
         rho / (self.wavelength * self.focus)
     }
 }
@@ -46,7 +52,9 @@ impl Surface for GeneralFzpSurface {
         // Grating vector is radial in YZ, pointing along Y
         let rho = y.abs();
         let dens = self.local_rho(rho);
-        if dens < 1e-30 { return None; }
+        if dens < 1e-30 {
+            return None;
+        }
         let sign = if y >= 0.0 { -1.0 } else { 1.0 };
         Some([0.0, sign * dens, 0.0])
     }

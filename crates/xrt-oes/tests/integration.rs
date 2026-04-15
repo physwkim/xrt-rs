@@ -2,16 +2,16 @@
 //!
 //! Tests the full pipeline: surface creation → intersection → reflection.
 
+use xrt_math::rootfind::RootFindConfig;
 use xrt_oes::intersection::find_intersection_surface;
 use xrt_oes::surface::{ParametricSurface, Surface};
-use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_oes::surfaces::toroid::ToroidSurface;
-use xrt_oes::surfaces::spherical::SphericalSurface;
-use xrt_oes::surfaces::lens::ParaboloidLensSurface;
 use xrt_oes::surfaces::elliptical::EllipticalSurface;
-use xrt_oes::surfaces::grating::{BlazedGrating, LaminarGrating};
+use xrt_oes::surfaces::flat::FlatSurface;
 use xrt_oes::surfaces::fzp::FzpSurface;
-use xrt_math::rootfind::RootFindConfig;
+use xrt_oes::surfaces::grating::{BlazedGrating, LaminarGrating};
+use xrt_oes::surfaces::lens::ParaboloidLensSurface;
+use xrt_oes::surfaces::spherical::SphericalSurface;
+use xrt_oes::surfaces::toroid::ToroidSurface;
 
 #[test]
 fn flat_surface_intersect_batch() {
@@ -121,19 +121,29 @@ fn all_surfaces_z_at_origin() {
 
     for (name, surface) in &surfaces {
         let z = surface.local_z(0.0, 0.0);
-        assert!(
-            z.abs() < 1e-12,
-            "{name}: z(0,0) = {z}, expected 0"
-        );
+        assert!(z.abs() < 1e-12, "{name}: z(0,0) = {z}, expected 0");
     }
 }
 
 #[test]
 fn parametric_surfaces_roundtrip() {
     let surfaces: Vec<(&str, Box<dyn ParametricSurface>)> = vec![
-        ("elliptical", Box::new(EllipticalSurface::new(100.0, 50.0, 0.0))),
-        ("parabolical", Box::new(xrt_oes::surfaces::parabolical::ParabolicalSurface::new(10.0, 0.0))),
-        ("hyperbolic", Box::new(xrt_oes::surfaces::hyperbolic::HyperbolicSurface::new(100.0, 50.0, 0.0))),
+        (
+            "elliptical",
+            Box::new(EllipticalSurface::new(100.0, 50.0, 0.0)),
+        ),
+        (
+            "parabolical",
+            Box::new(xrt_oes::surfaces::parabolical::ParabolicalSurface::new(
+                10.0, 0.0,
+            )),
+        ),
+        (
+            "hyperbolic",
+            Box::new(xrt_oes::surfaces::hyperbolic::HyperbolicSurface::new(
+                100.0, 50.0, 0.0,
+            )),
+        ),
     ];
 
     for (name, surface) in &surfaces {
@@ -150,13 +160,13 @@ fn parametric_surfaces_roundtrip() {
 /// End-to-end: GeometricSource → Material Mirror → Screen
 #[test]
 fn end_to_end_source_mirror_screen() {
-    use xrt_sources::distributions::{EnergyDist, SpatialDist};
-    use xrt_sources::geometric::GeometricSource;
+    use xrt_materials::data::ScatteringTable;
+    use xrt_materials::material::{Material, MaterialKind};
     use xrt_oes::beamline::{Beamline, OeParamsBuilder};
     use xrt_oes::material_oe::MaterialOpticalElement;
     use xrt_oes::screen::Screen;
-    use xrt_materials::data::ScatteringTable;
-    use xrt_materials::material::{Material, MaterialKind};
+    use xrt_sources::distributions::{EnergyDist, SpatialDist};
+    use xrt_sources::geometric::GeometricSource;
 
     // 1. Source: collimated beam going in +y
     let source = GeometricSource {
@@ -175,16 +185,17 @@ fn end_to_end_source_mirror_screen() {
 
     // 2. Flat Si mirror at origin, 10 mrad pitch
     let si = Material::new(
-        &["Si"], None, 2.33,
-        MaterialKind::Mirror, None,
+        &["Si"],
+        None,
+        2.33,
+        MaterialKind::Mirror,
+        None,
         ScatteringTable::ChantlerTotal,
-    ).unwrap();
+    )
+    .unwrap();
 
-    let mirror = MaterialOpticalElement::new(
-        FlatSurface,
-        OeParamsBuilder::new().pitch(0.01).build(),
-        si,
-    );
+    let mirror =
+        MaterialOpticalElement::new(FlatSurface, OeParamsBuilder::new().pitch(0.01).build(), si);
 
     // 3. Propagate: mirror → drift
     let bl = Beamline::new()
@@ -207,7 +218,8 @@ fn end_to_end_source_mirror_screen() {
     assert!(
         capture.n_captured > 0 || good_after > 0,
         "no rays captured: n_captured={}, good_after={}",
-        capture.n_captured, good_after
+        capture.n_captured,
+        good_after
     );
 }
 
@@ -215,8 +227,8 @@ fn end_to_end_source_mirror_screen() {
 #[test]
 fn grating_deflection_changes_direction() {
     use xrt_core::beam::{Beam, RayState};
-    use xrt_oes::reflect::{reflect_local, DeflectionMode};
     use xrt_oes::aperture::Aperture;
+    use xrt_oes::reflect::{reflect_local, DeflectionMode};
 
     let grating = BlazedGrating::new(600.0, 0.02, 0.5);
     let mut beam = Beam::new(1);
@@ -235,16 +247,21 @@ fn grating_deflection_changes_direction() {
 
     // Reflect with grating order 1
     let results = reflect_local(
-        &grating, &mut beam, &good, &aperture, 1,
+        &grating,
+        &mut beam,
+        &good,
+        &aperture,
+        1,
         DeflectionMode::Grating { order: 1 },
-        None, None,
+        None,
+        None,
         &xrt_math::rootfind::RootFindConfig::default(),
     );
 
     if !results.is_empty() && results[0].state == RayState::Good {
         // After grating, direction should differ from specular
         let _specular_c = angle.sin(); // specular would reflect c symmetrically
-        // Grating adds diffraction angle — direction should be different
+                                       // Grating adds diffraction angle — direction should be different
         assert!(
             results[0].a.is_finite() && results[0].b.is_finite() && results[0].c.is_finite(),
             "grating deflection produced non-finite direction"
@@ -256,8 +273,8 @@ fn grating_deflection_changes_direction() {
 #[test]
 fn refraction_bends_ray() {
     use xrt_core::beam::{Beam, RayState};
-    use xrt_oes::reflect::{reflect_local, DeflectionMode};
     use xrt_oes::aperture::Aperture;
+    use xrt_oes::reflect::{reflect_local, DeflectionMode};
 
     let surface = FlatSurface;
     let mut beam = Beam::new(1);
@@ -275,9 +292,14 @@ fn refraction_bends_ray() {
     let aperture = Aperture::default();
 
     let results = reflect_local(
-        &surface, &mut beam, &good, &aperture, 1,
+        &surface,
+        &mut beam,
+        &good,
+        &aperture,
+        1,
         DeflectionMode::Refract { n1_over_n2: 0.5 },
-        None, None,
+        None,
+        None,
         &xrt_math::rootfind::RootFindConfig::default(),
     );
 

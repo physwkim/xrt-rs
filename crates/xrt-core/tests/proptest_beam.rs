@@ -1,9 +1,9 @@
 //! Property-based tests for Beam and transforms.
 
+use ndarray::Array1;
 use proptest::prelude::*;
 use xrt_core::beam::{Beam, RayState};
 use xrt_core::transforms::{rotate_xyz, RotationParams};
-use ndarray::Array1;
 
 proptest! {
     /// Rotation preserves vector magnitude.

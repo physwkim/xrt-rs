@@ -10,8 +10,8 @@ fn load_fixture() -> serde_json::Value {
         env!("CARGO_MANIFEST_DIR"),
         "/../../validation/fixtures/constants.json"
     );
-    let text = std::fs::read_to_string(path)
-        .expect("Run `python validation/generate_fixtures.py` first");
+    let text =
+        std::fs::read_to_string(path).expect("Run `python validation/generate_fixtures.py` first");
     serde_json::from_str(&text).unwrap()
 }
 
@@ -57,9 +57,9 @@ fn golden_constants() {
     check_const!(fix, "E0", consts::E0, 1e-10);
     check_const!(fix, "SIC", consts::SIC, 1e-10);
     check_const!(fix, "FINE_STR", consts::FINE_STR, 1e-8);
-    check_const!(fix, "K2B", consts::K2B, 1e-2);    // different constant sets
+    check_const!(fix, "K2B", consts::K2B, 1e-2); // different constant sets
     check_const!(fix, "EMC", consts::EMC, 1e-8);
-    check_const!(fix, "E2W", consts::E2W, 1e6);     // large value, relative match
+    check_const!(fix, "E2W", consts::E2W, 1e6); // large value, relative match
     check_const!(fix, "CH", consts::CH, 1e-8);
     check_const!(fix, "CHBAR", consts::CHBAR, 1e-8);
 }

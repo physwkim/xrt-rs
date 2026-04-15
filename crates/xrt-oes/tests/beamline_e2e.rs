@@ -3,34 +3,42 @@
 //! Exercises the full pipeline: Source → MaterialMirror → Grating → Screen.
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_sources::distributions::{EnergyDist, SpatialDist};
-use xrt_sources::geometric::GeometricSource;
 use xrt_materials::data::ScatteringTable;
 use xrt_materials::material::{Material, MaterialKind};
 use xrt_oes::beamline::{Beamline, OeParamsBuilder};
-use xrt_oes::material_oe::MaterialOpticalElement;
-use xrt_oes::grating_oe::GratingOpticalElement;
 use xrt_oes::crystal_oe::CrystalOpticalElement;
+use xrt_oes::grating_oe::GratingOpticalElement;
+use xrt_oes::material_oe::MaterialOpticalElement;
 use xrt_oes::oe::OpticalElement;
 use xrt_oes::screen::Screen;
 use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_oes::surfaces::toroid::ToroidSurface;
 use xrt_oes::surfaces::grating::BlazedGrating;
+use xrt_oes::surfaces::toroid::ToroidSurface;
+use xrt_sources::distributions::{EnergyDist, SpatialDist};
+use xrt_sources::geometric::GeometricSource;
 
 fn si_mirror() -> Material {
     Material::new(
-        &["Si"], None, 2.33,
-        MaterialKind::Mirror, None,
+        &["Si"],
+        None,
+        2.33,
+        MaterialKind::Mirror,
+        None,
         ScatteringTable::ChantlerTotal,
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 fn au_grating() -> Material {
     Material::new(
-        &["Au"], None, 19.32,
-        MaterialKind::Grating, None,
+        &["Au"],
+        None,
+        19.32,
+        MaterialKind::Grating,
+        None,
         ScatteringTable::ChantlerTotal,
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 fn collimated_source(nrays: usize, energy: f64) -> Beam {
@@ -58,9 +66,7 @@ fn single_si_mirror_beamline() {
         si_mirror(),
     );
 
-    let bl = Beamline::new()
-        .add_material("M1_Si", mirror)
-        .drift(3000.0);
+    let bl = Beamline::new().add_material("M1_Si", mirror).drift(3000.0);
 
     let output = bl.propagate(&mut beam);
 
@@ -110,7 +116,8 @@ fn two_mirror_focusing() {
             assert!(
                 el.good_count <= 300,
                 "element {}: good={} > initial",
-                el.name, el.good_count
+                el.name,
+                el.good_count
             );
         }
     }
@@ -134,7 +141,8 @@ fn grating_monochromator() {
             .pitch(0.02)
             .build(),
         -1, // first negative order
-    ).with_material(au_grating());
+    )
+    .with_material(au_grating());
 
     let bl = Beamline::new()
         .add_material("M1", mirror)
@@ -152,10 +160,7 @@ fn grating_monochromator() {
 fn mixed_oe_types() {
     let mut beam = collimated_source(100, 10000.0);
 
-    let bare_mirror = OpticalElement::new(
-        FlatSurface,
-        OeParamsBuilder::new().pitch(0.01).build(),
-    );
+    let bare_mirror = OpticalElement::new(FlatSurface, OeParamsBuilder::new().pitch(0.01).build());
 
     let coated_mirror = MaterialOpticalElement::new(
         FlatSurface,
@@ -225,7 +230,10 @@ fn screen_centroid_accuracy() {
     let [cx, cz] = capture.centroid();
 
     assert!((cx - 3.0).abs() < 0.5, "centroid x = {cx}, expected ~3.0");
-    assert!((cz - (-2.0)).abs() < 0.5, "centroid z = {cz}, expected ~-2.0");
+    assert!(
+        (cz - (-2.0)).abs() < 0.5,
+        "centroid z = {cz}, expected ~-2.0"
+    );
 }
 
 /// BeamlineOutput provides useful diagnostics.
@@ -263,15 +271,17 @@ fn golden_grating_beamline() {
         1, // first positive order
     );
 
-    let bl = Beamline::new()
-        .add_grating("G1", grating)
-        .drift(1000.0);
+    let bl = Beamline::new().add_grating("G1", grating).drift(1000.0);
 
     let output = bl.propagate(&mut beam);
-    assert!(output.final_good_count > 0,
-            "Grating beamline should have good rays");
-    assert!(output.efficiency() > 0.0,
-            "Grating should have non-zero efficiency");
+    assert!(
+        output.final_good_count > 0,
+        "Grating beamline should have good rays"
+    );
+    assert!(
+        output.efficiency() > 0.0,
+        "Grating should have non-zero efficiency"
+    );
 }
 
 #[test]
@@ -284,14 +294,14 @@ fn golden_negative_grating_order() {
         -1, // first negative order
     );
 
-    let bl = Beamline::new()
-        .add_grating("G1", grating)
-        .drift(1000.0);
+    let bl = Beamline::new().add_grating("G1", grating).drift(1000.0);
 
     let output = bl.propagate(&mut beam);
     // Negative order should also produce valid rays
-    assert!(output.final_good_count > 0,
-            "Negative grating order should have good rays");
+    assert!(
+        output.final_good_count > 0,
+        "Negative grating order should have good rays"
+    );
 }
 
 #[test]
@@ -317,8 +327,11 @@ fn golden_multi_element_beamline() {
         .drift(5000.0);
 
     let output = bl.propagate(&mut beam);
-    assert!(output.elements.len() >= 2,
-            "Should have at least 2 OE outputs, got {}", output.elements.len());
+    assert!(
+        output.elements.len() >= 2,
+        "Should have at least 2 OE outputs, got {}",
+        output.elements.len()
+    );
     // Second mirror may not intercept all rays depending on geometry,
     // so just verify the pipeline runs without panic and produces output
     assert!(output.initial_count == 1000, "Should start with 1000 rays");
@@ -347,9 +360,7 @@ fn golden_crystal_beamline() {
 
     let crystal_oe = CrystalOpticalElement::new(
         FlatSurface,
-        OeParamsBuilder::new()
-            .pitch(bragg_angle)
-            .build(),
+        OeParamsBuilder::new().pitch(bragg_angle).build(),
         si.base.clone(),
     );
 
@@ -391,8 +402,11 @@ fn golden_three_element_beamline() {
         .add_grating("G1", g1);
 
     let output = bl.propagate(&mut beam);
-    assert!(output.elements.len() >= 3,
-            "Should have at least 3 OE outputs, got {}", output.elements.len());
+    assert!(
+        output.elements.len() >= 3,
+        "Should have at least 3 OE outputs, got {}",
+        output.elements.len()
+    );
     assert!(output.initial_count == 500);
 }
 
@@ -410,7 +424,10 @@ fn golden_coherency_through_mirror() {
     let mut beam = source.shine();
 
     // Check initial coherency: horizontal -> jss=1, jpp=0
-    assert!((beam.jss[0] - 1.0).abs() < 1e-10, "initial jss should be 1.0");
+    assert!(
+        (beam.jss[0] - 1.0).abs() < 1e-10,
+        "initial jss should be 1.0"
+    );
     assert!(beam.jpp[0].abs() < 1e-10, "initial jpp should be 0.0");
 
     let mirror = MaterialOpticalElement::new(
@@ -418,9 +435,7 @@ fn golden_coherency_through_mirror() {
         OeParamsBuilder::new().pitch(0.003).build(),
         si_mirror(),
     );
-    let bl = Beamline::new()
-        .add_material("M1", mirror)
-        .drift(1000.0);
+    let bl = Beamline::new().add_material("M1", mirror).drift(1000.0);
 
     let _output = bl.propagate(&mut beam);
 
@@ -429,8 +444,14 @@ fn golden_coherency_through_mirror() {
     let good_count = beam.state.iter().filter(|&&s| s == good_val).count();
     if good_count > 0 {
         let first_good = beam.state.iter().position(|&s| s == good_val).unwrap();
-        assert!(beam.jss[first_good].is_finite(), "jss after mirror should be finite");
-        assert!(beam.jpp[first_good].is_finite(), "jpp after mirror should be finite");
+        assert!(
+            beam.jss[first_good].is_finite(),
+            "jss after mirror should be finite"
+        );
+        assert!(
+            beam.jpp[first_good].is_finite(),
+            "jpp after mirror should be finite"
+        );
     }
 }
 
@@ -451,9 +472,7 @@ fn golden_refract_beamline() {
         si,
     );
 
-    let bl = Beamline::new()
-        .add_material("Lens", lens)
-        .drift(5000.0);
+    let bl = Beamline::new().add_material("Lens", lens).drift(5000.0);
 
     let output = bl.propagate(&mut beam);
     // Refraction should produce valid output
@@ -476,9 +495,7 @@ fn golden_passthrough_beamline() {
         si_mirror(),
     );
 
-    let bl = Beamline::new()
-        .add_material("Pass", pass)
-        .drift(1000.0);
+    let bl = Beamline::new().add_material("Pass", pass).drift(1000.0);
 
     let output = bl.propagate(&mut beam);
     // PassThrough pipeline should run without panic
@@ -513,7 +530,9 @@ fn golden_crl_pipeline() {
         let lens_front = MaterialOpticalElement::new(
             ParaboloidLensSurface::new(0.5, Some(0.3)),
             OeParamsBuilder::new()
-                .mode(DeflectionMode::Refract { n1_over_n2: n_ratio })
+                .mode(DeflectionMode::Refract {
+                    n1_over_n2: n_ratio,
+                })
                 .build(),
             si.clone(),
         );
@@ -527,6 +546,9 @@ fn golden_crl_pipeline() {
     let output = bl.propagate(&mut beam);
     assert!(output.initial_count == 1000);
     // CRL should not crash and should process rays
-    assert!(output.elements.len() >= 3,
-        "CRL should have at least 3 OE elements, got {}", output.elements.len());
+    assert!(
+        output.elements.len() >= 3,
+        "CRL should have at least 3 OE elements, got {}",
+        output.elements.len()
+    );
 }

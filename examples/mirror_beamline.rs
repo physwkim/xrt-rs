@@ -4,14 +4,14 @@
 //!
 //! Run: cargo run --example mirror_beamline
 
-use xrt_sources::distributions::{EnergyDist, SpatialDist};
-use xrt_sources::geometric::GeometricSource;
 use xrt_materials::data::ScatteringTable;
 use xrt_materials::material::{Material, MaterialKind};
 use xrt_oes::beamline::{Beamline, OeParamsBuilder};
 use xrt_oes::material_oe::MaterialOpticalElement;
 use xrt_oes::screen::Screen;
 use xrt_oes::surfaces::toroid::ToroidSurface;
+use xrt_sources::distributions::{EnergyDist, SpatialDist};
+use xrt_sources::geometric::GeometricSource;
 
 fn main() {
     println!("=== XRT-RS: Two-Mirror Beamline ===\n");
@@ -19,8 +19,8 @@ fn main() {
     // 1. Create a collimated X-ray source at 10 keV
     let source = GeometricSource {
         nrays: 10_000,
-        dist_x: SpatialDist::Normal(0.2),    // 200 μm horizontal
-        dist_z: SpatialDist::Normal(0.05),    // 50 μm vertical
+        dist_x: SpatialDist::Normal(0.2),       // 200 μm horizontal
+        dist_z: SpatialDist::Normal(0.05),      // 50 μm vertical
         dist_xprime: SpatialDist::Normal(5e-5), // 50 μrad divergence
         dist_zprime: SpatialDist::Normal(2e-5), // 20 μrad divergence
         dist_e: EnergyDist::Lines(vec![10_000.0], None),
@@ -33,16 +33,20 @@ fn main() {
 
     // 2. Si mirror material
     let si = Material::new(
-        &["Si"], None, 2.33,
-        MaterialKind::Mirror, None,
+        &["Si"],
+        None,
+        2.33,
+        MaterialKind::Mirror,
+        None,
         ScatteringTable::ChantlerTotal,
-    ).expect("Si material");
+    )
+    .expect("Si material");
 
     // 3. Toroid focusing mirror at 5 mrad grazing (at origin)
     let m1 = MaterialOpticalElement::new(
         ToroidSurface::new(5e6, 50.0), // R=5km, r=50mm
         OeParamsBuilder::new()
-            .pitch(0.005)               // 5 mrad grazing
+            .pitch(0.005) // 5 mrad grazing
             .build(),
         si,
     );
@@ -63,7 +67,10 @@ fn main() {
     let capture = screen.capture(&beam);
 
     println!("Screen at y=10m:");
-    println!("  captured: {} rays (missed: {})", capture.n_captured, capture.n_missed);
+    println!(
+        "  captured: {} rays (missed: {})",
+        capture.n_captured, capture.n_missed
+    );
     if capture.n_captured > 0 {
         let [cx, cz] = capture.centroid();
         let [sx, sz] = capture.rms_size();

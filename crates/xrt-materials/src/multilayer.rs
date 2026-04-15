@@ -242,10 +242,7 @@ mod tests {
         let result = ml.get_amplitude(&e, &sin_theta).unwrap();
         let rs_abs = result.rs[0].norm();
         // Should be a valid reflectivity in [0, 1]
-        assert!(
-            (0.0..=1.01).contains(&rs_abs),
-            "|rs| = {rs_abs}"
-        );
+        assert!((0.0..=1.01).contains(&rs_abs), "|rs| = {rs_abs}");
     }
 
     #[test]
@@ -285,52 +282,158 @@ mod tests {
 
         // Both should produce finite results
         assert!(r_few.rs[0].norm().is_finite(), "few rs = {}", r_few.rs[0]);
-        assert!(r_many.rs[0].norm().is_finite(), "many rs = {}", r_many.rs[0]);
+        assert!(
+            r_many.rs[0].norm().is_finite(),
+            "many rs = {}",
+            r_many.rs[0]
+        );
     }
 
     #[test]
     fn period_returns_bilayer_sum() {
         let ml = Multilayer::new(
-            Material::new(&["W"], None, 19.3, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            Material::new(&["Si"], None, 2.33, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            Material::new(&["Si"], None, 2.33, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            20, 15.0, 25.0, 3.0, MultilayerGeom::Reflected,
+            Material::new(
+                &["W"],
+                None,
+                19.3,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            Material::new(
+                &["Si"],
+                None,
+                2.33,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            Material::new(
+                &["Si"],
+                None,
+                2.33,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            20,
+            15.0,
+            25.0,
+            3.0,
+            MultilayerGeom::Reflected,
         );
-        assert!((ml.period() - 40.0).abs() < 1e-12, "period should be d_t + d_b = 40 Å");
+        assert!(
+            (ml.period() - 40.0).abs() < 1e-12,
+            "period should be d_t + d_b = 40 Å"
+        );
     }
 
     #[test]
     fn single_bilayer_produces_finite_result() {
         let ml = Multilayer::new(
-            Material::new(&["W"], None, 19.3, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            Material::new(&["Si"], None, 2.33, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            Material::new(&["Si"], None, 2.33, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            1, 15.0, 25.0, 0.0, MultilayerGeom::Reflected,
+            Material::new(
+                &["W"],
+                None,
+                19.3,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            Material::new(
+                &["Si"],
+                None,
+                2.33,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            Material::new(
+                &["Si"],
+                None,
+                2.33,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            1,
+            15.0,
+            25.0,
+            0.0,
+            MultilayerGeom::Reflected,
         );
         let e = Array1::from_vec(vec![10000.0]);
         let st = Array1::from_vec(vec![0.02]);
         let result = ml.get_amplitude(&e, &st).unwrap();
         assert!(result.rs[0].re.is_finite(), "n_pairs=1 rs should be finite");
-        assert!(result.rs[0].norm() > 0.0, "n_pairs=1 should have nonzero reflectivity");
-        assert!(result.rs[0].norm() < 1.0, "n_pairs=1 should have low reflectivity");
+        assert!(
+            result.rs[0].norm() > 0.0,
+            "n_pairs=1 should have nonzero reflectivity"
+        );
+        assert!(
+            result.rs[0].norm() < 1.0,
+            "n_pairs=1 should have low reflectivity"
+        );
     }
 
     #[test]
     fn transmitted_geometry_finite() {
         let ml = Multilayer::new(
-            Material::new(&["W"], None, 19.3, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            Material::new(&["Si"], None, 2.33, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            Material::new(&["Si"], None, 2.33, MaterialKind::Mirror, None, ScatteringTable::ChantlerTotal).unwrap(),
-            20, 15.0, 25.0, 0.0, MultilayerGeom::Transmitted,
+            Material::new(
+                &["W"],
+                None,
+                19.3,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            Material::new(
+                &["Si"],
+                None,
+                2.33,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            Material::new(
+                &["Si"],
+                None,
+                2.33,
+                MaterialKind::Mirror,
+                None,
+                ScatteringTable::ChantlerTotal,
+            )
+            .unwrap(),
+            20,
+            15.0,
+            25.0,
+            0.0,
+            MultilayerGeom::Transmitted,
         );
         let e = Array1::from_vec(vec![10000.0]);
         let st = Array1::from_vec(vec![0.02]);
         let result = ml.get_amplitude(&e, &st).unwrap();
-        assert!(result.rs[0].re.is_finite(), "transmitted rs should be finite");
-        assert!(result.rp[0].re.is_finite(), "transmitted rp should be finite");
+        assert!(
+            result.rs[0].re.is_finite(),
+            "transmitted rs should be finite"
+        );
+        assert!(
+            result.rp[0].re.is_finite(),
+            "transmitted rp should be finite"
+        );
         // Verify transmitted amplitude is nonzero and bounded
         assert!(result.rs[0].norm() > 0.0, "transmitted |rs| should be > 0");
-        assert!(result.rs[0].norm() < 10.0, "transmitted |rs| should be bounded");
+        assert!(
+            result.rs[0].norm() < 10.0,
+            "transmitted |rs| should be bounded"
+        );
     }
 
     #[test]

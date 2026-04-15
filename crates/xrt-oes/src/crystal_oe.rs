@@ -8,7 +8,7 @@
 use ndarray::Array1;
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{RotationParams, rotate_beam};
+use xrt_core::transforms::{rotate_beam, RotationParams};
 use xrt_materials::crystal::{CrystalBase, StructureFactor};
 
 use crate::oe::OeParams;
@@ -38,14 +38,8 @@ impl<S: Surface> CrystalOpticalElement<S> {
     /// Reflect a beam off this crystal optical element.
     ///
     /// Performs intersection, deflection, and crystal amplitude calculation.
-    pub fn reflect(
-        &self,
-        beam: &mut Beam,
-        sf: &dyn StructureFactor,
-    ) -> Vec<RayResult> {
-        let good: Vec<usize> = (0..beam.nrays())
-            .filter(|&i| beam.state[i] == 1)
-            .collect();
+    pub fn reflect(&self, beam: &mut Beam, sf: &dyn StructureFactor) -> Vec<RayResult> {
+        let good: Vec<usize> = (0..beam.nrays()).filter(|&i| beam.state[i] == 1).collect();
 
         if good.is_empty() {
             return vec![];
@@ -145,7 +139,10 @@ impl<S: Surface> CrystalOpticalElement<S> {
         }
 
         // Compute crystal amplitude
-        match self.crystal.get_amplitude(&energy_arr, &bidn_arr, None, None, sf) {
+        match self
+            .crystal
+            .get_amplitude(&energy_arr, &bidn_arr, None, None, sf)
+        {
             Ok((rs, rp)) => {
                 // Apply to beam coherency matrix
                 reflect::apply_material_amplitude(
@@ -158,7 +155,10 @@ impl<S: Surface> CrystalOpticalElement<S> {
             Err(e) => {
                 // Crystal calculation failed — keep rays Good with reduced amplitude
                 // (matching xrt Python behavior: never kill rays from amplitude)
-                eprintln!("  crystal amplitude error: {e:?}, keeping {} rays", good_after.len());
+                eprintln!(
+                    "  crystal amplitude error: {e:?}, keeping {} rays",
+                    good_after.len()
+                );
             }
         }
     }
@@ -167,12 +167,12 @@ impl<S: Surface> CrystalOpticalElement<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_complex::Complex64;
     use crate::beamline::OeParamsBuilder;
     use crate::surfaces::flat::FlatSurface;
+    use num_complex::Complex64;
     use xrt_materials::crystal::{CrystalBase, CrystalGeometry};
-    use xrt_materials::material::{Material, MaterialKind};
     use xrt_materials::data::ScatteringTable;
+    use xrt_materials::material::{Material, MaterialKind};
 
     // Minimal structure factor for testing
     struct TestStructureFactor;
@@ -182,7 +182,10 @@ mod tests {
             e: &Array1<f64>,
             _sin_theta_over_lambda: &Array1<f64>,
             _need_fhkl: bool,
-        ) -> Result<(Array1<Complex64>, Array1<Complex64>, Array1<Complex64>), xrt_core::error::XrtError> {
+        ) -> Result<
+            (Array1<Complex64>, Array1<Complex64>, Array1<Complex64>),
+            xrt_core::error::XrtError,
+        > {
             let n = e.len();
             let f0 = Array1::from_elem(n, Complex64::new(14.0, -0.5));
             let fhkl = Array1::from_elem(n, Complex64::new(10.0, -0.3));
@@ -193,20 +196,24 @@ mod tests {
 
     fn make_si_crystal() -> CrystalBase {
         let si = Material::new(
-            &["Si"], None, 2.33,
-            MaterialKind::Mirror, None,
+            &["Si"],
+            None,
+            2.33,
+            MaterialKind::Mirror,
+            None,
             ScatteringTable::ChantlerTotal,
-        ).unwrap();
+        )
+        .unwrap();
 
         CrystalBase::new(
             si,
             [1, 1, 1],
-            3.1356,         // d-spacing [Å]
-            Some(160.18),   // V [ų]
+            3.1356,       // d-spacing [Å]
+            Some(160.18), // V [ų]
             CrystalGeometry::BraggReflected,
-            1.0,            // Debye-Waller
-            None,           // semi-infinite
-            0.0,            // no mosaicity
+            1.0,  // Debye-Waller
+            None, // semi-infinite
+            0.0,  // no mosaicity
         )
     }
 
@@ -256,10 +263,7 @@ mod tests {
             let first_good = (0..5).find(|&i| beam.state[i] == RayState::Good as i32);
             if let Some(i) = first_good {
                 // jss should have been multiplied by |rs|²
-                assert!(
-                    beam.jss[i].is_finite(),
-                    "jss[{}] = {}", i, beam.jss[i]
-                );
+                assert!(beam.jss[i].is_finite(), "jss[{}] = {}", i, beam.jss[i]);
             }
         }
     }

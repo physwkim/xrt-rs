@@ -181,13 +181,11 @@ pub fn solve_bragg_riccati_with_strain(
         );
 
         // 5th-order solution
-        let xi_new = xi
-            + (k1 * B1 + k3 * B3 + k4 * B4 + k5 * B5 + k6 * B6) * hd;
+        let xi_new = xi + (k1 * B1 + k3 * B3 + k4 * B4 + k5 * B5 + k6 * B6) * hd;
 
         // Error estimation (difference between 5th and 4th order)
         let k7 = f(z + hd, xi_new);
-        let err_vec =
-            (k1 * E1 + k3 * E3 + k4 * E4 + k5 * E5 + k6 * E6 + k7 * E7) * hd;
+        let err_vec = (k1 * E1 + k3 * E3 + k4 * E4 + k5 * E5 + k6 * E6 + k7 * E7) * hd;
         let err = err_vec.norm();
         let tol = config.atol + config.rtol * xi_new.norm();
 
@@ -321,8 +319,10 @@ pub fn tt_solve(
         .par_iter()
         .zip(coeffs_p.par_iter())
         .map(|(cs, cp)| {
-            let rs = solve_bragg_riccati_with_strain(cs, z_start, z_end, xi_init, config, &strain_fn);
-            let rp = solve_bragg_riccati_with_strain(cp, z_start, z_end, xi_init, config, &strain_fn);
+            let rs =
+                solve_bragg_riccati_with_strain(cs, z_start, z_end, xi_init, config, &strain_fn);
+            let rp =
+                solve_bragg_riccati_with_strain(cp, z_start, z_end, xi_init, config, &strain_fn);
             TtResult { rs, rp }
         })
         .collect()
@@ -331,7 +331,7 @@ pub fn tt_solve(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::deformation::{NoDeformation, IsotropicPlate};
+    use crate::deformation::{IsotropicPlate, NoDeformation};
 
     #[test]
     fn solve_constant_coefficients() {
@@ -432,12 +432,10 @@ mod tests {
         let z_end = 10000.0;
         let xi0 = Complex64::new(0.0, 0.0);
 
-        let xi_no_strain = solve_bragg_riccati_with_strain(
-            &coeffs, 0.0, z_end, xi0, &config, &|_| 0.0,
-        );
-        let xi_with_strain = solve_bragg_riccati_with_strain(
-            &coeffs, 0.0, z_end, xi0, &config, &|_z| 1e-6,
-        );
+        let xi_no_strain =
+            solve_bragg_riccati_with_strain(&coeffs, 0.0, z_end, xi0, &config, &|_| 0.0);
+        let xi_with_strain =
+            solve_bragg_riccati_with_strain(&coeffs, 0.0, z_end, xi0, &config, &|_z| 1e-6);
 
         // Strain should modify the result
         assert!(
@@ -469,10 +467,7 @@ mod tests {
         let dh = xi * d0;
         let total = d0.norm_sqr() + dh.norm_sqr();
         // Should be approximately conserved (may deviate slightly due to numerics)
-        assert!(
-            total.is_finite(),
-            "total = {total}"
-        );
+        assert!(total.is_finite(), "total = {total}");
     }
 
     #[test]

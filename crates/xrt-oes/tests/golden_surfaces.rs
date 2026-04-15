@@ -14,8 +14,8 @@ fn load_fixture() -> serde_json::Value {
         env!("CARGO_MANIFEST_DIR"),
         "/../../validation/fixtures/surfaces.json"
     );
-    let text = std::fs::read_to_string(path)
-        .expect("Run `python validation/generate_fixtures.py` first");
+    let text =
+        std::fs::read_to_string(path).expect("Run `python validation/generate_fixtures.py` first");
     serde_json::from_str(&text).unwrap()
 }
 
@@ -28,9 +28,7 @@ fn make_surface(surf: &serde_json::Value) -> Box<dyn Surface> {
             params["R"].as_f64().unwrap(),
             params["r"].as_f64().unwrap(),
         )),
-        "spherical" => Box::new(SphericalSurface::new(
-            params["R"].as_f64().unwrap(),
-        )),
+        "spherical" => Box::new(SphericalSurface::new(params["R"].as_f64().unwrap())),
         "paraboloid_lens" => Box::new(ParaboloidLensSurface::new(
             params["focus"].as_f64().unwrap(),
             None,
@@ -120,14 +118,22 @@ fn golden_blazed_non_boundary() {
         let [nx, ny, nz] = surface.local_n(x, y);
 
         let tol = 1e-12;
-        assert!((z - exp_z).abs() < tol,
-            "blazed z({x},{y}): {z:.15e} != {exp_z:.15e}");
-        assert!((nx - exp_nx).abs() < tol,
-            "blazed nx({x},{y}): {nx:.15e} != {exp_nx:.15e}");
-        assert!((ny - exp_ny).abs() < tol,
-            "blazed ny({x},{y}): {ny:.15e} != {exp_ny:.15e}");
-        assert!((nz - exp_nz).abs() < tol,
-            "blazed nz({x},{y}): {nz:.15e} != {exp_nz:.15e}");
+        assert!(
+            (z - exp_z).abs() < tol,
+            "blazed z({x},{y}): {z:.15e} != {exp_z:.15e}"
+        );
+        assert!(
+            (nx - exp_nx).abs() < tol,
+            "blazed nx({x},{y}): {nx:.15e} != {exp_nx:.15e}"
+        );
+        assert!(
+            (ny - exp_ny).abs() < tol,
+            "blazed ny({x},{y}): {ny:.15e} != {exp_ny:.15e}"
+        );
+        assert!(
+            (nz - exp_nz).abs() < tol,
+            "blazed nz({x},{y}): {nz:.15e} != {exp_nz:.15e}"
+        );
     }
 }
 
@@ -141,8 +147,10 @@ fn golden_toroid_sagittal_boundary() {
     assert!(z.is_finite(), "z at x=49.9 should be finite");
 
     let [nx, ny, nz] = surface.local_n(49.9, 0.0);
-    assert!(nx.is_finite() && ny.is_finite() && nz.is_finite(),
-        "normal at x=49.9 should be finite");
+    assert!(
+        nx.is_finite() && ny.is_finite() && nz.is_finite(),
+        "normal at x=49.9 should be finite"
+    );
 
     // x = r exactly: may give large derivative
     let z_edge = surface.local_z(50.0, 0.0);
@@ -160,6 +168,8 @@ fn golden_spherical_radius_boundary() {
     // Beyond boundary rho > R: should return R (clamped)
     let z_beyond = surface.local_z(1001.0, 0.0);
     assert!(z_beyond.is_finite(), "z beyond boundary should be finite");
-    assert!((z_beyond - 1000.0).abs() < 1e-6,
-        "z beyond boundary should be R, got {z_beyond}");
+    assert!(
+        (z_beyond - 1000.0).abs() < 1e-6,
+        "z beyond boundary should be R, got {z_beyond}"
+    );
 }

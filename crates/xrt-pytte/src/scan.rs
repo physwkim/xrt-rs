@@ -29,7 +29,7 @@ pub enum ScanMode {
     },
     /// Energy scan: fixed angle, vary energy
     Energy {
-        theta_bragg: f64,   // fixed Bragg angle [rad]
+        theta_bragg: f64, // fixed Bragg angle [rad]
         energies_ev: Vec<f64>,
     },
 }
@@ -51,26 +51,31 @@ pub fn compute_bragg_coeffs(
                 .iter()
                 .map(|&dth| {
                     let theta = theta_b + dth;
-                    let coeffs_s = bragg_coeffs_at(crystal, lambda, theta, theta_b, b, Polarization::Sigma);
-                    let coeffs_p = bragg_coeffs_at(crystal, lambda, theta, theta_b, b, Polarization::Pi);
+                    let coeffs_s =
+                        bragg_coeffs_at(crystal, lambda, theta, theta_b, b, Polarization::Sigma);
+                    let coeffs_p =
+                        bragg_coeffs_at(crystal, lambda, theta, theta_b, b, Polarization::Pi);
                     (coeffs_s, coeffs_p)
                 })
                 .unzip()
         }
-        ScanMode::Energy { theta_bragg, energies_ev } => {
-            energies_ev
-                .iter()
-                .map(|&e| {
-                    let lambda = CH / e;
-                    let theta_b = *theta_bragg;
-                    let b = crystal.asymmetry_b(theta_b);
+        ScanMode::Energy {
+            theta_bragg,
+            energies_ev,
+        } => energies_ev
+            .iter()
+            .map(|&e| {
+                let lambda = CH / e;
+                let theta_b = *theta_bragg;
+                let b = crystal.asymmetry_b(theta_b);
 
-                    let coeffs_s = bragg_coeffs_at(crystal, lambda, theta_b, theta_b, b, Polarization::Sigma);
-                    let coeffs_p = bragg_coeffs_at(crystal, lambda, theta_b, theta_b, b, Polarization::Pi);
-                    (coeffs_s, coeffs_p)
-                })
-                .unzip()
-        }
+                let coeffs_s =
+                    bragg_coeffs_at(crystal, lambda, theta_b, theta_b, b, Polarization::Sigma);
+                let coeffs_p =
+                    bragg_coeffs_at(crystal, lambda, theta_b, theta_b, b, Polarization::Pi);
+                (coeffs_s, coeffs_p)
+            })
+            .unzip(),
     }
 }
 

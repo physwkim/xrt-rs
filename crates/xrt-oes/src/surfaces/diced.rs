@@ -35,7 +35,13 @@ impl<S: Surface> DicedSurface<S> {
     /// * `dx_gap` - Gap width in x [mm]
     /// * `dy_gap` - Gap height in y [mm]
     pub fn new(base: S, dx_facet: f64, dy_facet: f64, dx_gap: f64, dy_gap: f64) -> Self {
-        Self { base, dx_facet, dy_facet, dx_gap, dy_gap }
+        Self {
+            base,
+            dx_facet,
+            dy_facet,
+            dx_gap,
+            dy_gap,
+        }
     }
 
     /// Check if (x, y) falls in a gap between facets.

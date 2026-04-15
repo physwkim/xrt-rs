@@ -31,45 +31,36 @@ pub fn rotate_z(x: f64, y: f64, cos_a: f64, sin_a: f64) -> (f64, f64) {
 // ── Array rotations ─────────────────────────────────────────────────────────
 
 /// Rotate arrays around X axis (pitch) in-place.
-pub fn rotate_x_arrays(
-    y: &mut Array1<f64>,
-    z: &mut Array1<f64>,
-    cos_a: f64,
-    sin_a: f64,
-) {
-    Zip::from(y.view_mut()).and(z.view_mut()).for_each(|yi, zi| {
-        let (yn, zn) = rotate_x(*yi, *zi, cos_a, sin_a);
-        *yi = yn;
-        *zi = zn;
-    });
+pub fn rotate_x_arrays(y: &mut Array1<f64>, z: &mut Array1<f64>, cos_a: f64, sin_a: f64) {
+    Zip::from(y.view_mut())
+        .and(z.view_mut())
+        .for_each(|yi, zi| {
+            let (yn, zn) = rotate_x(*yi, *zi, cos_a, sin_a);
+            *yi = yn;
+            *zi = zn;
+        });
 }
 
 /// Rotate arrays around Y axis (roll) in-place.
-pub fn rotate_y_arrays(
-    x: &mut Array1<f64>,
-    z: &mut Array1<f64>,
-    cos_a: f64,
-    sin_a: f64,
-) {
-    Zip::from(x.view_mut()).and(z.view_mut()).for_each(|xi, zi| {
-        let (xn, zn) = rotate_y(*xi, *zi, cos_a, sin_a);
-        *xi = xn;
-        *zi = zn;
-    });
+pub fn rotate_y_arrays(x: &mut Array1<f64>, z: &mut Array1<f64>, cos_a: f64, sin_a: f64) {
+    Zip::from(x.view_mut())
+        .and(z.view_mut())
+        .for_each(|xi, zi| {
+            let (xn, zn) = rotate_y(*xi, *zi, cos_a, sin_a);
+            *xi = xn;
+            *zi = zn;
+        });
 }
 
 /// Rotate arrays around Z axis (yaw) in-place.
-pub fn rotate_z_arrays(
-    x: &mut Array1<f64>,
-    y: &mut Array1<f64>,
-    cos_a: f64,
-    sin_a: f64,
-) {
-    Zip::from(x.view_mut()).and(y.view_mut()).for_each(|xi, yi| {
-        let (xn, yn) = rotate_z(*xi, *yi, cos_a, sin_a);
-        *xi = xn;
-        *yi = yn;
-    });
+pub fn rotate_z_arrays(x: &mut Array1<f64>, y: &mut Array1<f64>, cos_a: f64, sin_a: f64) {
+    Zip::from(x.view_mut())
+        .and(y.view_mut())
+        .for_each(|xi, yi| {
+            let (xn, yn) = rotate_z(*xi, *yi, cos_a, sin_a);
+            *xi = xn;
+            *yi = yn;
+        });
 }
 
 // ── Indexed array rotations ─────────────────────────────────────────────────
@@ -246,18 +237,48 @@ pub fn rotate_beam(
         match indices {
             None => {
                 if !skip_xyz {
-                    apply_rotation_full_xyz(axis, &mut beam.x, &mut beam.y, &mut beam.z, cos_a, sin_a);
+                    apply_rotation_full_xyz(
+                        axis,
+                        &mut beam.x,
+                        &mut beam.y,
+                        &mut beam.z,
+                        cos_a,
+                        sin_a,
+                    );
                 }
                 if !skip_abc {
-                    apply_rotation_full_xyz(axis, &mut beam.a, &mut beam.b, &mut beam.c, cos_a, sin_a);
+                    apply_rotation_full_xyz(
+                        axis,
+                        &mut beam.a,
+                        &mut beam.b,
+                        &mut beam.c,
+                        cos_a,
+                        sin_a,
+                    );
                 }
             }
             Some(idx) => {
                 if !skip_xyz {
-                    apply_rotation_indexed_xyz(axis, &mut beam.x, &mut beam.y, &mut beam.z, idx, cos_a, sin_a);
+                    apply_rotation_indexed_xyz(
+                        axis,
+                        &mut beam.x,
+                        &mut beam.y,
+                        &mut beam.z,
+                        idx,
+                        cos_a,
+                        sin_a,
+                    );
                 }
                 if !skip_abc {
-                    apply_rotation_indexed_xyz(axis, &mut beam.a, &mut beam.b, &mut beam.c, idx, cos_a, sin_a);
+                    apply_rotation_indexed_xyz(
+                        axis,
+                        &mut beam.a,
+                        &mut beam.b,
+                        &mut beam.c,
+                        idx,
+                        cos_a,
+                        sin_a,
+                    );
                 }
             }
         }
@@ -539,7 +560,11 @@ mod tests {
 
     #[test]
     fn test_distance_xyz() {
-        assert_abs_diff_eq!(distance_xyz(&[0.0, 0.0, 0.0], &[1.0, 2.0, 2.0]), 3.0, epsilon = 1e-15);
+        assert_abs_diff_eq!(
+            distance_xyz(&[0.0, 0.0, 0.0], &[1.0, 2.0, 2.0]),
+            3.0,
+            epsilon = 1e-15
+        );
     }
 
     #[test]

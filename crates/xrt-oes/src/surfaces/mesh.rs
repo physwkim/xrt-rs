@@ -24,30 +24,41 @@ pub struct MeshSurface {
 impl MeshSurface {
     /// Create a mesh surface from vertices and face indices.
     pub fn new(vertices: Vec<[f64; 3]>, faces: Vec<[usize; 3]>) -> Self {
-        let face_normals: Vec<[f64; 3]> = faces.iter().map(|&[i0, i1, i2]| {
-            let v0 = vertices[i0];
-            let v1 = vertices[i1];
-            let v2 = vertices[i2];
-            let e1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
-            let e2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
-            let nx = e1[1] * e2[2] - e1[2] * e2[1];
-            let ny = e1[2] * e2[0] - e1[0] * e2[2];
-            let nz = e1[0] * e2[1] - e1[1] * e2[0];
-            let norm = (nx * nx + ny * ny + nz * nz).sqrt();
-            if norm > 1e-30 {
-                [nx / norm, ny / norm, nz / norm]
-            } else {
-                [0.0, 0.0, 1.0]
-            }
-        }).collect();
+        let face_normals: Vec<[f64; 3]> = faces
+            .iter()
+            .map(|&[i0, i1, i2]| {
+                let v0 = vertices[i0];
+                let v1 = vertices[i1];
+                let v2 = vertices[i2];
+                let e1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
+                let e2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
+                let nx = e1[1] * e2[2] - e1[2] * e2[1];
+                let ny = e1[2] * e2[0] - e1[0] * e2[2];
+                let nz = e1[0] * e2[1] - e1[1] * e2[0];
+                let norm = (nx * nx + ny * ny + nz * nz).sqrt();
+                if norm > 1e-30 {
+                    [nx / norm, ny / norm, nz / norm]
+                } else {
+                    [0.0, 0.0, 1.0]
+                }
+            })
+            .collect();
 
-        let face_centroids: Vec<[f64; 2]> = faces.iter().map(|&[i0, i1, i2]| {
-            let cx = (vertices[i0][0] + vertices[i1][0] + vertices[i2][0]) / 3.0;
-            let cy = (vertices[i0][1] + vertices[i1][1] + vertices[i2][1]) / 3.0;
-            [cx, cy]
-        }).collect();
+        let face_centroids: Vec<[f64; 2]> = faces
+            .iter()
+            .map(|&[i0, i1, i2]| {
+                let cx = (vertices[i0][0] + vertices[i1][0] + vertices[i2][0]) / 3.0;
+                let cy = (vertices[i0][1] + vertices[i1][1] + vertices[i2][1]) / 3.0;
+                [cx, cy]
+            })
+            .collect();
 
-        Self { vertices, faces, face_normals, face_centroids }
+        Self {
+            vertices,
+            faces,
+            face_normals,
+            face_centroids,
+        }
     }
 
     /// Find the nearest face to (x, y) in the xy-plane.
@@ -98,7 +109,10 @@ mod tests {
         let m = MeshSurface::new(verts, faces);
         assert!(m.local_z(0.0, 0.0).abs() < 1e-12);
         let n = m.local_n(0.0, 0.0);
-        assert!((n[2].abs() - 1.0).abs() < 1e-10, "flat mesh normal should be ±z");
+        assert!(
+            (n[2].abs() - 1.0).abs() < 1e-10,
+            "flat mesh normal should be ±z"
+        );
     }
 
     #[test]

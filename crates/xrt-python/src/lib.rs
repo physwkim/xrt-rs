@@ -56,11 +56,11 @@ use num_complex::Complex64;
 use xrt_math::rootfind::RootFindConfig;
 use xrt_oes::intersection::find_intersection_surface;
 use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_oes::surfaces::toroid::ToroidSurface;
-use xrt_oes::surfaces::spherical::SphericalSurface;
-use xrt_oes::surfaces::lens::ParaboloidLensSurface;
-use xrt_oes::surfaces::grating::{BlazedGrating, LaminarGrating};
 use xrt_oes::surfaces::fzp::FzpSurface;
+use xrt_oes::surfaces::grating::{BlazedGrating, LaminarGrating};
+use xrt_oes::surfaces::lens::ParaboloidLensSurface;
+use xrt_oes::surfaces::spherical::SphericalSurface;
+use xrt_oes::surfaces::toroid::ToroidSurface;
 
 /// Find ray-surface intersection for a batch of rays.
 ///
@@ -86,9 +86,14 @@ fn find_intersection_rs(
 ) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>)> {
     let n = x.len();
     check_equal_lengths(&[
-        ("x", n), ("y", y.len()), ("z", z.len()),
-        ("a", a.len()), ("b", b.len()), ("c", c.len()),
-        ("t1", t1.len()), ("t2", t2.len()),
+        ("x", n),
+        ("y", y.len()),
+        ("z", z.len()),
+        ("a", a.len()),
+        ("b", b.len()),
+        ("c", c.len()),
+        ("t1", t1.len()),
+        ("t2", t2.len()),
     ])?;
     let config = RootFindConfig::default();
 
@@ -102,10 +107,16 @@ fn find_intersection_rs(
             for i in 0..n {
                 let result = find_intersection_surface(
                     &$surface,
-                    t1[i], t2[i],
-                    x[i], y[i], z[i],
-                    a[i], b[i], c[i],
-                    invert_normal, &config,
+                    t1[i],
+                    t2[i],
+                    x[i],
+                    y[i],
+                    z[i],
+                    a[i],
+                    b[i],
+                    c[i],
+                    invert_normal,
+                    &config,
                 );
                 t_out[i] = result.t;
                 x_out[i] = result.x;
@@ -142,10 +153,7 @@ fn find_intersection_rs(
                 .get_item("focus")?
                 .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'focus'"))?
                 .extract()?;
-            let z_max: Option<f64> = params
-                .get_item("zmax")?
-                .map(|v| v.extract())
-                .transpose()?;
+            let z_max: Option<f64> = params.get_item("zmax")?.map(|v| v.extract()).transpose()?;
             solve_surface!(ParaboloidLensSurface::new(focus, z_max));
         }
         "blazed_grating" => {
@@ -159,7 +167,9 @@ fn find_intersection_rs(
                 .extract()?;
             let anti_blaze: f64 = params
                 .get_item("antiBlaze")?
-                .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'antiBlaze'"))?
+                .ok_or_else(|| {
+                    PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'antiBlaze'")
+                })?
                 .extract()?;
             solve_surface!(BlazedGrating::new(rho, blaze, anti_blaze));
         }
@@ -185,7 +195,9 @@ fn find_intersection_rs(
                 .extract()?;
             let wavelength: f64 = params
                 .get_item("wavelength")?
-                .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'wavelength'"))?
+                .ok_or_else(|| {
+                    PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'wavelength'")
+                })?
                 .extract()?;
             let n_zones: usize = params
                 .get_item("nZones")?
@@ -215,10 +227,10 @@ fn find_intersection_parametric_rs(
     y: Vec<f64>,
     z: Vec<f64>,
 ) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
-    use xrt_oes::surfaces::elliptical::EllipticalSurface;
-    use xrt_oes::surfaces::parabolical::ParabolicalSurface;
-    use xrt_oes::surfaces::hyperbolic::HyperbolicSurface;
     use xrt_oes::surface::ParametricSurface;
+    use xrt_oes::surfaces::elliptical::EllipticalSurface;
+    use xrt_oes::surfaces::hyperbolic::HyperbolicSurface;
+    use xrt_oes::surfaces::parabolical::ParabolicalSurface;
 
     let n = x.len();
     check_equal_lengths(&[("x", n), ("y", y.len()), ("z", z.len())])?;
@@ -239,20 +251,47 @@ fn find_intersection_parametric_rs(
 
     match surface_type {
         "elliptical" => {
-            let a: f64 = params.get_item("a")?.ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'a'"))?.extract()?;
-            let b: f64 = params.get_item("b")?.ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'b'"))?.extract()?;
-            let y0: f64 = params.get_item("y0")?.map(|v| v.extract()).transpose()?.unwrap_or(0.0);
+            let a: f64 = params
+                .get_item("a")?
+                .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'a'"))?
+                .extract()?;
+            let b: f64 = params
+                .get_item("b")?
+                .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'b'"))?
+                .extract()?;
+            let y0: f64 = params
+                .get_item("y0")?
+                .map(|v| v.extract())
+                .transpose()?
+                .unwrap_or(0.0);
             convert_parametric!(EllipticalSurface::new(a, b, y0));
         }
         "parabolical" => {
-            let p: f64 = params.get_item("p")?.ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'p'"))?.extract()?;
-            let y0: f64 = params.get_item("y0")?.map(|v| v.extract()).transpose()?.unwrap_or(0.0);
+            let p: f64 = params
+                .get_item("p")?
+                .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'p'"))?
+                .extract()?;
+            let y0: f64 = params
+                .get_item("y0")?
+                .map(|v| v.extract())
+                .transpose()?
+                .unwrap_or(0.0);
             convert_parametric!(ParabolicalSurface::new(p, y0));
         }
         "hyperbolic" => {
-            let a: f64 = params.get_item("a")?.ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'a'"))?.extract()?;
-            let b: f64 = params.get_item("b")?.ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'b'"))?.extract()?;
-            let y0: f64 = params.get_item("y0")?.map(|v| v.extract()).transpose()?.unwrap_or(0.0);
+            let a: f64 = params
+                .get_item("a")?
+                .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'a'"))?
+                .extract()?;
+            let b: f64 = params
+                .get_item("b")?
+                .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("missing 'b'"))?
+                .extract()?;
+            let y0: f64 = params
+                .get_item("y0")?
+                .map(|v| v.extract())
+                .transpose()?
+                .unwrap_or(0.0);
             convert_parametric!(HyperbolicSurface::new(a, b, y0));
         }
         _ => {
@@ -282,32 +321,52 @@ fn find_intersection_parametric_rs(
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 fn diffraction_integral_rs(
-    ray_x: Vec<f64>, ray_y: Vec<f64>, ray_z: Vec<f64>,
-    ray_nx: Vec<f64>, ray_ny: Vec<f64>, ray_nz: Vec<f64>,
+    ray_x: Vec<f64>,
+    ray_y: Vec<f64>,
+    ray_z: Vec<f64>,
+    ray_nx: Vec<f64>,
+    ray_ny: Vec<f64>,
+    ray_nz: Vec<f64>,
     ray_nl: Vec<f64>,
-    ray_es_re: Vec<f64>, ray_es_im: Vec<f64>,
-    ray_ep_re: Vec<f64>, ray_ep_im: Vec<f64>,
+    ray_es_re: Vec<f64>,
+    ray_es_im: Vec<f64>,
+    ray_ep_re: Vec<f64>,
+    ray_ep_im: Vec<f64>,
     ray_energy: Vec<f64>,
-    pix_x: Vec<f64>, pix_y: Vec<f64>, pix_z: Vec<f64>,
+    pix_x: Vec<f64>,
+    pix_y: Vec<f64>,
+    pix_z: Vec<f64>,
 ) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>)> {
-    use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
+    use xrt_waves::diffraction::{diffraction_integral, DiffractionRay, PixelPoint};
 
     let n_rays = ray_x.len();
     check_equal_lengths(&[
-        ("ray_x", n_rays), ("ray_y", ray_y.len()), ("ray_z", ray_z.len()),
-        ("ray_nx", ray_nx.len()), ("ray_ny", ray_ny.len()), ("ray_nz", ray_nz.len()),
+        ("ray_x", n_rays),
+        ("ray_y", ray_y.len()),
+        ("ray_z", ray_z.len()),
+        ("ray_nx", ray_nx.len()),
+        ("ray_ny", ray_ny.len()),
+        ("ray_nz", ray_nz.len()),
         ("ray_nl", ray_nl.len()),
-        ("ray_es_re", ray_es_re.len()), ("ray_es_im", ray_es_im.len()),
-        ("ray_ep_re", ray_ep_re.len()), ("ray_ep_im", ray_ep_im.len()),
+        ("ray_es_re", ray_es_re.len()),
+        ("ray_es_im", ray_es_im.len()),
+        ("ray_ep_re", ray_ep_re.len()),
+        ("ray_ep_im", ray_ep_im.len()),
         ("ray_energy", ray_energy.len()),
     ])?;
     check_equal_lengths(&[
-        ("pix_x", pix_x.len()), ("pix_y", pix_y.len()), ("pix_z", pix_z.len()),
+        ("pix_x", pix_x.len()),
+        ("pix_y", pix_y.len()),
+        ("pix_z", pix_z.len()),
     ])?;
     let rays: Vec<DiffractionRay> = (0..n_rays)
         .map(|i| DiffractionRay {
-            x: ray_x[i], y: ray_y[i], z: ray_z[i],
-            nx: ray_nx[i], ny: ray_ny[i], nz: ray_nz[i],
+            x: ray_x[i],
+            y: ray_y[i],
+            z: ray_z[i],
+            nx: ray_nx[i],
+            ny: ray_ny[i],
+            nz: ray_nz[i],
             nl: ray_nl[i],
             es: Complex64::new(ray_es_re[i], ray_es_im[i]),
             ep: Complex64::new(ray_ep_re[i], ray_ep_im[i]),
@@ -317,7 +376,11 @@ fn diffraction_integral_rs(
 
     let n_pixels = pix_x.len();
     let pixels: Vec<PixelPoint> = (0..n_pixels)
-        .map(|i| PixelPoint { x: pix_x[i], y: pix_y[i], z: pix_z[i] })
+        .map(|i| PixelPoint {
+            x: pix_x[i],
+            y: pix_y[i],
+            z: pix_z[i],
+        })
         .collect();
 
     let results = diffraction_integral(&rays, &pixels);
@@ -344,19 +407,27 @@ fn diffraction_integral_rs(
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 fn tt_solve_rs(
-    cb_re: Vec<f64>, cb_im: Vec<f64>,
-    c0_re: Vec<f64>, c0_im: Vec<f64>,
-    ch_re: Vec<f64>, ch_im: Vec<f64>,
-    z_start: f64, z_end: f64,
-    xi_re: f64, xi_im: f64,
+    cb_re: Vec<f64>,
+    cb_im: Vec<f64>,
+    c0_re: Vec<f64>,
+    c0_im: Vec<f64>,
+    ch_re: Vec<f64>,
+    ch_im: Vec<f64>,
+    z_start: f64,
+    z_end: f64,
+    xi_re: f64,
+    xi_im: f64,
 ) -> PyResult<(Vec<f64>, Vec<f64>)> {
-    use xrt_pytte::solver::{BraggCoeffs, SolverConfig, solve_bragg_parallel};
+    use xrt_pytte::solver::{solve_bragg_parallel, BraggCoeffs, SolverConfig};
 
     let n = cb_re.len();
     check_equal_lengths(&[
-        ("cb_re", n), ("cb_im", cb_im.len()),
-        ("c0_re", c0_re.len()), ("c0_im", c0_im.len()),
-        ("ch_re", ch_re.len()), ("ch_im", ch_im.len()),
+        ("cb_re", n),
+        ("cb_im", cb_im.len()),
+        ("c0_re", c0_re.len()),
+        ("c0_im", c0_im.len()),
+        ("ch_re", ch_re.len()),
+        ("ch_im", ch_im.len()),
     ])?;
     let coeffs: Vec<BraggCoeffs> = (0..n)
         .map(|i| BraggCoeffs {
@@ -395,8 +466,14 @@ fn bending_magnet_shine_rs(
     use xrt_sources::bending_magnet::BendingMagnet;
 
     let mut bm = BendingMagnet::new(
-        electron_energy_gev, beam_current, b_field, nrays,
-        e_min, e_max, theta_max, psi_max,
+        electron_energy_gev,
+        beam_current,
+        b_field,
+        nrays,
+        e_min,
+        e_max,
+        theta_max,
+        psi_max,
     );
     let beam = bm.shine();
 
@@ -408,7 +485,12 @@ fn bending_magnet_shine_rs(
     dict.set_item("b", beam.b.to_vec())?;
     dict.set_item("c", beam.c.to_vec())?;
     dict.set_item("e", beam.e.to_vec())?;
-    dict.set_item("state", (0..beam.nrays()).map(|i| beam.state[i]).collect::<Vec<i32>>())?;
+    dict.set_item(
+        "state",
+        (0..beam.nrays())
+            .map(|i| beam.state[i])
+            .collect::<Vec<i32>>(),
+    )?;
     dict.set_item("jss", beam.jss.to_vec())?;
     dict.set_item("jpp", beam.jpp.to_vec())?;
 
@@ -432,11 +514,15 @@ fn bending_magnet_shine_rs(
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 fn multilayer_amplitude_rs(
-    t_elem: &str, t_rho: f64,
-    b_elem: &str, b_rho: f64,
-    s_elem: &str, s_rho: f64,
+    t_elem: &str,
+    t_rho: f64,
+    b_elem: &str,
+    b_rho: f64,
+    s_elem: &str,
+    s_rho: f64,
     n_pairs: usize,
-    d_t: f64, d_b: f64,
+    d_t: f64,
+    d_b: f64,
     roughness: f64,
     energies: Vec<f64>,
     sin_theta: Vec<f64>,
@@ -453,12 +539,22 @@ fn multilayer_amplitude_rs(
     let s_mat = Material::new(&[s_elem], None, s_rho, MaterialKind::Mirror, None, table)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
-    let ml = Multilayer::new(t_mat, b_mat, s_mat, n_pairs, d_t, d_b, roughness, MultilayerGeom::Reflected);
+    let ml = Multilayer::new(
+        t_mat,
+        b_mat,
+        s_mat,
+        n_pairs,
+        d_t,
+        d_b,
+        roughness,
+        MultilayerGeom::Reflected,
+    );
 
     check_equal_lengths(&[("energies", energies.len()), ("sin_theta", sin_theta.len())])?;
     let e_arr = Array1::from_vec(energies);
     let st_arr = Array1::from_vec(sin_theta);
-    let result = ml.get_amplitude(&e_arr, &st_arr)
+    let result = ml
+        .get_amplitude(&e_arr, &st_arr)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
     let rs_abs: Vec<f64> = result.rs.iter().map(|c| c.norm()).collect();
@@ -505,10 +601,7 @@ fn geometric_source_shine(
     dict.set_item("b", beam.b.to_vec())?;
     dict.set_item("c", beam.c.to_vec())?;
     dict.set_item("e", beam.e.to_vec())?;
-    dict.set_item(
-        "state",
-        (0..n).map(|i| beam.state[i]).collect::<Vec<i32>>(),
-    )?;
+    dict.set_item("state", (0..n).map(|i| beam.state[i]).collect::<Vec<i32>>())?;
 
     Ok(dict.into())
 }
@@ -535,8 +628,16 @@ fn wiggler_shine_rs(
     use xrt_sources::wiggler::Wiggler;
 
     let mut w = Wiggler::new(
-        electron_energy_gev, beam_current, k_param, period_mm, n_periods,
-        nrays, e_min, e_max, theta_max, psi_max,
+        electron_energy_gev,
+        beam_current,
+        k_param,
+        period_mm,
+        n_periods,
+        nrays,
+        e_min,
+        e_max,
+        theta_max,
+        psi_max,
     );
     let beam = w.shine();
 
@@ -548,7 +649,12 @@ fn wiggler_shine_rs(
     dict.set_item("b", beam.b.to_vec())?;
     dict.set_item("c", beam.c.to_vec())?;
     dict.set_item("e", beam.e.to_vec())?;
-    dict.set_item("state", (0..beam.nrays()).map(|i| beam.state[i]).collect::<Vec<i32>>())?;
+    dict.set_item(
+        "state",
+        (0..beam.nrays())
+            .map(|i| beam.state[i])
+            .collect::<Vec<i32>>(),
+    )?;
     dict.set_item("jss", beam.jss.to_vec())?;
     dict.set_item("jpp", beam.jpp.to_vec())?;
 
@@ -578,8 +684,17 @@ fn undulator_shine_rs(
     use xrt_sources::undulator::Undulator;
 
     let mut u = Undulator::new(
-        electron_energy_gev, beam_current, kx, ky, period_mm, n_periods,
-        nrays, e_min, e_max, theta_max, psi_max,
+        electron_energy_gev,
+        beam_current,
+        kx,
+        ky,
+        period_mm,
+        n_periods,
+        nrays,
+        e_min,
+        e_max,
+        theta_max,
+        psi_max,
     );
     let beam = u.shine();
 
@@ -591,7 +706,12 @@ fn undulator_shine_rs(
     dict.set_item("b", beam.b.to_vec())?;
     dict.set_item("c", beam.c.to_vec())?;
     dict.set_item("e", beam.e.to_vec())?;
-    dict.set_item("state", (0..beam.nrays()).map(|i| beam.state[i]).collect::<Vec<i32>>())?;
+    dict.set_item(
+        "state",
+        (0..beam.nrays())
+            .map(|i| beam.state[i])
+            .collect::<Vec<i32>>(),
+    )?;
     dict.set_item("jss", beam.jss.to_vec())?;
     dict.set_item("jpp", beam.jpp.to_vec())?;
 

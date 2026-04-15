@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use num_complex::Complex64;
 
-use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
+use xrt_waves::diffraction::{diffraction_integral, DiffractionRay, PixelPoint};
 
 fn make_rays(n: usize) -> Vec<DiffractionRay> {
     (0..n)
@@ -50,9 +50,7 @@ fn bench_diffraction_integral(c: &mut Criterion) {
             |b, &(nr, np)| {
                 let rays = make_rays(nr);
                 let pixels = make_pixels(np);
-                b.iter(|| {
-                    diffraction_integral(black_box(&rays), black_box(&pixels))
-                });
+                b.iter(|| diffraction_integral(black_box(&rays), black_box(&pixels)));
             },
         );
     }

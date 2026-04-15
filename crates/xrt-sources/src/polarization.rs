@@ -40,24 +40,10 @@ pub fn make_polarization(pol: &Polarization, beam: &mut Beam) {
             fill_beam(beam, 0.0, 1.0, Complex64::new(0.0, 0.0), 0.0, 1.0);
         }
         Polarization::Plus45 => {
-            fill_beam(
-                beam,
-                0.5,
-                0.5,
-                Complex64::new(0.5, 0.0),
-                sq2inv,
-                sq2inv,
-            );
+            fill_beam(beam, 0.5, 0.5, Complex64::new(0.5, 0.0), sq2inv, sq2inv);
         }
         Polarization::Minus45 => {
-            fill_beam(
-                beam,
-                0.5,
-                0.5,
-                Complex64::new(-0.5, 0.0),
-                sq2inv,
-                -sq2inv,
-            );
+            fill_beam(beam, 0.5, 0.5, Complex64::new(-0.5, 0.0), sq2inv, -sq2inv);
         }
         Polarization::Right => {
             fill_beam(
@@ -70,14 +56,7 @@ pub fn make_polarization(pol: &Polarization, beam: &mut Beam) {
             );
         }
         Polarization::Left => {
-            fill_beam(
-                beam,
-                0.5,
-                0.5,
-                Complex64::new(0.0, -0.5),
-                sq2inv,
-                sq2inv,
-            );
+            fill_beam(beam, 0.5, 0.5, Complex64::new(0.0, -0.5), sq2inv, sq2inv);
         }
         Polarization::Unpolarized => {
             fill_beam_unpolarized(beam, sq2inv);

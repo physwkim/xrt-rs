@@ -11,8 +11,8 @@ fn load_fixture() -> serde_json::Value {
         env!("CARGO_MANIFEST_DIR"),
         "/../../validation/fixtures/tt_si111_10kev.json"
     );
-    let text = std::fs::read_to_string(path)
-        .expect("Run `python validation/generate_fixtures.py` first");
+    let text =
+        std::fs::read_to_string(path).expect("Run `python validation/generate_fixtures.py` first");
     serde_json::from_str(&text).unwrap()
 }
 
@@ -100,14 +100,8 @@ fn golden_tt_rocking_curve_numerical() {
         let rp_norm = (rp_re * rp_re + rp_im * rp_im).sqrt();
 
         // Reflectivity must be in [0, 1] for perfect crystal
-        assert!(
-            rs_norm <= 1.0 + 1e-6,
-            "point[{i}] |Rs| = {rs_norm:.6} > 1"
-        );
-        assert!(
-            rp_norm <= 1.0 + 1e-6,
-            "point[{i}] |Rp| = {rp_norm:.6} > 1"
-        );
+        assert!(rs_norm <= 1.0 + 1e-6, "point[{i}] |Rs| = {rs_norm:.6} > 1");
+        assert!(rp_norm <= 1.0 + 1e-6, "point[{i}] |Rp| = {rp_norm:.6} > 1");
 
         // |Rs| >= |Rp| for all angles (s-polarization has wider Darwin width)
         assert!(

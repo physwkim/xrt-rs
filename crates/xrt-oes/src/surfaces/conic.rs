@@ -64,8 +64,7 @@ impl Surface for ConicCoefficientSurface {
         // Quadratic in z: c[2]*z² + (c[4]*y + c[5]*x + c[8])*z + rest = 0
         let a_coeff = c[2];
         let b_coeff = c[4] * y + c[5] * x + c[8];
-        let c_coeff =
-            c[0] * x * x + c[1] * y * y + c[3] * x * y + c[6] * x + c[7] * y + c[9];
+        let c_coeff = c[0] * x * x + c[1] * y * y + c[3] * x * y + c[6] * x + c[7] * y + c[9];
 
         if a_coeff.abs() < 1e-30 {
             // Linear in z
@@ -150,9 +149,6 @@ mod tests {
         // z should not depend on y
         let z1 = s.local_z(5.0, 0.0);
         let z2 = s.local_z(5.0, 100.0);
-        assert!(
-            (z1 - z2).abs() < 1e-12,
-            "cylinder should be y-independent"
-        );
+        assert!((z1 - z2).abs() < 1e-12, "cylinder should be y-independent");
     }
 }

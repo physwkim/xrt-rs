@@ -18,7 +18,11 @@ pub struct SurfaceOfRevolution {
 
 impl SurfaceOfRevolution {
     pub fn new(s_table: Vec<f64>, r_table: Vec<f64>) -> Self {
-        assert_eq!(s_table.len(), r_table.len(), "s and r tables must have same length");
+        assert_eq!(
+            s_table.len(),
+            r_table.len(),
+            "s and r tables must have same length"
+        );
         assert!(s_table.len() >= 2, "need at least 2 points");
         Self { s_table, r_table }
     }
@@ -33,7 +37,9 @@ impl SurfaceOfRevolution {
         }
         // Binary search for interval
         let idx = self.s_table.partition_point(|&v| v < s);
-        if idx == 0 { return self.r_table[0]; }
+        if idx == 0 {
+            return self.r_table[0];
+        }
         let i = idx - 1;
         let t = (s - self.s_table[i]) / (self.s_table[i + 1] - self.s_table[i]);
         self.r_table[i] * (1.0 - t) + self.r_table[i + 1] * t
@@ -82,10 +88,7 @@ mod tests {
     #[test]
     fn revolution_cylinder() {
         // Constant radius = cylinder
-        let s = SurfaceOfRevolution::new(
-            vec![0.0, 100.0],
-            vec![5.0, 5.0],
-        );
+        let s = SurfaceOfRevolution::new(vec![0.0, 100.0], vec![5.0, 5.0]);
         assert!((s.local_r(50.0, 0.0) - 5.0).abs() < 1e-12);
         assert!((s.local_r(0.0, 1.0) - 5.0).abs() < 1e-12);
     }
@@ -93,19 +96,13 @@ mod tests {
     #[test]
     fn revolution_taper() {
         // Linear taper: r goes from 5 to 10
-        let s = SurfaceOfRevolution::new(
-            vec![0.0, 100.0],
-            vec![5.0, 10.0],
-        );
+        let s = SurfaceOfRevolution::new(vec![0.0, 100.0], vec![5.0, 10.0]);
         assert!((s.local_r(50.0, 0.0) - 7.5).abs() < 1e-10);
     }
 
     #[test]
     fn revolution_round_trip() {
-        let s = SurfaceOfRevolution::new(
-            vec![0.0, 100.0],
-            vec![5.0, 10.0],
-        );
+        let s = SurfaceOfRevolution::new(vec![0.0, 100.0], vec![5.0, 10.0]);
         let r = s.local_r(30.0, 0.5);
         let (x, y, z) = s.param_to_xyz(30.0, 0.5, r);
         let (s2, phi2, r2) = s.xyz_to_param(x, y, z);

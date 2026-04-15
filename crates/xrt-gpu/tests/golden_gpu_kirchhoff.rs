@@ -10,16 +10,16 @@
 use num_complex::Complex64;
 
 use xrt_gpu::context::GpuContext;
-use xrt_gpu::kirchhoff::{kirchhoff_gpu, GpuPixel, GpuRay};
 use xrt_gpu::fallback::kirchhoff_auto;
+use xrt_gpu::kirchhoff::{kirchhoff_gpu, GpuPixel, GpuRay};
 
 fn load_fixture() -> serde_json::Value {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../validation/fixtures/diffraction_ref.json"
     );
-    let text = std::fs::read_to_string(path)
-        .expect("Run `python validation/generate_fixtures.py` first");
+    let text =
+        std::fs::read_to_string(path).expect("Run `python validation/generate_fixtures.py` first");
     serde_json::from_str(&text).unwrap()
 }
 
@@ -63,10 +63,7 @@ fn make_fixture_rays_pixels() -> (Vec<GpuRay>, Vec<GpuPixel>) {
 }
 
 /// CPU-only Kirchhoff (f64 precision, no GPU) for comparison.
-fn kirchhoff_cpu_f64(
-    rays: &[GpuRay],
-    pixels: &[GpuPixel],
-) -> Vec<(Complex64, Complex64)> {
+fn kirchhoff_cpu_f64(rays: &[GpuRay], pixels: &[GpuPixel]) -> Vec<(Complex64, Complex64)> {
     use std::f64::consts::PI;
     use xrt_core::consts::CHBAR;
 
@@ -80,7 +77,9 @@ fn kirchhoff_cpu_f64(
                 let dy = pixel.y as f64 - ray.y as f64;
                 let dz = pixel.z as f64 - ray.z as f64;
                 let path = (dx * dx + dy * dy + dz * dz).sqrt();
-                if path < 1e-20 { continue; }
+                if path < 1e-20 {
+                    continue;
+                }
                 let inv_path = 1.0 / path;
                 let ns = (ray.nx as f64 * dx + ray.ny as f64 * dy + ray.nz as f64 * dz) * inv_path;
                 let k = ray.energy as f64 / CHBAR * 1e7;
@@ -137,7 +136,8 @@ fn golden_gpu_long_distance_vs_cpu() {
         assert!(
             rel < 1e-3,
             "pixel[{i}] Es: GPU={:.4e} vs CPU={:.4e} (rel={rel:.2e})",
-            gpu.0, cpu.0
+            gpu.0,
+            cpu.0
         );
     }
 }
@@ -166,7 +166,8 @@ fn golden_gpu_long_distance_vs_fixture() {
 
         assert!(
             gpu.0.norm() > 1e-10,
-            "pixel[{i}] GPU Es still zero: {:.6e}", gpu.0
+            "pixel[{i}] GPU Es still zero: {:.6e}",
+            gpu.0
         );
 
         let rel = (gpu.0 - exp_es).norm() / exp_es.norm().max(1e-30);
@@ -189,14 +190,48 @@ fn golden_gpu_short_distance_vs_cpu() {
     };
 
     let rays = vec![
-        GpuRay { x: 0.0, y: 0.0, z: 0.0, nx: 0.0, ny: 0.0, nz: 1.0,
-                  nl: 1.0, energy: 1000.0, es_re: 1.0, es_im: 0.0, ep_re: 0.5, ep_im: 0.1 },
-        GpuRay { x: 0.01, y: 0.0, z: 0.0, nx: 0.0, ny: 0.0, nz: 1.0,
-                  nl: 1.0, energy: 1000.0, es_re: 0.8, es_im: -0.1, ep_re: 0.6, ep_im: 0.0 },
+        GpuRay {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            nx: 0.0,
+            ny: 0.0,
+            nz: 1.0,
+            nl: 1.0,
+            energy: 1000.0,
+            es_re: 1.0,
+            es_im: 0.0,
+            ep_re: 0.5,
+            ep_im: 0.1,
+        },
+        GpuRay {
+            x: 0.01,
+            y: 0.0,
+            z: 0.0,
+            nx: 0.0,
+            ny: 0.0,
+            nz: 1.0,
+            nl: 1.0,
+            energy: 1000.0,
+            es_re: 0.8,
+            es_im: -0.1,
+            ep_re: 0.6,
+            ep_im: 0.0,
+        },
     ];
     let pixels = vec![
-        GpuPixel { x: 0.0, y: 0.0, z: 0.1, _pad: 0.0 },
-        GpuPixel { x: 0.005, y: 0.0, z: 0.1, _pad: 0.0 },
+        GpuPixel {
+            x: 0.0,
+            y: 0.0,
+            z: 0.1,
+            _pad: 0.0,
+        },
+        GpuPixel {
+            x: 0.005,
+            y: 0.0,
+            z: 0.1,
+            _pad: 0.0,
+        },
     ];
 
     let gpu = kirchhoff_gpu(&ctx, &rays, &pixels);
@@ -220,30 +255,56 @@ fn golden_gpu_symmetry() {
     };
 
     let rays = vec![GpuRay {
-        x: 0.0, y: 0.0, z: 0.0,
-        nx: 0.0, ny: 0.0, nz: 1.0,
-        nl: 1.0, energy: 10000.0,
-        es_re: 1.0, es_im: 0.0,
-        ep_re: 1.0, ep_im: 0.0,
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        nx: 0.0,
+        ny: 0.0,
+        nz: 1.0,
+        nl: 1.0,
+        energy: 10000.0,
+        es_re: 1.0,
+        es_im: 0.0,
+        ep_re: 1.0,
+        ep_im: 0.0,
     }];
     let pixels = vec![
-        GpuPixel { x: -0.01, y: 0.0, z: 1000.0, _pad: 0.0 },
-        GpuPixel { x:  0.01, y: 0.0, z: 1000.0, _pad: 0.0 },
+        GpuPixel {
+            x: -0.01,
+            y: 0.0,
+            z: 1000.0,
+            _pad: 0.0,
+        },
+        GpuPixel {
+            x: 0.01,
+            y: 0.0,
+            z: 1000.0,
+            _pad: 0.0,
+        },
     ];
 
     let results = kirchhoff_gpu(&ctx, &rays, &pixels);
     assert_eq!(results.len(), 2);
 
     // Both pixels should now produce non-zero results (phase reduction fix)
-    assert!(results[0].0.norm() > 1e-10, "|Es[0]| too small: {:.4e}", results[0].0.norm());
-    assert!(results[1].0.norm() > 1e-10, "|Es[1]| too small: {:.4e}", results[1].0.norm());
+    assert!(
+        results[0].0.norm() > 1e-10,
+        "|Es[0]| too small: {:.4e}",
+        results[0].0.norm()
+    );
+    assert!(
+        results[1].0.norm() > 1e-10,
+        "|Es[1]| too small: {:.4e}",
+        results[1].0.norm()
+    );
 
     // Symmetric inputs → same |Es|
     let diff = (results[0].0.norm() - results[1].0.norm()).abs();
     assert!(
         diff < 1e-4 * results[0].0.norm(),
         "symmetric pixels: |Es[0]|={:.6e} vs |Es[1]|={:.6e}",
-        results[0].0.norm(), results[1].0.norm()
+        results[0].0.norm(),
+        results[1].0.norm()
     );
 }
 
@@ -255,7 +316,11 @@ fn golden_gpu_auto_dispatch() {
     assert_eq!(results.len(), pixels.len());
     for (i, (es, _ep)) in results.iter().enumerate() {
         assert!(es.re.is_finite(), "auto pixel[{i}] Es.re not finite");
-        assert!(es.norm() > 1e-10, "auto pixel[{i}] Es too small: {:.4e}", es.norm());
+        assert!(
+            es.norm() > 1e-10,
+            "auto pixel[{i}] Es too small: {:.4e}",
+            es.norm()
+        );
     }
 }
 
@@ -273,33 +338,52 @@ fn golden_gpu_extreme_distance() {
 
     let rays = vec![
         GpuRay {
-            x: 0.0, y: 0.0, z: 0.0,
-            nx: 0.0, ny: 0.0, nz: 1.0,
-            nl: 1.0, energy: 10000.0,
-            es_re: 1.0, es_im: 0.0,
-            ep_re: 0.5, ep_im: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            nx: 0.0,
+            ny: 0.0,
+            nz: 1.0,
+            nl: 1.0,
+            energy: 10000.0,
+            es_re: 1.0,
+            es_im: 0.0,
+            ep_re: 0.5,
+            ep_im: 0.0,
         },
         GpuRay {
-            x: 0.01, y: 0.0, z: 0.0,
-            nx: 0.0, ny: 0.0, nz: 1.0,
-            nl: 1.0, energy: 10000.0,
-            es_re: 0.8, es_im: 0.1,
-            ep_re: 0.6, ep_im: -0.1,
+            x: 0.01,
+            y: 0.0,
+            z: 0.0,
+            nx: 0.0,
+            ny: 0.0,
+            nz: 1.0,
+            nl: 1.0,
+            energy: 10000.0,
+            es_re: 0.8,
+            es_im: 0.1,
+            ep_re: 0.6,
+            ep_im: -0.1,
         },
     ];
-    let pixels = vec![
-        GpuPixel { x: 0.0, y: 0.0, z: 10000.0, _pad: 0.0 },
-    ];
+    let pixels = vec![GpuPixel {
+        x: 0.0,
+        y: 0.0,
+        z: 10000.0,
+        _pad: 0.0,
+    }];
 
     let gpu = kirchhoff_gpu(&ctx, &rays, &pixels);
     let cpu = kirchhoff_cpu_f64(&rays, &pixels);
 
     // GPU should produce non-zero result even at extreme distance
-    assert!(gpu[0].0.norm() > 1e-10,
-        "GPU at 10000mm should be non-zero: {:.4e}", gpu[0].0.norm());
+    assert!(
+        gpu[0].0.norm() > 1e-10,
+        "GPU at 10000mm should be non-zero: {:.4e}",
+        gpu[0].0.norm()
+    );
 
     // Compare with CPU
     let rel = (gpu[0].0 - cpu[0].0).norm() / cpu[0].0.norm();
-    assert!(rel < 0.05,
-        "GPU vs CPU at 10000mm: rel_err={rel:.2e}");
+    assert!(rel < 0.05, "GPU vs CPU at 10000mm: rel_err={rel:.2e}");
 }

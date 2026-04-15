@@ -13,7 +13,7 @@ use rand::Rng;
 use rand_distr::{Distribution, Normal, Uniform};
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::consts::{FINE_STR, PI, SIE0, SIM0, E2W, K2B};
+use xrt_core::consts::{E2W, FINE_STR, K2B, PI, SIE0, SIM0};
 
 use crate::bending_magnet::{bessel_k_approx, SynchrotronParams};
 
@@ -132,13 +132,11 @@ impl Wiggler {
             let k23 = bessel_k_approx(2.0 / 3.0, eta);
             let k13 = bessel_k_approx(1.0 / 3.0, eta);
 
-            let amp_sp = Complex64::new(0.0, -0.5) * sq3_over_pi * gamma * e * E2W
-                / w_cr
-                * gamma2_psi2_p1;
+            let amp_sp =
+                Complex64::new(0.0, -0.5) * sq3_over_pi * gamma * e * E2W / w_cr * gamma2_psi2_p1;
 
             let as_val = amp_sp * k23;
-            let ap_val =
-                Complex64::i() * gamma_psi * amp_sp * k13 / gamma2_psi2_p1.sqrt();
+            let ap_val = Complex64::i() * gamma_psi * amp_sp * k13 / gamma2_psi2_p1.sqrt();
 
             let inv_e = 1.0 / e;
             let is_val = (as_val * as_val.conj()).re;
@@ -282,9 +280,7 @@ mod tests {
             20,     // 20 periods
             100,    // rays
             5000.0, // energy range
-            15000.0,
-            0.002,
-            0.002,
+            15000.0, 0.002, 0.002,
         );
         assert!(w.b_max > 0.0);
         assert!(w.trajectory_amplitude() > 0.0);
@@ -297,11 +293,7 @@ mod tests {
         let thetas = vec![0.0; 10];
         let psis = vec![0.0; 10];
         let (intensity, _, _) = w.build_i_map(&energies, &thetas, &psis);
-        assert!(
-            intensity[0] > 0.0,
-            "intensity = {}",
-            intensity[0]
-        );
+        assert!(intensity[0] > 0.0, "intensity = {}", intensity[0]);
     }
 
     #[test]
@@ -337,14 +329,8 @@ mod tests {
     #[test]
     fn wiggler_flux_scales_with_periods() {
         // Flux should scale approximately linearly with N_periods
-        let mut wig10 = Wiggler::new(
-            3.0, 0.3, 5.0, 80.0, 10, 5000,
-            5000.0, 15000.0, 1e-3, 1e-3,
-        );
-        let mut wig20 = Wiggler::new(
-            3.0, 0.3, 5.0, 80.0, 20, 5000,
-            5000.0, 15000.0, 1e-3, 1e-3,
-        );
+        let mut wig10 = Wiggler::new(3.0, 0.3, 5.0, 80.0, 10, 5000, 5000.0, 15000.0, 1e-3, 1e-3);
+        let mut wig20 = Wiggler::new(3.0, 0.3, 5.0, 80.0, 20, 5000, 5000.0, 15000.0, 1e-3, 1e-3);
         let beam10 = wig10.shine();
         let beam20 = wig20.shine();
 
@@ -356,8 +342,10 @@ mod tests {
         let mean_e10: f64 = beam10.e.iter().sum::<f64>() / beam10.nrays() as f64;
         let mean_e20: f64 = beam20.e.iter().sum::<f64>() / beam20.nrays() as f64;
         let rel_diff = (mean_e10 - mean_e20).abs() / mean_e10;
-        assert!(rel_diff < 0.2,
-            "mean energy should be similar: {mean_e10:.0} vs {mean_e20:.0}");
+        assert!(
+            rel_diff < 0.2,
+            "mean energy should be similar: {mean_e10:.0} vs {mean_e20:.0}"
+        );
     }
 
     #[test]
@@ -365,8 +353,7 @@ mod tests {
         // Very small K → wiggler behaves more like bending magnet
         let mut wig = Wiggler::new(
             3.0, 0.3, 0.01, // very small K
-            80.0, 10, 1000,
-            5000.0, 15000.0, 1e-3, 1e-3,
+            80.0, 10, 1000, 5000.0, 15000.0, 1e-3, 1e-3,
         );
         let beam = wig.shine();
         assert_eq!(beam.nrays(), 1000);
@@ -376,7 +363,8 @@ mod tests {
         }
         // Direction vectors normalized
         for i in 0..beam.nrays() {
-            let norm = (beam.a[i]*beam.a[i] + beam.b[i]*beam.b[i] + beam.c[i]*beam.c[i]).sqrt();
+            let norm =
+                (beam.a[i] * beam.a[i] + beam.b[i] * beam.b[i] + beam.c[i] * beam.c[i]).sqrt();
             assert!((norm - 1.0).abs() < 1e-12);
         }
     }

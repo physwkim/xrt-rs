@@ -21,13 +21,7 @@ pub struct ErrorMapSurface<S: Surface> {
 }
 
 impl<S: Surface> ErrorMapSurface<S> {
-    pub fn new(
-        base: S,
-        x_grid: Vec<f64>,
-        y_grid: Vec<f64>,
-        errors: Vec<f64>,
-        scale: f64,
-    ) -> Self {
+    pub fn new(base: S, x_grid: Vec<f64>, y_grid: Vec<f64>, errors: Vec<f64>, scale: f64) -> Self {
         assert_eq!(errors.len(), x_grid.len() * y_grid.len());
         Self {
             base,

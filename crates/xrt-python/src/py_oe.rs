@@ -110,7 +110,11 @@ fn make_mirror_oe(
     material: Option<PyRef<'_, PyMaterial>>,
 ) -> OeInner {
     match material {
-        Some(m) => OeInner::Material(MaterialOpticalElement::new(surface, params, m.inner.clone())),
+        Some(m) => OeInner::Material(MaterialOpticalElement::new(
+            surface,
+            params,
+            m.inner.clone(),
+        )),
         None => OeInner::Bare(OpticalElement::new(surface, params)),
     }
 }
@@ -471,8 +475,7 @@ impl PyEllipticalMirror {
         theta: f64,
     ) -> PyResult<Self> {
         let c = parse_center(&center)?;
-        let surface =
-            ParametricSurfaceEnum::Elliptical(EllipticalSurface::from_pq(p, q, theta));
+        let surface = ParametricSurfaceEnum::Elliptical(EllipticalSurface::from_pq(p, q, theta));
         let params = make_params(c, pitch, roll, yaw, DeflectionMode::Reflect);
         let oe = OeInner::Parametric(ParametricOpticalElement::new(surface, params));
         Ok(Self {
@@ -524,8 +527,7 @@ impl PyParabolicalMirror {
         theta: f64,
     ) -> PyResult<Self> {
         let c = parse_center(&center)?;
-        let surface =
-            ParametricSurfaceEnum::Parabolical(ParabolicalSurface::from_pq(p, q, theta));
+        let surface = ParametricSurfaceEnum::Parabolical(ParabolicalSurface::from_pq(p, q, theta));
         let params = make_params(c, pitch, roll, yaw, DeflectionMode::Reflect);
         let oe = OeInner::Parametric(ParametricOpticalElement::new(surface, params));
         Ok(Self {
@@ -639,8 +641,7 @@ impl PyLaminarGrating {
         material: Option<PyRef<'_, PyMaterial>>,
     ) -> PyResult<Self> {
         let c = parse_center(&center)?;
-        let surface =
-            SurfaceEnum::LaminarGrating(LaminarGrating::new(rho, depth, duty_cycle));
+        let surface = SurfaceEnum::LaminarGrating(LaminarGrating::new(rho, depth, duty_cycle));
         let params = make_params(c, pitch, roll, yaw, DeflectionMode::Grating { order });
         let mut oe = GratingOpticalElement::new(surface, params, order);
         if let Some(m) = material {
@@ -705,8 +706,7 @@ impl PyVLSGrating {
         material: Option<PyRef<'_, PyMaterial>>,
     ) -> PyResult<Self> {
         let c = parse_center(&center)?;
-        let surface =
-            SurfaceEnum::VlsGrating(VlsGrating::new(rho0, coeffs, depth, duty));
+        let surface = SurfaceEnum::VlsGrating(VlsGrating::new(rho0, coeffs, depth, duty));
         let params = make_params(c, pitch, roll, yaw, DeflectionMode::Grating { order });
         let mut oe = GratingOpticalElement::new(surface, params, order);
         if let Some(m) = material {
@@ -777,9 +777,11 @@ impl PyParaboloidLens {
         };
         let params = make_params(c, pitch, roll, yaw, mode);
         let oe = match material {
-            Some(m) => {
-                OeInner::Material(MaterialOpticalElement::new(surface, params, m.inner.clone()))
-            }
+            Some(m) => OeInner::Material(MaterialOpticalElement::new(
+                surface,
+                params,
+                m.inner.clone(),
+            )),
             None => OeInner::Bare(OpticalElement::new(surface, params)),
         };
         Ok(Self {

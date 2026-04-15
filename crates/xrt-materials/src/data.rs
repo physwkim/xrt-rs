@@ -18,13 +18,12 @@ const ATOMIC_DATA: &str = include_str!("../data/AtomicData.dat");
 
 /// The periodic table, index 0 = "none" (placeholder).
 pub const ELEMENTS_LIST: &[&str] = &[
-    "none", "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P",
-    "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh",
-    "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
-    "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re",
-    "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th",
-    "Pa", "U",
+    "none", "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S",
+    "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge",
+    "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd",
+    "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",
 ];
 
 /// Scattering factor table selection.
@@ -126,12 +125,10 @@ fn parse_f0_data() -> HashMap<usize, F0Coeffs> {
 /// Read f0 coefficients for element with atomic number Z.
 pub fn read_f0_coeffs(z: usize) -> Result<F0Coeffs, XrtError> {
     let cache = F0_CACHE.get_or_init(parse_f0_data);
-    cache.get(&z).copied().ok_or_else(|| {
-        XrtError::ElementNotFound(format!(
-            "f0 coefficients not found for Z={}",
-            z
-        ))
-    })
+    cache
+        .get(&z)
+        .copied()
+        .ok_or_else(|| XrtError::ElementNotFound(format!("f0 coefficients not found for Z={}", z)))
 }
 
 // ── Cached atomic masses ────────────────────────────────────────────────────
@@ -194,20 +191,11 @@ pub fn read_f1f2_table(
         .unwrap_or_else(default_data_dir);
     let npz_path = dir.join(table.filename());
 
-    let file = std::fs::File::open(&npz_path).map_err(|e| {
-        XrtError::DataParse(format!(
-            "cannot open {}: {}",
-            npz_path.display(),
-            e
-        ))
-    })?;
+    let file = std::fs::File::open(&npz_path)
+        .map_err(|e| XrtError::DataParse(format!("cannot open {}: {}", npz_path.display(), e)))?;
 
     let mut archive = zip::ZipArchive::new(file).map_err(|e| {
-        XrtError::DataParse(format!(
-            "cannot read NPZ {}: {}",
-            npz_path.display(),
-            e
-        ))
+        XrtError::DataParse(format!("cannot read NPZ {}: {}", npz_path.display(), e))
     })?;
 
     let e_key = format!("{element_name}_E.npy");
@@ -246,19 +234,12 @@ fn read_npy_f32_from_zip(
         ))
     })?;
 
-    let reader = npyz::NpyFile::new(Cursor::new(&buf)).map_err(|e| {
-        XrtError::DataParse(format!(
-            "failed to parse NPY '{}': {}",
-            name, e
-        ))
-    })?;
+    let reader = npyz::NpyFile::new(Cursor::new(&buf))
+        .map_err(|e| XrtError::DataParse(format!("failed to parse NPY '{}': {}", name, e)))?;
 
-    let data: Vec<f32> = reader.into_vec().map_err(|e| {
-        XrtError::DataParse(format!(
-            "failed to read NPY data '{}': {}",
-            name, e
-        ))
-    })?;
+    let data: Vec<f32> = reader
+        .into_vec()
+        .map_err(|e| XrtError::DataParse(format!("failed to read NPY data '{}': {}", name, e)))?;
 
     Ok(data.into_iter().map(|v| v as f64).collect())
 }
@@ -332,9 +313,6 @@ mod tests {
             ScatteringTable::from_str_xrt("Henke"),
             ScatteringTable::Henke
         );
-        assert_eq!(
-            ScatteringTable::from_str_xrt("BrCo"),
-            ScatteringTable::BrCo
-        );
+        assert_eq!(ScatteringTable::from_str_xrt("BrCo"), ScatteringTable::BrCo);
     }
 }

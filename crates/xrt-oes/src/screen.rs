@@ -215,7 +215,13 @@ fn fwhm_of_projection(proj: &[f64], centers: &[f64]) -> Option<f64> {
 
 impl Screen {
     pub fn new(center: [f64; 3], dx: f64, dz: f64, nx: usize, nz: usize) -> Self {
-        Self { center, dx, dz, nx, nz }
+        Self {
+            center,
+            dx,
+            dz,
+            nx,
+            nz,
+        }
     }
 
     /// Capture good rays from a beam onto this screen.
@@ -424,7 +430,9 @@ mod tests {
         let screen = Screen::new([0.0, 1000.0, 0.0], 5.0, 5.0, 3, 3);
         let mut beam = Beam::new(10);
         beam.set_state(RayState::Good);
-        for i in 0..10 { beam.b[i] = 1.0; }
+        for i in 0..10 {
+            beam.b[i] = 1.0;
+        }
 
         let capture = screen.capture(&beam);
         let mut buf = Vec::new();

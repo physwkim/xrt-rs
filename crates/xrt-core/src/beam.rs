@@ -123,15 +123,29 @@ pub struct BeamStatistics {
 
 impl std::fmt::Display for BeamStatistics {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Beam: {}/{} good rays ({:.1}%)",
-            self.n_good, self.n_total,
-            100.0 * self.n_good as f64 / self.n_total.max(1) as f64)?;
-        writeln!(f, "  position:   x={:.3}±{:.3}mm, z={:.3}±{:.3}mm",
-            self.mean_x, self.sigma_x, self.mean_z, self.sigma_z)?;
-        writeln!(f, "  divergence: x'={:.1}μrad, z'={:.1}μrad",
-            self.sigma_xprime * 1e6, self.sigma_zprime * 1e6)?;
-        write!(f, "  energy:     {:.1} eV [{:.1}, {:.1}]",
-            self.mean_energy, self.e_min, self.e_max)
+        writeln!(
+            f,
+            "Beam: {}/{} good rays ({:.1}%)",
+            self.n_good,
+            self.n_total,
+            100.0 * self.n_good as f64 / self.n_total.max(1) as f64
+        )?;
+        writeln!(
+            f,
+            "  position:   x={:.3}±{:.3}mm, z={:.3}±{:.3}mm",
+            self.mean_x, self.sigma_x, self.mean_z, self.sigma_z
+        )?;
+        writeln!(
+            f,
+            "  divergence: x'={:.1}μrad, z'={:.1}μrad",
+            self.sigma_xprime * 1e6,
+            self.sigma_zprime * 1e6
+        )?;
+        write!(
+            f,
+            "  energy:     {:.1} eV [{:.1}, {:.1}]",
+            self.mean_energy, self.e_min, self.e_max
+        )
     }
 }
 
@@ -145,7 +159,7 @@ impl Beam {
             y: Array1::zeros(nrays),
             z: Array1::zeros(nrays),
             a: Array1::zeros(nrays),
-            b: Array1::ones(nrays),  // default direction: along +y
+            b: Array1::ones(nrays), // default direction: along +y
             c: Array1::zeros(nrays),
             state: Array1::zeros(nrays),
             e: Array1::from_elem(nrays, DEFAULT_ENERGY),
@@ -241,16 +255,13 @@ impl Beam {
         let pick_c64 = |arr: &Array1<Complex64>| -> Array1<Complex64> {
             Array1::from_iter(indices.iter().map(|&i| arr[i]))
         };
-        let pick_opt = |arr: &Option<Array1<f64>>| -> Option<Array1<f64>> {
-            arr.as_ref().map(&pick)
+        let pick_opt =
+            |arr: &Option<Array1<f64>>| -> Option<Array1<f64>> { arr.as_ref().map(&pick) };
+        let pick_opt_i32 =
+            |arr: &Option<Array1<i32>>| -> Option<Array1<i32>> { arr.as_ref().map(&pick_i32) };
+        let pick_opt_c64 = |arr: &Option<Array1<Complex64>>| -> Option<Array1<Complex64>> {
+            arr.as_ref().map(&pick_c64)
         };
-        let pick_opt_i32 = |arr: &Option<Array1<i32>>| -> Option<Array1<i32>> {
-            arr.as_ref().map(&pick_i32)
-        };
-        let pick_opt_c64 =
-            |arr: &Option<Array1<Complex64>>| -> Option<Array1<Complex64>> {
-                arr.as_ref().map(&pick_c64)
-            };
 
         Self {
             x: pick(&self.x),
@@ -340,9 +351,7 @@ impl Beam {
     pub fn filter_energy(&mut self, e_min: f64, e_max: f64) -> usize {
         let mut killed = 0;
         for i in 0..self.nrays() {
-            if self.state[i] == RayState::Good as i32
-                && (self.e[i] < e_min || self.e[i] > e_max)
-            {
+            if self.state[i] == RayState::Good as i32 && (self.e[i] < e_min || self.e[i] > e_max) {
                 self.state[i] = RayState::Dead as i32;
                 killed += 1;
             }
@@ -368,10 +377,17 @@ impl Beam {
                 writeln!(
                     w,
                     "{:.6}\t{:.6}\t{:.6}\t{:.9}\t{:.9}\t{:.9}\t{:.2}\t{}\t{:.6}\t{:.6}\t{:.6}",
-                    self.x[i], self.y[i], self.z[i],
-                    self.a[i], self.b[i], self.c[i],
-                    self.e[i], self.state[i],
-                    self.jss[i], self.jpp[i], self.path[i],
+                    self.x[i],
+                    self.y[i],
+                    self.z[i],
+                    self.a[i],
+                    self.b[i],
+                    self.c[i],
+                    self.e[i],
+                    self.state[i],
+                    self.jss[i],
+                    self.jpp[i],
+                    self.path[i],
                 )?;
             }
         }
@@ -394,13 +410,39 @@ impl Beam {
         let mean_c = good.iter().map(|&i| self.c[i]).sum::<f64>() / n;
         let mean_e = good.iter().map(|&i| self.e[i]).sum::<f64>() / n;
 
-        let sigma_x = (good.iter().map(|&i| (self.x[i] - mean_x).powi(2)).sum::<f64>() / n).sqrt();
-        let sigma_z = (good.iter().map(|&i| (self.z[i] - mean_z).powi(2)).sum::<f64>() / n).sqrt();
-        let sigma_xp = (good.iter().map(|&i| (self.a[i] - mean_a).powi(2)).sum::<f64>() / n).sqrt();
-        let sigma_zp = (good.iter().map(|&i| (self.c[i] - mean_c).powi(2)).sum::<f64>() / n).sqrt();
+        let sigma_x = (good
+            .iter()
+            .map(|&i| (self.x[i] - mean_x).powi(2))
+            .sum::<f64>()
+            / n)
+            .sqrt();
+        let sigma_z = (good
+            .iter()
+            .map(|&i| (self.z[i] - mean_z).powi(2))
+            .sum::<f64>()
+            / n)
+            .sqrt();
+        let sigma_xp = (good
+            .iter()
+            .map(|&i| (self.a[i] - mean_a).powi(2))
+            .sum::<f64>()
+            / n)
+            .sqrt();
+        let sigma_zp = (good
+            .iter()
+            .map(|&i| (self.c[i] - mean_c).powi(2))
+            .sum::<f64>()
+            / n)
+            .sqrt();
 
-        let e_min = good.iter().map(|&i| self.e[i]).fold(f64::INFINITY, f64::min);
-        let e_max = good.iter().map(|&i| self.e[i]).fold(f64::NEG_INFINITY, f64::max);
+        let e_min = good
+            .iter()
+            .map(|&i| self.e[i])
+            .fold(f64::INFINITY, f64::min);
+        let e_max = good
+            .iter()
+            .map(|&i| self.e[i])
+            .fold(f64::NEG_INFINITY, f64::max);
 
         Some(BeamStatistics {
             n_good: good.len(),
@@ -424,8 +466,7 @@ impl Beam {
 
         macro_rules! concat_arr {
             ($field:ident) => {
-                self.$field =
-                    concatenate![Axis(0), self.$field, other.$field];
+                self.$field = concatenate![Axis(0), self.$field, other.$field];
             };
         }
         macro_rules! concat_opt {

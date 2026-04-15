@@ -6,7 +6,7 @@
 use ndarray::Array1;
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{RotationParams, rotate_beam};
+use xrt_core::transforms::{rotate_beam, RotationParams};
 use xrt_materials::material::Material;
 
 use crate::oe::OeParams;
@@ -53,9 +53,7 @@ impl<S: Surface> GratingOpticalElement<S> {
 
     /// Reflect/diffract a beam off this grating.
     pub fn reflect(&self, beam: &mut Beam) -> Vec<RayResult> {
-        let good: Vec<usize> = (0..beam.nrays())
-            .filter(|&i| beam.state[i] > 0)
-            .collect();
+        let good: Vec<usize> = (0..beam.nrays()).filter(|&i| beam.state[i] > 0).collect();
 
         if good.is_empty() {
             return vec![];
@@ -159,11 +157,8 @@ impl<S: Surface> GratingOpticalElement<S> {
         }
 
         // Transform back to global (inverse rotation — reversed sequence)
-        let inv_rotation = RotationParams::inverse_sequence(
-            self.params.pitch,
-            self.params.roll,
-            self.params.yaw,
-        );
+        let inv_rotation =
+            RotationParams::inverse_sequence(self.params.pitch, self.params.roll, self.params.yaw);
         let alive: Vec<usize> = good
             .iter()
             .zip(results.iter())
@@ -190,11 +185,7 @@ mod tests {
     #[test]
     fn grating_oe_create() {
         let g = BlazedGrating::new(600.0, 0.02, 0.5);
-        let oe = GratingOpticalElement::new(
-            g,
-            OeParamsBuilder::new().pitch(0.01).build(),
-            1,
-        );
+        let oe = GratingOpticalElement::new(g, OeParamsBuilder::new().pitch(0.01).build(), 1);
         assert_eq!(oe.order, 1);
         assert!(oe.material.is_none());
     }
@@ -202,11 +193,7 @@ mod tests {
     #[test]
     fn grating_oe_reflect() {
         let g = BlazedGrating::new(600.0, 0.02, 0.5);
-        let oe = GratingOpticalElement::new(
-            g,
-            OeParamsBuilder::new().pitch(0.01).build(),
-            -1,
-        );
+        let oe = GratingOpticalElement::new(g, OeParamsBuilder::new().pitch(0.01).build(), -1);
 
         let mut beam = Beam::new(5);
         for i in 0..5 {

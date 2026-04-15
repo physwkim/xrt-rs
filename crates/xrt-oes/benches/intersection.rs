@@ -2,12 +2,12 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use xrt_core::beam::{Beam, RayState};
 use xrt_math::rootfind::RootFindConfig;
+use xrt_oes::aperture::Aperture;
 use xrt_oes::intersection::find_intersection_surface;
 use xrt_oes::reflect::{reflect_local, DeflectionMode};
-use xrt_oes::aperture::Aperture;
 use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_oes::surfaces::toroid::ToroidSurface;
 use xrt_oes::surfaces::spherical::SphericalSurface;
+use xrt_oes::surfaces::toroid::ToroidSurface;
 
 fn make_grazing_beam(n: usize) -> Beam {
     let mut beam = Beam::new(n);
@@ -34,8 +34,16 @@ fn bench_single_intersection(c: &mut Criterion) {
         b.iter(|| {
             find_intersection_surface(
                 black_box(&surface),
-                0.0, 200.0, 0.0, -100.0, 10.0, 0.0, 0.01_f64.cos(), -0.01_f64.sin(),
-                1, &config,
+                0.0,
+                200.0,
+                0.0,
+                -100.0,
+                10.0,
+                0.0,
+                0.01_f64.cos(),
+                -0.01_f64.sin(),
+                1,
+                &config,
             )
         });
     });
@@ -45,8 +53,16 @@ fn bench_single_intersection(c: &mut Criterion) {
         b.iter(|| {
             find_intersection_surface(
                 black_box(&surface),
-                0.0, 200.0, 0.0, -100.0, 10.0, 0.0, 0.01_f64.cos(), -0.01_f64.sin(),
-                1, &config,
+                0.0,
+                200.0,
+                0.0,
+                -100.0,
+                10.0,
+                0.0,
+                0.01_f64.cos(),
+                -0.01_f64.sin(),
+                1,
+                &config,
             )
         });
     });
@@ -56,8 +72,16 @@ fn bench_single_intersection(c: &mut Criterion) {
         b.iter(|| {
             find_intersection_surface(
                 black_box(&surface),
-                0.0, 200.0, 0.0, -100.0, 10.0, 0.0, 0.01_f64.cos(), -0.01_f64.sin(),
-                1, &config,
+                0.0,
+                200.0,
+                0.0,
+                -100.0,
+                10.0,
+                0.0,
+                0.01_f64.cos(),
+                -0.01_f64.sin(),
+                1,
+                &config,
             )
         });
     });
@@ -90,7 +114,8 @@ fn bench_parallel_reflect(c: &mut Criterion) {
                             &aperture,
                             1,
                             DeflectionMode::Reflect,
-                            None, None,
+                            None,
+                            None,
                             &config,
                         )
                     },
@@ -118,7 +143,8 @@ fn bench_parallel_reflect(c: &mut Criterion) {
                             &aperture,
                             1,
                             DeflectionMode::Reflect,
-                            None, None,
+                            None,
+                            None,
                             &config,
                         )
                     },

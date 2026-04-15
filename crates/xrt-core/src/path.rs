@@ -7,10 +7,19 @@
 ///
 /// Returns the Euclidean distance between (x0,y0,z0) and (x1,y1,z1) for each ray.
 pub fn compute_path_lengths(
-    x0: &[f64], y0: &[f64], z0: &[f64],
-    x1: &[f64], y1: &[f64], z1: &[f64],
+    x0: &[f64],
+    y0: &[f64],
+    z0: &[f64],
+    x1: &[f64],
+    y1: &[f64],
+    z1: &[f64],
 ) -> Vec<f64> {
-    x0.iter().zip(y0).zip(z0).zip(x1).zip(y1).zip(z1)
+    x0.iter()
+        .zip(y0)
+        .zip(z0)
+        .zip(x1)
+        .zip(y1)
+        .zip(z1)
         .map(|(((((x0, y0), z0), x1), y1), z1)| {
             let dx = x1 - x0;
             let dy = y1 - y0;
@@ -30,7 +39,9 @@ pub struct OpticalPathTracker {
 impl OpticalPathTracker {
     /// Create a new tracker for n_rays.
     pub fn new(n_rays: usize) -> Self {
-        Self { path: vec![0.0; n_rays] }
+        Self {
+            path: vec![0.0; n_rays],
+        }
     }
 
     /// Add a drift of `distance` mm to all rays.
@@ -95,10 +106,7 @@ mod tests {
 
     #[test]
     fn path_lengths_simple() {
-        let paths = compute_path_lengths(
-            &[0.0], &[0.0], &[0.0],
-            &[3.0], &[4.0], &[0.0],
-        );
+        let paths = compute_path_lengths(&[0.0], &[0.0], &[0.0], &[3.0], &[4.0], &[0.0]);
         assert!((paths[0] - 5.0).abs() < 1e-12);
     }
 }

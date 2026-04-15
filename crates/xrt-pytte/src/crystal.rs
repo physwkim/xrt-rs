@@ -82,7 +82,7 @@ mod tests {
     fn si111() -> TtCrystal {
         TtCrystal::new(
             [1, 1, 1],
-            3.1356,     // Si(111) d-spacing [Å]
+            3.1356,      // Si(111) d-spacing [Å]
             1_000_000.0, // 100 μm = 1e6 Å
             Complex64::new(-1.5e-5, 1e-7),
             Complex64::new(-8e-6, 5e-8),
@@ -97,10 +97,7 @@ mod tests {
         let theta = c.bragg_angle(lambda).unwrap();
         // θ_B ≈ 11.4° for Si(111) at 10 keV
         let deg = theta.to_degrees();
-        assert!(
-            (deg - 11.4).abs() < 0.5,
-            "θ_B = {deg}°, expected ~11.4°"
-        );
+        assert!((deg - 11.4).abs() < 0.5, "θ_B = {deg}°, expected ~11.4°");
     }
 
     #[test]

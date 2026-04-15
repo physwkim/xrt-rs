@@ -18,7 +18,11 @@ pub struct VfmSurface {
 
 impl VfmSurface {
     pub fn new(r_major: f64, r_minor: f64, y_min: f64) -> Self {
-        Self { r_major, r_minor, y_min }
+        Self {
+            r_major,
+            r_minor,
+            y_min,
+        }
     }
 }
 

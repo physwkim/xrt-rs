@@ -4,15 +4,15 @@
 //!
 //! Run: cargo run --example grating_monochromator
 
-use xrt_sources::bending_magnet::BendingMagnet;
 use xrt_materials::data::ScatteringTable;
 use xrt_materials::material::{Material, MaterialKind};
 use xrt_oes::beamline::{Beamline, OeParamsBuilder};
-use xrt_oes::material_oe::MaterialOpticalElement;
 use xrt_oes::grating_oe::GratingOpticalElement;
+use xrt_oes::material_oe::MaterialOpticalElement;
 use xrt_oes::screen::Screen;
 use xrt_oes::surfaces::flat::FlatSurface;
 use xrt_oes::surfaces::grating::BlazedGrating;
+use xrt_sources::bending_magnet::BendingMagnet;
 
 fn main() {
     println!("=== XRT-RS: Grating Monochromator ===\n");
@@ -24,7 +24,7 @@ fn main() {
         1.0,   // 1 T magnetic field
         5_000, // 5000 rays
         200.0, 1500.0, // 200-1500 eV photon energy
-        0.002, 0.002,  // ±2 mrad angular acceptance
+        0.002, 0.002, // ±2 mrad angular acceptance
     );
     let mut beam = bm.shine();
     println!("BM source: {} rays, E=[200, 1500] eV", beam.nrays());
@@ -33,20 +33,31 @@ fn main() {
     let e_mean: f64 = beam.e.iter().sum::<f64>() / beam.nrays() as f64;
     let e_min = beam.e.iter().cloned().fold(f64::INFINITY, f64::min);
     let e_max = beam.e.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    println!("  E: mean={:.0} eV, range=[{:.0}, {:.0}] eV\n", e_mean, e_min, e_max);
+    println!(
+        "  E: mean={:.0} eV, range=[{:.0}, {:.0}] eV\n",
+        e_mean, e_min, e_max
+    );
 
     // 2. Materials
     let si = Material::new(
-        &["Si"], None, 2.33,
-        MaterialKind::Mirror, None,
+        &["Si"],
+        None,
+        2.33,
+        MaterialKind::Mirror,
+        None,
         ScatteringTable::ChantlerTotal,
-    ).expect("Si");
+    )
+    .expect("Si");
 
     let au = Material::new(
-        &["Au"], None, 19.32,
-        MaterialKind::Grating, None,
+        &["Au"],
+        None,
+        19.32,
+        MaterialKind::Grating,
+        None,
         ScatteringTable::ChantlerTotal,
-    ).expect("Au");
+    )
+    .expect("Au");
 
     // 3. Pre-mirror (collimating, at origin)
     let m1 = MaterialOpticalElement::new(
@@ -60,11 +71,10 @@ fn main() {
     // 4. Blazed grating: 600 l/mm, first order (at origin, same location)
     let grating = GratingOpticalElement::new(
         BlazedGrating::new(600.0, 0.015, 0.5), // 600 l/mm, 15 mrad blaze
-        OeParamsBuilder::new()
-            .pitch(0.02)
-            .build(),
+        OeParamsBuilder::new().pitch(0.02).build(),
         -1, // first negative order
-    ).with_material(au);
+    )
+    .with_material(au);
 
     // 5. Build beamline
     let bl = Beamline::new()
@@ -80,8 +90,10 @@ fn main() {
         if el.results.is_empty() {
             println!("  {:15} (drift)", el.name);
         } else {
-            println!("  {:15} good={:5}  lost={:4}",
-                el.name, el.good_count, el.lost_count);
+            println!(
+                "  {:15} good={:5}  lost={:4}",
+                el.name, el.good_count, el.lost_count
+            );
         }
     }
     println!("\nEfficiency: {:.1}%\n", output.efficiency() * 100.0);
@@ -91,7 +103,10 @@ fn main() {
     let capture = screen.capture(&beam);
 
     println!("Exit slit screen:");
-    println!("  captured: {} rays (missed: {})", capture.n_captured, capture.n_missed);
+    println!(
+        "  captured: {} rays (missed: {})",
+        capture.n_captured, capture.n_missed
+    );
     if capture.n_captured > 0 {
         let [cx, cz] = capture.centroid();
         let [sx, sz] = capture.rms_size();
@@ -106,7 +121,9 @@ fn main() {
         let ge_mean: f64 = good_e.iter().sum::<f64>() / good_e.len() as f64;
         let ge_min = good_e.iter().cloned().fold(f64::INFINITY, f64::min);
         let ge_max = good_e.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        println!("\nGood rays energy: mean={:.0} eV, range=[{:.0}, {:.0}] eV",
-            ge_mean, ge_min, ge_max);
+        println!(
+            "\nGood rays energy: mean={:.0} eV, range=[{:.0}, {:.0}] eV",
+            ge_mean, ge_min, ge_max
+        );
     }
 }
