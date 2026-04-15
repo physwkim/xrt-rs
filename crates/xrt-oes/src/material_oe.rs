@@ -60,6 +60,7 @@ impl<S: Surface> MaterialOpticalElement<S> {
             beam.y[i] -= self.params.center[1];
             beam.z[i] -= self.params.center[2];
         }
+        self.params.apply_position_roll_fwd(beam, &good);
         rotate_beam(beam, Some(&good), &rotation, false, false);
 
         // Core geometric reflection
@@ -106,6 +107,7 @@ impl<S: Surface> MaterialOpticalElement<S> {
             .collect();
 
         rotate_beam(beam, Some(&alive), &inv_rotation, false, false);
+        self.params.apply_position_roll_inv(beam, &alive);
 
         for &i in &alive {
             beam.x[i] += self.params.center[0];

@@ -112,6 +112,9 @@ impl<S: Surface> OpticalElement<S> {
             beam.z[i] -= self.params.center[2];
         }
 
+        // Apply position_roll before pitch/roll/yaw
+        self.params.apply_position_roll_fwd(beam, &good);
+
         // Rotate beam to local frame
         rotate_beam(beam, Some(&good), &rotation, false, false);
 
@@ -149,6 +152,7 @@ impl<S: Surface> OpticalElement<S> {
             .collect();
 
         rotate_beam(beam, Some(&good_after), &inv_rotation, false, false);
+        self.params.apply_position_roll_inv(beam, &good_after);
 
         // Translate back
         for &i in &good_after {
