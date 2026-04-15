@@ -101,7 +101,7 @@ impl<S: Surface> OpticalElement<S> {
         // Transform to local coordinates (apply OE rotation)
         let rotation = RotationParams::default_sequence(
             -self.params.pitch,
-            -self.params.roll,
+            -(self.params.roll + self.params.position_roll),
             -self.params.yaw,
         );
 
@@ -111,9 +111,6 @@ impl<S: Surface> OpticalElement<S> {
             beam.y[i] -= self.params.center[1];
             beam.z[i] -= self.params.center[2];
         }
-
-        // Apply position_roll before pitch/roll/yaw
-        self.params.apply_position_roll_fwd(beam, &good);
 
         // Rotate beam to local frame
         rotate_beam(beam, Some(&good), &rotation, false, false);
@@ -140,7 +137,7 @@ impl<S: Surface> OpticalElement<S> {
         // Rotate back to global frame (inverse rotation — reversed sequence)
         let inv_rotation = RotationParams::inverse_sequence(
             self.params.pitch,
-            self.params.roll,
+            self.params.roll + self.params.position_roll,
             self.params.yaw,
         );
 
@@ -152,7 +149,6 @@ impl<S: Surface> OpticalElement<S> {
             .collect();
 
         rotate_beam(beam, Some(&good_after), &inv_rotation, false, false);
-        self.params.apply_position_roll_inv(beam, &good_after);
 
         // Translate back
         for &i in &good_after {

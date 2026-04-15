@@ -54,7 +54,7 @@ impl<S: Surface> CrystalOpticalElement<S> {
         // Transform to local coordinates
         let rotation = RotationParams::default_sequence(
             -self.params.pitch,
-            -self.params.roll,
+            -(self.params.roll + self.params.position_roll),
             -self.params.yaw,
         );
 
@@ -63,7 +63,6 @@ impl<S: Surface> CrystalOpticalElement<S> {
             beam.y[i] -= self.params.center[1];
             beam.z[i] -= self.params.center[2];
         }
-        self.params.apply_position_roll_fwd(beam, &good);
         rotate_beam(beam, Some(&good), &rotation, false, false);
 
         // Core reflection
@@ -98,7 +97,7 @@ impl<S: Surface> CrystalOpticalElement<S> {
         // Rotate back to global (inverse rotation — reversed sequence)
         let inv_rotation = RotationParams::inverse_sequence(
             self.params.pitch,
-            self.params.roll,
+            self.params.roll + self.params.position_roll,
             self.params.yaw,
         );
 
@@ -110,7 +109,6 @@ impl<S: Surface> CrystalOpticalElement<S> {
             .collect();
 
         rotate_beam(beam, Some(&alive), &inv_rotation, false, false);
-        self.params.apply_position_roll_inv(beam, &alive);
 
         for &i in &alive {
             beam.x[i] += self.params.center[0];
