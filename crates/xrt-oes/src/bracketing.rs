@@ -65,9 +65,11 @@ pub fn bracket_ray(
         set_t(z, c, -MAX_DEPTH, MAX_DEPTH)
     };
 
-    // Clamp t_min to avoid searching very far behind
-    let z_eps_factor = 1e6 * 1e-12; // 1e6 * zEps
-    let t_min = t_min.max(-z_eps_factor);
+    // Allow moderate backward search for rays near the surface.
+    // The original -1e-6 was too restrictive for large pitch angles.
+    // At DCM theta=14°, rays can start ~2mm past the surface and need
+    // t ≈ -8mm to find the intersection.
+    let t_min = t_min.max(-100.0);
 
     (t_min, t_max)
 }
