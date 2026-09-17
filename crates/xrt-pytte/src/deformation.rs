@@ -115,7 +115,7 @@ mod tests {
             3.1356, // Si(111)
         );
         let s = d.strain(5e5); // mid-crystal
-                               // Should be non-zero for bent crystal
+        // Should be non-zero for bent crystal
         assert!(s != 0.0, "strain = {s}");
         assert!(s.abs() < 1.0, "strain should be small: {s}");
     }

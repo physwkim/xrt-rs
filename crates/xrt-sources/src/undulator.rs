@@ -93,7 +93,7 @@ impl Undulator {
     pub fn fundamental_energy(&self) -> f64 {
         let gamma = self.params.gamma;
         let lambda_u = self.period * 1e-3; // mm → m
-                                           // E₁ = 2γ²hc / (λ_u(1 + K²/2))
+        // E₁ = 2γ²hc / (λ_u(1 + K²/2))
         let e1 =
             2.0 * gamma * gamma * SIHPLANCK * SIC / (lambda_u * (1.0 + self.k_squared() / 2.0));
         e1 / SIE0 // J → eV

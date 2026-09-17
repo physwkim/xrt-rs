@@ -4,10 +4,10 @@
 
 use xrt_core::beam::{Beam, RayState};
 use xrt_core::consts::DEFAULT_ENERGY;
-use xrt_core::transforms::{rotate_beam, RotationParams};
+use xrt_core::transforms::{RotationParams, rotate_beam};
 
-use crate::distributions::{apply_distribution, make_energy, set_annulus, EnergyDist, SpatialDist};
-use crate::polarization::{make_polarization, Polarization};
+use crate::distributions::{EnergyDist, SpatialDist, apply_distribution, make_energy, set_annulus};
+use crate::polarization::{Polarization, make_polarization};
 
 /// A geometric (parametric) X-ray source.
 ///

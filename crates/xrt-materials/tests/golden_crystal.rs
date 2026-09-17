@@ -2,7 +2,7 @@
 //!
 //! Tests Bragg angle and crystal amplitude against Python XRT reference.
 
-use ndarray::{array, Array1};
+use ndarray::{Array1, array};
 use num_complex::Complex64;
 
 use xrt_materials::crystal::CrystalGeometry;
@@ -1053,7 +1053,8 @@ fn golden_si111_laue_reflected_cross() {
         assert!(
             rel < tol,
             "Laue rs cross: Rust=({:.4e},{:.4e}) vs XRT=({exp_rs_re:.4e},{exp_rs_im:.4e}) rel={rel:.2e}",
-            rs[0].re, rs[0].im
+            rs[0].re,
+            rs[0].im
         );
     } else {
         eprintln!("SKIP: no laue_reflected fixture data");

@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use ndarray::Array1;
 use xrt_materials::crystal::CrystalGeometry;
 use xrt_materials::crystal_variants::CrystalSi;

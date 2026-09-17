@@ -15,7 +15,7 @@ use rand_distr::{Distribution, Normal, Uniform};
 use xrt_core::beam::{Beam, RayState};
 use xrt_core::consts::{E2W, FINE_STR, K2B, PI, SIE0, SIM0};
 
-use crate::bending_magnet::{bessel_k_approx, SynchrotronParams};
+use crate::bending_magnet::{SynchrotronParams, bessel_k_approx};
 
 /// Wiggler source.
 ///

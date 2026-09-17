@@ -3,7 +3,7 @@
 //! Tests the diffraction integral with a small deterministic input set.
 
 use num_complex::Complex64;
-use xrt_waves::diffraction::{diffraction_integral, DiffractionRay, PixelPoint};
+use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
 
 fn load_fixture() -> serde_json::Value {
     let path = concat!(

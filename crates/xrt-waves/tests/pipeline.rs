@@ -7,8 +7,8 @@ use num_complex::Complex64;
 use xrt_core::beam::RayState;
 use xrt_sources::distributions::{EnergyDist, SpatialDist};
 use xrt_sources::geometric::GeometricSource;
-use xrt_waves::diffraction::{diffraction_integral, DiffractionRay, PixelPoint};
-use xrt_waves::prepare_wave::{beam_to_diffraction_rays, prepare_wave, WaveParams};
+use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
+use xrt_waves::prepare_wave::{WaveParams, beam_to_diffraction_rays, prepare_wave};
 
 /// Test: GeometricSource → flat mirror → diffraction screen.
 #[test]

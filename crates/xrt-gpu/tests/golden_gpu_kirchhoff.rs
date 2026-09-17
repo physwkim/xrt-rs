@@ -11,7 +11,7 @@ use num_complex::Complex64;
 
 use xrt_gpu::context::GpuContext;
 use xrt_gpu::fallback::kirchhoff_auto;
-use xrt_gpu::kirchhoff::{kirchhoff_gpu, GpuPixel, GpuRay};
+use xrt_gpu::kirchhoff::{GpuPixel, GpuRay, kirchhoff_gpu};
 
 fn load_fixture() -> serde_json::Value {
     let path = concat!(

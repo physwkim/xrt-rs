@@ -461,8 +461,8 @@ impl Beam {
 
     /// Concatenate another beam onto this one.
     pub fn concatenate(&mut self, other: &Beam) {
-        use ndarray::concatenate;
         use ndarray::Axis;
+        use ndarray::concatenate;
 
         macro_rules! concat_arr {
             ($field:ident) => {

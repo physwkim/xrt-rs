@@ -3,7 +3,7 @@
 use ndarray::Array1;
 use proptest::prelude::*;
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{rotate_xyz, RotationParams};
+use xrt_core::transforms::{RotationParams, rotate_xyz};
 
 proptest! {
     /// Rotation preserves vector magnitude.

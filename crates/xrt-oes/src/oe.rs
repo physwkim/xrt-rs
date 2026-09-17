@@ -3,7 +3,7 @@
 //! Ported from oes_base.py:1064-1181.
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{rotate_beam, RotationParams};
+use xrt_core::transforms::{RotationParams, rotate_beam};
 use xrt_math::rootfind::RootFindConfig;
 
 use crate::aperture::Aperture;

@@ -84,11 +84,7 @@ impl Surface for ConicCoefficientSurface {
         let z2 = (-b_coeff - sqrt_d) / (2.0 * a_coeff);
 
         // Return the solution closer to z = 0
-        if z1.abs() < z2.abs() {
-            z1
-        } else {
-            z2
-        }
+        if z1.abs() < z2.abs() { z1 } else { z2 }
     }
 
     fn local_n(&self, x: f64, y: f64) -> [f64; 3] {

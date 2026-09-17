@@ -4,7 +4,7 @@
 //! Note: tolerance is 1e-4 due to different ODE methods (DP45 vs BDF).
 
 use num_complex::Complex64;
-use xrt_pytte::solver::{solve_bragg_parallel, BraggCoeffs, SolverConfig};
+use xrt_pytte::solver::{BraggCoeffs, SolverConfig, solve_bragg_parallel};
 
 fn load_fixture() -> serde_json::Value {
     let path = concat!(
