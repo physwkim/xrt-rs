@@ -212,7 +212,7 @@ impl BendingMagnet {
             let energies: Vec<f64> = (0..mc_rays).map(|_| e_dist.sample(&mut rng)).collect();
             let thetas: Vec<f64> = (0..mc_rays).map(|_| theta_dist.sample(&mut rng)).collect();
             let psis: Vec<f64> = (0..mc_rays).map(|_| psi_dist.sample(&mut rng)).collect();
-            let disc: Vec<f64> = (0..mc_rays).map(|_| rng.gen::<f64>()).collect();
+            let disc: Vec<f64> = (0..mc_rays).map(|_| rng.r#gen::<f64>()).collect();
 
             let (intensity, amp_s, amp_p) = self.build_i_map(&energies, &thetas, &psis);
 

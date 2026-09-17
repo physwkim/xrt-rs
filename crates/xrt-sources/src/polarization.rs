@@ -93,7 +93,7 @@ fn fill_beam_unpolarized(beam: &mut Beam, sq2inv: f64) {
         let mut rng = rand::thread_rng();
         let n = ep.len();
         for i in 0..n {
-            ep[i] = Complex64::new(rng.gen::<f64>() * sq2inv, 0.0);
+            ep[i] = Complex64::new(rng.r#gen::<f64>() * sq2inv, 0.0);
         }
     }
 }

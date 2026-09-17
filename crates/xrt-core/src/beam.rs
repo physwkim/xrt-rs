@@ -304,7 +304,7 @@ impl Beam {
             .state
             .iter()
             .enumerate()
-            .filter(|(_, &s)| s == RayState::Good as i32)
+            .filter(|&(_, &s)| s == RayState::Good as i32)
             .map(|(i, _)| i)
             .collect();
         self.filter_by_index(&indices)
@@ -340,7 +340,7 @@ impl Beam {
         self.state
             .iter()
             .enumerate()
-            .filter(|(_, &s)| s == RayState::Good as i32)
+            .filter(|&(_, &s)| s == RayState::Good as i32)
             .map(|(i, _)| i)
             .collect()
     }
@@ -471,7 +471,7 @@ impl Beam {
         }
         macro_rules! concat_opt {
             ($field:ident) => {
-                if let (Some(ref a), Some(ref b)) = (&self.$field, &other.$field) {
+                if let (Some(a), Some(b)) = (&self.$field, &other.$field) {
                     self.$field = Some(concatenate![Axis(0), a.view(), b.view()]);
                 }
             };
