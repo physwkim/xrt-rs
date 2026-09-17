@@ -213,15 +213,15 @@ impl Wiggler {
                 let x0 = self.trajectory_amplitude();
                 bot.x[j] = x0 * (PI * 2.0 * bot.y[j] / self.period).sin();
 
-                if self.params.dx > 0.0 {
-                    if let Ok(d) = Normal::new(0.0, self.params.dx) {
-                        bot.x[j] += d.sample(&mut rng);
-                    }
+                if self.params.dx > 0.0
+                    && let Ok(d) = Normal::new(0.0, self.params.dx)
+                {
+                    bot.x[j] += d.sample(&mut rng);
                 }
-                if self.params.dz > 0.0 {
-                    if let Ok(d) = Normal::new(0.0, self.params.dz) {
-                        bot.z[j] = d.sample(&mut rng);
-                    }
+                if self.params.dz > 0.0
+                    && let Ok(d) = Normal::new(0.0, self.params.dz)
+                {
+                    bot.z[j] = d.sample(&mut rng);
                 }
 
                 let is_val = (amp_s[i] * amp_s[i].conj()).re;

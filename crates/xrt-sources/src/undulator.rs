@@ -304,15 +304,15 @@ impl Undulator {
                 bot.a[j] = thetas[k].tan();
                 bot.c[j] = psis[k].tan();
 
-                if self.params.dx > 0.0 {
-                    if let Ok(d) = Normal::new(0.0, self.params.dx) {
-                        bot.x[j] = d.sample(&mut rng);
-                    }
+                if self.params.dx > 0.0
+                    && let Ok(d) = Normal::new(0.0, self.params.dx)
+                {
+                    bot.x[j] = d.sample(&mut rng);
                 }
-                if self.params.dz > 0.0 {
-                    if let Ok(d) = Normal::new(0.0, self.params.dz) {
-                        bot.z[j] = d.sample(&mut rng);
-                    }
+                if self.params.dz > 0.0
+                    && let Ok(d) = Normal::new(0.0, self.params.dz)
+                {
+                    bot.z[j] = d.sample(&mut rng);
                 }
 
                 let is_val = (a_s[k] * a_s[k].conj()).re;

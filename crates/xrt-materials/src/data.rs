@@ -94,28 +94,29 @@ fn parse_f0_data() -> HashMap<usize, F0Coeffs> {
     for line in F0_XOP_DATA.lines() {
         if line.starts_with("#S") {
             let fields: Vec<&str> = line.split_whitespace().collect();
-            if fields.len() >= 2 {
-                if let Ok(z) = fields[1].parse::<usize>() {
-                    current_z = Some(z);
-                    looking_for_up = true;
-                }
+            if fields.len() >= 2
+                && let Ok(z) = fields[1].parse::<usize>()
+            {
+                current_z = Some(z);
+                looking_for_up = true;
             }
         } else if looking_for_up && line.starts_with("#UP") {
             // The data line follows #UP
             looking_for_up = false;
-        } else if let Some(z) = current_z {
-            if !looking_for_up && !line.starts_with('#') {
-                // This is the coefficient data line
-                let vals: Vec<f64> = line
-                    .split_whitespace()
-                    .filter_map(|s| s.parse::<f64>().ok())
-                    .collect();
-                if vals.len() == 11 {
-                    let mut coeffs: F0Coeffs = [0.0; 11];
-                    coeffs.copy_from_slice(&vals);
-                    map.insert(z, coeffs);
-                    current_z = None;
-                }
+        } else if let Some(z) = current_z
+            && !looking_for_up
+            && !line.starts_with('#')
+        {
+            // This is the coefficient data line
+            let vals: Vec<f64> = line
+                .split_whitespace()
+                .filter_map(|s| s.parse::<f64>().ok())
+                .collect();
+            if vals.len() == 11 {
+                let mut coeffs: F0Coeffs = [0.0; 11];
+                coeffs.copy_from_slice(&vals);
+                map.insert(z, coeffs);
+                current_z = None;
             }
         }
     }
@@ -151,10 +152,10 @@ fn parse_atomic_data() -> HashMap<usize, f64> {
             continue;
         }
         let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() >= 4 {
-            if let (Ok(z), Ok(mass)) = (fields[0].parse::<usize>(), fields[3].parse::<f64>()) {
-                map.insert(z, mass);
-            }
+        if fields.len() >= 4
+            && let (Ok(z), Ok(mass)) = (fields[0].parse::<usize>(), fields[3].parse::<f64>())
+        {
+            map.insert(z, mass);
         }
     }
     map

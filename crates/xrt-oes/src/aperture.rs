@@ -64,15 +64,15 @@ impl Aperture {
         }
 
         // Check optical limits (if defined)
-        if let Some(opt_x) = self.opt_x {
-            if x < opt_x[0] || x > opt_x[1] {
-                return RayState::Over;
-            }
+        if let Some(opt_x) = self.opt_x
+            && (x < opt_x[0] || x > opt_x[1])
+        {
+            return RayState::Over;
         }
-        if let Some(opt_y) = self.opt_y {
-            if y < opt_y[0] || y > opt_y[1] {
-                return RayState::Over;
-            }
+        if let Some(opt_y) = self.opt_y
+            && (y < opt_y[0] || y > opt_y[1])
+        {
+            return RayState::Over;
         }
 
         RayState::Good

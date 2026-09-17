@@ -29,10 +29,10 @@ impl Surface for ParabolicCylinderLensSurface {
     }
 
     fn local_n(&self, x: f64, _y: f64) -> [f64; 3] {
-        if let Some(zmax) = self.z_max {
-            if x * x / (4.0 * self.focus) >= zmax {
-                return [0.0, 0.0, 1.0];
-            }
+        if let Some(zmax) = self.z_max
+            && x * x / (4.0 * self.focus) >= zmax
+        {
+            return [0.0, 0.0, 1.0];
         }
         let dz_dx = x / (2.0 * self.focus);
         let nx = -dz_dx;

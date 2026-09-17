@@ -246,17 +246,17 @@ impl BendingMagnet {
                 bot.c[j] = psis[i].tan();
 
                 // Position sampling
-                if self.params.dx > 0.0 {
-                    if let Ok(d) = Normal::new(self.rho * 1e3, self.params.dx) {
-                        let r1 = d.sample(&mut rng);
-                        bot.x[j] = -r1 * thetas[i].cos() + self.rho * 1e3;
-                        bot.y[j] = r1 * thetas[i].sin();
-                    }
+                if self.params.dx > 0.0
+                    && let Ok(d) = Normal::new(self.rho * 1e3, self.params.dx)
+                {
+                    let r1 = d.sample(&mut rng);
+                    bot.x[j] = -r1 * thetas[i].cos() + self.rho * 1e3;
+                    bot.y[j] = r1 * thetas[i].sin();
                 }
-                if self.params.dz > 0.0 {
-                    if let Ok(d) = Normal::new(0.0, self.params.dz) {
-                        bot.z[j] = d.sample(&mut rng);
-                    }
+                if self.params.dz > 0.0
+                    && let Ok(d) = Normal::new(0.0, self.params.dz)
+                {
+                    bot.z[j] = d.sample(&mut rng);
                 }
 
                 // Polarization from synchrotron radiation

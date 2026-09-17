@@ -36,10 +36,10 @@ impl Surface for ParaboloidLensSurface {
         let z = rho2 / (4.0 * self.focus);
 
         // If clipped, return flat normal
-        if let Some(zmax) = self.z_max {
-            if z >= zmax {
-                return [0.0, 0.0, 1.0];
-            }
+        if let Some(zmax) = self.z_max
+            && z >= zmax
+        {
+            return [0.0, 0.0, 1.0];
         }
 
         // dz/dx = x / (2f), dz/dy = y / (2f)
