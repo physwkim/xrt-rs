@@ -60,7 +60,7 @@ impl Wiggler {
         psi_max: f64,
     ) -> Self {
         let params = SynchrotronParams::new(electron_energy_gev, beam_current);
-        let b_max = k_param * K2B / (period_mm * 0.1); // K2B converts K to B for period in cm
+        let b_max = k_param * K2B / period_mm; // K2B = 2π·m₀c²·1e-3/e₀ [T·mm]
 
         Self {
             params,
@@ -345,6 +345,18 @@ mod tests {
         assert!(
             rel_diff < 0.2,
             "mean energy should be similar: {mean_e10:.0} vs {mean_e20:.0}"
+        );
+    }
+
+    #[test]
+    fn b_max_uses_the_period_in_mm() {
+        let w = Wiggler::new(3.0, 0.3, 10.0, 80.0, 20, 100, 5000.0, 15000.0, 0.002, 0.002);
+        // K = 0.934·B[T]·period[cm] → B = 10/(0.934·8) = 1.339 T
+        let b_expected = 10.0 / (0.934 * 8.0);
+        assert!(
+            (w.b_max - b_expected).abs() / b_expected < 1e-3,
+            "b_max = {} T, expected ≈ {b_expected} T",
+            w.b_max
         );
     }
 
