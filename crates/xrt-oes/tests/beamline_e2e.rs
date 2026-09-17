@@ -499,7 +499,7 @@ fn golden_passthrough_beamline() {
 
     let output = bl.propagate(&mut beam);
     // PassThrough pipeline should run without panic
-    assert_eq!(output.initial_count, initial_count as usize);
+    assert_eq!(output.initial_count, initial_count);
 }
 
 #[test]
