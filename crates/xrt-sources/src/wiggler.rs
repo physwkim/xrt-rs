@@ -392,16 +392,24 @@ mod tests {
 
     #[test]
     fn wiggler_small_k_produces_rays() {
-        // Very small K → wiggler behaves more like bending magnet
+        // K=0.01 over an 80 mm period at 3 GeV is B = 1.34 mT, whose critical
+        // photon energy is 8.0 eV — a keV window emits nothing at all, so the
+        // energy range has to sit at the critical energy for rays to exist.
         let mut wig = Wiggler::new(
             3.0, 0.3, 0.01, // very small K
-            80.0, 10, 1000, 5000.0, 15000.0, 1e-3, 1e-3,
+            80.0, 10, 1000, 4.0, 20.0, 1e-3, 1e-3,
         );
         let beam = wig.shine();
         assert_eq!(beam.nrays(), 1000);
         // All energies in range
         for &e in beam.e.iter() {
-            assert!((5000.0..=15000.0).contains(&e), "energy {e} out of range");
+            assert!((4.0..=20.0).contains(&e), "energy {e} out of range");
+        }
+        // Emission is confined to |θ| < K/γ, so every ray must be inside it
+        let theta_max = 0.01 / wig.params.gamma;
+        for i in 0..beam.nrays() {
+            let theta = (beam.a[i] / beam.b[i]).atan();
+            assert!(theta.abs() <= theta_max, "θ = {theta} outside K/γ");
         }
         // Direction vectors normalized
         for i in 0..beam.nrays() {
