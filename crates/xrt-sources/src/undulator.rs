@@ -254,6 +254,29 @@ impl Undulator {
         (result.intensity, result.amp_s, result.amp_p)
     }
 
+    /// Half-widths of the (theta, psi) window that `shine` samples [rad].
+    ///
+    /// Emission is confined to the oscillation cone, so sampling the whole
+    /// requested acceptance rejects nearly every ray. Python xrt reduces both
+    /// ranges to K/gamma for exactly this reason (`xPrimeMax` / `zPrimeMax`
+    /// properties, sources/sybase.py:374-385 and :415-426; both AutoReduce
+    /// flags default to True at sources/synchr.py:1400-1401), with a 2/gamma
+    /// fallback for the axis whose K is zero.
+    ///
+    /// The axes follow this port's own trajectory convention in
+    /// `build_i_map`: `kx` drives x (hence theta) and `ky` drives z (hence
+    /// psi). Python maps Kx and Ky the other way round
+    /// (sources/synchr.py:52-53), so the two ports disagree on which K is
+    /// which; if that mapping is ever corrected here, swap these two as well.
+    pub fn angular_window_sampling(&self) -> (f64, f64) {
+        let k_or_default = |k: f64| if k != 0.0 { k.abs() } else { 2.0 };
+        let gamma = self.params.gamma;
+        (
+            self.theta_max.min(k_or_default(self.kx) / gamma),
+            self.psi_max.min(k_or_default(self.ky) / gamma),
+        )
+    }
+
     /// Generate a beam using Monte Carlo rejection sampling.
     pub fn shine(&mut self) -> Beam {
         let mut rng = rand::thread_rng();
@@ -262,13 +285,14 @@ impl Undulator {
         let mut collected_beams: Vec<Beam> = Vec::new();
         let mut total_length = 0;
 
-        let theta_min = -self.theta_max;
-        let psi_min = -self.psi_max;
+        let (theta_max, psi_max) = self.angular_window_sampling();
+        let theta_min = -theta_max;
+        let psi_min = -psi_max;
 
         while total_length < self.nrays {
             let e_dist = Uniform::new(self.e_min, self.e_max);
-            let theta_dist = Uniform::new(theta_min, self.theta_max);
-            let psi_dist = Uniform::new(psi_min, self.psi_max);
+            let theta_dist = Uniform::new(theta_min, theta_max);
+            let psi_dist = Uniform::new(psi_min, psi_max);
 
             let energies: Vec<f64> = (0..mc_rays).map(|_| e_dist.sample(&mut rng)).collect();
             let thetas: Vec<f64> = (0..mc_rays).map(|_| theta_dist.sample(&mut rng)).collect();
@@ -424,6 +448,25 @@ mod tests {
                 "direction not normalized: {norm}"
             );
         }
+    }
+
+    #[test]
+    fn angular_window_is_reduced_to_the_oscillation_cone() {
+        // Planar in this port's convention: kx = 0 (theta axis), ky = 2 (psi axis)
+        let u = Undulator::new(
+            3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 1e-3, 1e-3,
+        );
+        let gamma = u.params.gamma;
+        let (theta, psi) = u.angular_window_sampling();
+        assert!((psi - 2.0 / gamma).abs() < 1e-18, "psi = {psi}");
+        // kx = 0 falls back to 2/gamma, as Python's K0 = 2 does
+        assert!((theta - 2.0 / gamma).abs() < 1e-18, "theta = {theta}");
+
+        // A request narrower than the cone is left alone
+        let tight = Undulator::new(
+            3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 1e-5, 1e-5,
+        );
+        assert_eq!(tight.angular_window_sampling(), (1e-5, 1e-5));
     }
 
     #[test]

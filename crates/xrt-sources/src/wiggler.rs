@@ -77,6 +77,24 @@ impl Wiggler {
         }
     }
 
+    /// Half-width of the theta window that `shine` samples [rad].
+    ///
+    /// `theta_max` is the requested angular acceptance, but wiggler emission
+    /// exists only within |theta| < K/gamma: `build_i_map` sets the intensity
+    /// to zero outside, since w_cr is scaled by sqrt(1 - (theta*gamma/K)^2).
+    /// Sampling the whole acceptance therefore rejects nearly every ray.
+    /// Python xrt reduces the range the same way in its `xPrimeMax` property
+    /// (sources/sybase.py:374-385, enabled for the Wiggler at
+    /// sources/synchr.py:97), with K = 0 falling back to 2/gamma.
+    pub fn theta_max_sampling(&self) -> f64 {
+        let k0 = if self.k_param != 0.0 {
+            self.k_param.abs()
+        } else {
+            2.0
+        };
+        self.theta_max.min(k0 / self.params.gamma)
+    }
+
     /// Electron trajectory amplitude X0 [mm].
     pub fn trajectory_amplitude(&self) -> f64 {
         self.k_param * self.period / (PI * 2.0 * self.params.gamma)
@@ -161,12 +179,13 @@ impl Wiggler {
         let mut collected_beams: Vec<Beam> = Vec::new();
         let mut total_length = 0;
 
-        let theta_min = -self.theta_max;
+        let theta_max = self.theta_max_sampling();
+        let theta_min = -theta_max;
         let psi_min = -self.psi_max;
 
         while total_length < self.nrays {
             let e_dist = Uniform::new(self.e_min, self.e_max);
-            let theta_dist = Uniform::new(theta_min, self.theta_max);
+            let theta_dist = Uniform::new(theta_min, theta_max);
             let psi_dist = Uniform::new(psi_min, self.psi_max);
 
             let energies: Vec<f64> = (0..mc_rays).map(|_| e_dist.sample(&mut rng)).collect();
@@ -358,6 +377,17 @@ mod tests {
             "b_max = {} T, expected ≈ {b_expected} T",
             w.b_max
         );
+    }
+
+    #[test]
+    fn theta_sampling_window_is_the_narrower_of_acceptance_and_k_over_gamma() {
+        let narrow = Wiggler::new(3.0, 0.3, 0.01, 80.0, 10, 1000, 4.0, 20.0, 1e-3, 1e-3);
+        // K/γ = 1.70e-6, far inside the 1e-3 acceptance
+        assert!((narrow.theta_max_sampling() - 0.01 / narrow.params.gamma).abs() < 1e-18);
+
+        let wide = Wiggler::new(3.0, 0.3, 10.0, 80.0, 10, 100, 5000.0, 15000.0, 1e-3, 1e-3);
+        // K/γ = 1.70e-3, so the requested acceptance stands
+        assert_eq!(wide.theta_max_sampling(), 1e-3);
     }
 
     #[test]
