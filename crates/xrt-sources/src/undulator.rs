@@ -20,6 +20,7 @@ use xrt_core::beam::{Beam, RayState};
 use xrt_core::consts::{E2W, FINE_STR, PI2, SIC, SIE0, SIHPLANCK};
 
 use crate::bending_magnet::SynchrotronParams;
+use crate::rejection::RejectionBudget;
 
 /// Undulator source parameters.
 #[derive(Debug, Clone)]
@@ -284,6 +285,7 @@ impl Undulator {
 
         let mut collected_beams: Vec<Beam> = Vec::new();
         let mut total_length = 0;
+        let mut budget = RejectionBudget::new();
 
         let (theta_max, psi_max) = self.angular_window_sampling();
         let theta_min = -theta_max;
@@ -308,6 +310,12 @@ impl Undulator {
             }
 
             if self.i_max <= 0.0 {
+                budget.note_empty_batch("Undulator", || {
+                    format!(
+                        "Kx={}, Ky={}, E={}..{} eV, |theta|<={:.3e} rad, |psi|<={:.3e} rad",
+                        self.kx, self.ky, self.e_min, self.e_max, theta_max, psi_max
+                    )
+                });
                 continue;
             }
 
@@ -317,8 +325,15 @@ impl Undulator {
 
             let npassed = passed.len();
             if npassed == 0 {
+                budget.note_empty_batch("Undulator", || {
+                    format!(
+                        "Kx={}, Ky={}, E={}..{} eV, |theta|<={:.3e} rad, |psi|<={:.3e} rad",
+                        self.kx, self.ky, self.e_min, self.e_max, theta_max, psi_max
+                    )
+                });
                 continue;
             }
+            budget.note_progress();
 
             let mut bot = Beam::with_amplitudes(npassed);
             bot.set_state(RayState::Good);

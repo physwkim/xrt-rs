@@ -12,6 +12,8 @@ use rand_distr::{Distribution, Normal, Uniform};
 use xrt_core::beam::{Beam, RayState};
 use xrt_core::consts::{C, E0, E2W, FINE_STR, M0, M0C2, PI, SIE0, SIM0};
 
+use crate::rejection::RejectionBudget;
+
 /// Synchrotron source parameters common to BM/Wiggler/Undulator.
 #[derive(Debug, Clone)]
 pub struct SynchrotronParams {
@@ -202,6 +204,7 @@ impl BendingMagnet {
 
         let mut collected_beams: Vec<Beam> = Vec::new();
         let mut total_length = 0;
+        let mut budget = RejectionBudget::new();
 
         while total_length < self.nrays {
             // Generate random samples
@@ -224,6 +227,18 @@ impl BendingMagnet {
             }
 
             if self.i_max <= 0.0 {
+                budget.note_empty_batch("BendingMagnet", || {
+                    format!(
+                        "B={:.4} T, E={}..{} eV, theta={:.3e}..{:.3e} rad, psi={:.3e}..{:.3e} rad",
+                        self.b_field,
+                        self.e_min,
+                        self.e_max,
+                        self.theta_min,
+                        self.theta_max,
+                        self.psi_min,
+                        self.psi_max
+                    )
+                });
                 continue;
             }
 
@@ -234,8 +249,21 @@ impl BendingMagnet {
 
             let npassed = passed.len();
             if npassed == 0 {
+                budget.note_empty_batch("BendingMagnet", || {
+                    format!(
+                        "B={:.4} T, E={}..{} eV, theta={:.3e}..{:.3e} rad, psi={:.3e}..{:.3e} rad",
+                        self.b_field,
+                        self.e_min,
+                        self.e_max,
+                        self.theta_min,
+                        self.theta_max,
+                        self.psi_min,
+                        self.psi_max
+                    )
+                });
                 continue;
             }
+            budget.note_progress();
 
             let mut bot = Beam::with_amplitudes(npassed);
             bot.set_state(RayState::Good);

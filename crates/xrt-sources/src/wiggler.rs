@@ -16,6 +16,7 @@ use xrt_core::beam::{Beam, RayState};
 use xrt_core::consts::{E2W, FINE_STR, K2B, PI, SIE0, SIM0};
 
 use crate::bending_magnet::{SynchrotronParams, bessel_k_approx};
+use crate::rejection::RejectionBudget;
 
 /// Wiggler source.
 ///
@@ -178,6 +179,7 @@ impl Wiggler {
 
         let mut collected_beams: Vec<Beam> = Vec::new();
         let mut total_length = 0;
+        let mut budget = RejectionBudget::new();
 
         let theta_max = self.theta_max_sampling();
         let theta_min = -theta_max;
@@ -202,6 +204,12 @@ impl Wiggler {
             }
 
             if self.i_max <= 0.0 {
+                budget.note_empty_batch("Wiggler", || {
+                    format!(
+                        "K={}, B={:.4} T, E={}..{} eV, |theta|<={:.3e} rad, |psi|<={:.3e} rad",
+                        self.k_param, self.b_max, self.e_min, self.e_max, theta_max, self.psi_max
+                    )
+                });
                 continue;
             }
 
@@ -211,8 +219,15 @@ impl Wiggler {
 
             let npassed = passed.len();
             if npassed == 0 {
+                budget.note_empty_batch("Wiggler", || {
+                    format!(
+                        "K={}, B={:.4} T, E={}..{} eV, |theta|<={:.3e} rad, |psi|<={:.3e} rad",
+                        self.k_param, self.b_max, self.e_min, self.e_max, theta_max, self.psi_max
+                    )
+                });
                 continue;
             }
+            budget.note_progress();
 
             let mut bot = Beam::with_amplitudes(npassed);
             bot.set_state(RayState::Good);
@@ -388,6 +403,16 @@ mod tests {
         let wide = Wiggler::new(3.0, 0.3, 10.0, 80.0, 10, 100, 5000.0, 15000.0, 1e-3, 1e-3);
         // K/γ = 1.70e-3, so the requested acceptance stands
         assert_eq!(wide.theta_max_sampling(), 1e-3);
+    }
+
+    #[test]
+    #[should_panic(expected = "made no progress")]
+    fn a_source_that_cannot_emit_stops_instead_of_spinning() {
+        // 5-15 keV asked of a K=0.01, 80 mm, 3 GeV wiggler, whose critical
+        // energy is 8 eV: no sample can ever pass the discriminator, so the
+        // loop must give up and say why rather than run forever.
+        let mut wig = Wiggler::new(3.0, 0.3, 0.01, 80.0, 10, 50, 5000.0, 15000.0, 1e-3, 1e-3);
+        let _ = wig.shine();
     }
 
     #[test]

@@ -9,5 +9,6 @@ pub mod bending_magnet;
 pub mod distributions;
 pub mod geometric;
 pub mod polarization;
+mod rejection;
 pub mod undulator;
 pub mod wiggler;
