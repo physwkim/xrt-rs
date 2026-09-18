@@ -7,24 +7,24 @@
 
 use pyo3::prelude::*;
 
-use xrt_core::beam::Beam;
-use xrt_oes::grating_oe::GratingOpticalElement;
-use xrt_oes::material_oe::MaterialOpticalElement;
-use xrt_oes::oe::{OeParams, OpticalElement};
-use xrt_oes::param_oe::ParametricOpticalElement;
-use xrt_oes::reflect::DeflectionMode;
+use xrt_rs::core::beam::Beam;
+use xrt_rs::oes::grating_oe::GratingOpticalElement;
+use xrt_rs::oes::material_oe::MaterialOpticalElement;
+use xrt_rs::oes::oe::{OeParams, OpticalElement};
+use xrt_rs::oes::param_oe::ParametricOpticalElement;
+use xrt_rs::oes::reflect::DeflectionMode;
 
-use xrt_oes::surfaces::bent_flat::BentFlatSurface;
-use xrt_oes::surfaces::cylindrical::CylindricalSurface;
-use xrt_oes::surfaces::elliptical::EllipticalSurface;
-use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_oes::surfaces::grating::{BlazedGrating, LaminarGrating};
-use xrt_oes::surfaces::lens::ParaboloidLensSurface;
-use xrt_oes::surfaces::parabolical::ParabolicalSurface;
-use xrt_oes::surfaces::spherical::SphericalSurface;
-use xrt_oes::surfaces::toroid::ToroidSurface;
-use xrt_oes::surfaces::vfm::VfmSurface;
-use xrt_oes::surfaces::vls_grating::VlsGrating;
+use xrt_rs::oes::surfaces::bent_flat::BentFlatSurface;
+use xrt_rs::oes::surfaces::cylindrical::CylindricalSurface;
+use xrt_rs::oes::surfaces::elliptical::EllipticalSurface;
+use xrt_rs::oes::surfaces::flat::FlatSurface;
+use xrt_rs::oes::surfaces::grating::{BlazedGrating, LaminarGrating};
+use xrt_rs::oes::surfaces::lens::ParaboloidLensSurface;
+use xrt_rs::oes::surfaces::parabolical::ParabolicalSurface;
+use xrt_rs::oes::surfaces::spherical::SphericalSurface;
+use xrt_rs::oes::surfaces::toroid::ToroidSurface;
+use xrt_rs::oes::surfaces::vfm::VfmSurface;
+use xrt_rs::oes::surfaces::vls_grating::VlsGrating;
 
 use crate::py_beam::PyBeam;
 use crate::py_material::PyMaterial;

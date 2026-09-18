@@ -4,20 +4,17 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "PyO3 bindings for xrt-rs"
 
 [lib]
-name = "xrt_rs"
+# Not xrt_rs: that is the library crate this one wraps. maturin installs the
+# extension under the Python name from pyproject.toml's module-name.
+name = "xrt_python"
 crate-type = ["cdylib"]
 
 [dependencies]
-xrt-core = { workspace = true }
-xrt-math = { workspace = true }
-xrt-materials = { workspace = true }
-xrt-oes = { workspace = true }
-xrt-sources = { workspace = true }
-xrt-waves = { workspace = true }
-xrt-pytte = { workspace = true }
+xrt-rs = { workspace = true }
 ndarray = { workspace = true }
 num-complex = { workspace = true }
 thiserror = { workspace = true }

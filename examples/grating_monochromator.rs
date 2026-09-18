@@ -4,15 +4,15 @@
 //!
 //! Run: cargo run --example grating_monochromator
 
-use xrt_materials::data::ScatteringTable;
-use xrt_materials::material::{Material, MaterialKind};
-use xrt_oes::beamline::{Beamline, OeParamsBuilder};
-use xrt_oes::grating_oe::GratingOpticalElement;
-use xrt_oes::material_oe::MaterialOpticalElement;
-use xrt_oes::screen::Screen;
-use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_oes::surfaces::grating::BlazedGrating;
-use xrt_sources::bending_magnet::BendingMagnet;
+use xrt_rs::materials::data::ScatteringTable;
+use xrt_rs::materials::material::{Material, MaterialKind};
+use xrt_rs::oes::beamline::{Beamline, OeParamsBuilder};
+use xrt_rs::oes::grating_oe::GratingOpticalElement;
+use xrt_rs::oes::material_oe::MaterialOpticalElement;
+use xrt_rs::oes::screen::Screen;
+use xrt_rs::oes::surfaces::flat::FlatSurface;
+use xrt_rs::oes::surfaces::grating::BlazedGrating;
+use xrt_rs::sources::bending_magnet::BendingMagnet;
 
 fn main() {
     println!("=== XRT-RS: Grating Monochromator ===\n");

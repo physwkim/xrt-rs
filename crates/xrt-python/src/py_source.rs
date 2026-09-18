@@ -2,9 +2,9 @@
 
 use pyo3::prelude::*;
 
-use xrt_sources::distributions::{EnergyDist, SpatialDist};
-use xrt_sources::geometric::GeometricSource;
-use xrt_sources::polarization::Polarization;
+use xrt_rs::sources::distributions::{EnergyDist, SpatialDist};
+use xrt_rs::sources::geometric::GeometricSource;
+use xrt_rs::sources::polarization::Polarization;
 
 use crate::py_beam::PyBeam;
 

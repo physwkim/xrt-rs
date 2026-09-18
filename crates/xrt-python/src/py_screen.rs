@@ -2,7 +2,7 @@
 
 use pyo3::prelude::*;
 
-use xrt_oes::screen::{Screen, ScreenCapture};
+use xrt_rs::oes::screen::{Screen, ScreenCapture};
 
 use crate::py_beam::PyBeam;
 

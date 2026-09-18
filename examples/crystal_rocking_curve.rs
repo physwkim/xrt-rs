@@ -6,11 +6,11 @@
 
 use num_complex::Complex64;
 
-use xrt_pytte::crystal::TtCrystal;
-use xrt_pytte::deformation::{IsotropicPlate, NoDeformation};
-use xrt_pytte::quantity::{ev_to_angstrom, rad_to_arcsec};
-use xrt_pytte::scan::{ScanMode, compute_bragg_coeffs};
-use xrt_pytte::solver::{SolverConfig, tt_solve};
+use xrt_rs::pytte::crystal::TtCrystal;
+use xrt_rs::pytte::deformation::{IsotropicPlate, NoDeformation};
+use xrt_rs::pytte::quantity::{ev_to_angstrom, rad_to_arcsec};
+use xrt_rs::pytte::scan::{ScanMode, compute_bragg_coeffs};
+use xrt_rs::pytte::solver::{SolverConfig, tt_solve};
 
 fn main() {
     println!("=== XRT-RS: Si(111) Rocking Curve ===\n");
