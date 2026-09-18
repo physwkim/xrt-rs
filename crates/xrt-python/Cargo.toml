@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "PyO3 bindings for xrt-rs"
+# A pyo3 extension-module cdylib exports no Rust API and cannot be linked as a
+# dependency; it reaches users as the xrt-rs wheel that maturin builds.
+publish = false
 
 [lib]
 # Not xrt_rs: that is the library crate this one wraps. maturin installs the
