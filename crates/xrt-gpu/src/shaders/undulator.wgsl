@@ -68,13 +68,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let t = (f32(j) + 0.5) * dt;
         let phi_t = TWO_PI * t;
 
-        // Electron velocity
-        let beta_x = params.kx / params.gamma * sin(phi_t);
-        let beta_z = params.ky / params.gamma * sin(phi_t + params.phase_rad);
+        // Electron velocity. K_y is the vertical field's parameter and bends
+        // the electron horizontally, K_x the other way round — same mapping as
+        // the CPU Undulator::build_i_map.
+        let beta_x = params.ky / params.gamma * sin(phi_t);
+        let beta_z = params.kx / params.gamma * sin(phi_t + params.phase_rad);
 
         // Electron position
-        let x_e = params.kx * params.period_m / (TWO_PI * params.gamma) * (1.0 - cos(phi_t));
-        let z_e = params.ky * params.period_m / (TWO_PI * params.gamma) * (1.0 - cos(phi_t + params.phase_rad));
+        let x_e = params.ky * params.period_m / (TWO_PI * params.gamma) * (1.0 - cos(phi_t));
+        let z_e = params.kx * params.period_m / (TWO_PI * params.gamma) * (1.0 - cos(phi_t + params.phase_rad));
         let y_e = params.period_m * t;
 
         // Phase

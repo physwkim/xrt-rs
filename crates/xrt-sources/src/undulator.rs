@@ -26,9 +26,12 @@ use crate::rejection::RejectionBudget;
 #[derive(Debug, Clone)]
 pub struct Undulator {
     pub params: SynchrotronParams,
-    /// Horizontal deflection parameter K_x
+    /// Deflection parameter of the horizontal field B_x, which drives the
+    /// vertical (z) oscillation. Python names it after the field too:
+    /// `B0x = K2B * Kx / L0` (sources/synchr.py:777).
     pub kx: f64,
-    /// Vertical deflection parameter K_y
+    /// Deflection parameter of the vertical field B_y, which drives the
+    /// horizontal (x) oscillation — the planar case is `kx = 0`, `ky > 0`.
     pub ky: f64,
     /// Undulator period [mm]
     pub period: f64,
@@ -142,17 +145,20 @@ impl Undulator {
                 let t = (j as f64 + 0.5) * dt;
                 let phi_t = PI2 * t;
 
-                // Electron velocity (normalized to c)
-                // β_x = K_x/γ × sin(2πt)
-                // β_z = K_y/γ × sin(2πt + φ)
-                let beta_x = self.kx / gamma * phi_t.sin();
-                let beta_z = self.ky / gamma * (phi_t + phase_rad).sin();
+                // Electron velocity (normalized to c). The vertical field B_y
+                // bends the electron horizontally and B_x vertically, so K_y
+                // drives x and K_x drives z, with the phase on the K_x term
+                // as in Python's betax/betay (sources/synchr.py:48-51).
+                // β_x = K_y/γ × sin(2πt)
+                // β_z = K_x/γ × sin(2πt + φ)
+                let beta_x = self.ky / gamma * phi_t.sin();
+                let beta_z = self.kx / gamma * (phi_t + phase_rad).sin();
 
                 // Electron position (normalized)
-                // x = K_x λ_u/(2πγ) × (1 - cos(2πt))
-                // z = K_y λ_u/(2πγ) × (1 - cos(2πt + φ))
-                let x_e = self.kx * lambda_u / (PI2 * gamma) * (1.0 - phi_t.cos());
-                let z_e = self.ky * lambda_u / (PI2 * gamma) * (1.0 - (phi_t + phase_rad).cos());
+                // x = K_y λ_u/(2πγ) × (1 - cos(2πt))
+                // z = K_x λ_u/(2πγ) × (1 - cos(2πt + φ))
+                let x_e = self.ky * lambda_u / (PI2 * gamma) * (1.0 - phi_t.cos());
+                let z_e = self.kx * lambda_u / (PI2 * gamma) * (1.0 - (phi_t + phase_rad).cos());
 
                 // Longitudinal position
                 let y_e = lambda_u * t;
@@ -264,17 +270,15 @@ impl Undulator {
     /// flags default to True at sources/synchr.py:1400-1401), with a 2/gamma
     /// fallback for the axis whose K is zero.
     ///
-    /// The axes follow this port's own trajectory convention in
-    /// `build_i_map`: `kx` drives x (hence theta) and `ky` drives z (hence
-    /// psi). Python maps Kx and Ky the other way round
-    /// (sources/synchr.py:52-53), so the two ports disagree on which K is
-    /// which; if that mapping is ever corrected here, swap these two as well.
+    /// Each axis is bounded by the K that drives it: theta by `ky` and psi by
+    /// `kx`, as in Python, where `xPrimeMax` reads `_Ky` and `zPrimeMax` reads
+    /// `_Kx` (sources/sybase.py:374-385 and :415-426).
     pub fn angular_window_sampling(&self) -> (f64, f64) {
         let k_or_default = |k: f64| if k != 0.0 { k.abs() } else { 2.0 };
         let gamma = self.params.gamma;
         (
-            self.theta_max.min(k_or_default(self.kx) / gamma),
-            self.psi_max.min(k_or_default(self.ky) / gamma),
+            self.theta_max.min(k_or_default(self.ky) / gamma),
+            self.psi_max.min(k_or_default(self.kx) / gamma),
         )
     }
 
@@ -465,21 +469,48 @@ mod tests {
 
     #[test]
     fn angular_window_is_reduced_to_the_oscillation_cone() {
-        // Planar in this port's convention: kx = 0 (theta axis), ky = 2 (psi axis)
+        // Planar undulator: kx = 0, ky = 3, so theta is bounded by ky/gamma
+        // and psi falls back to 2/gamma as Python's K0 = 2 does.
         let u = Undulator::new(
-            3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 1e-3, 1e-3,
+            3.0, 0.3, 0.0, 3.0, 30.0, 50, 100, 5000.0, 15000.0, 1e-3, 1e-3,
         );
         let gamma = u.params.gamma;
         let (theta, psi) = u.angular_window_sampling();
+        assert!((theta - 3.0 / gamma).abs() < 1e-18, "theta = {theta}");
         assert!((psi - 2.0 / gamma).abs() < 1e-18, "psi = {psi}");
-        // kx = 0 falls back to 2/gamma, as Python's K0 = 2 does
-        assert!((theta - 2.0 / gamma).abs() < 1e-18, "theta = {theta}");
 
         // A request narrower than the cone is left alone
         let tight = Undulator::new(
             3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 5000.0, 15000.0, 1e-5, 1e-5,
         );
         assert_eq!(tight.angular_window_sampling(), (1e-5, 1e-5));
+    }
+
+    #[test]
+    fn a_planar_undulator_radiates_sigma_polarized_on_axis() {
+        // kx = 0, ky = 2 is the planar case: the vertical field bends the
+        // electron horizontally, so the on-axis radiation is sigma-polarized.
+        // Exchanging the two K values describes an undulator rotated by 90
+        // degrees, which is pi-polarized on axis — this is what pins kx and ky
+        // to their axes.
+        let planar = Undulator::new(3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 100.0, 1e6, 1e-3, 1e-3);
+        let e1 = planar.fundamental_energy();
+        let (_, amp_s, amp_p) = planar.build_i_map(&[e1], &[0.0], &[0.0]);
+        let (s, p) = (amp_s[0].norm(), amp_p[0].norm());
+        assert!(s > 0.0, "|amp_s| = {s}");
+        assert!(
+            p < 1e-6 * s,
+            "|amp_p| = {p} should vanish on axis, |amp_s| = {s}"
+        );
+
+        let rotated = Undulator::new(3.0, 0.3, 2.0, 0.0, 30.0, 50, 100, 100.0, 1e6, 1e-3, 1e-3);
+        let (_, amp_s, amp_p) = rotated.build_i_map(&[e1], &[0.0], &[0.0]);
+        let (s, p) = (amp_s[0].norm(), amp_p[0].norm());
+        assert!(p > 0.0, "|amp_p| = {p}");
+        assert!(
+            s < 1e-6 * p,
+            "|amp_s| = {s} should vanish on axis, |amp_p| = {p}"
+        );
     }
 
     #[test]
