@@ -267,11 +267,9 @@ impl Wiggler {
                     bot.jsp[j] = amp_s[i] * amp_p[i].conj() / ssp;
                 }
 
-                if let Some(ref mut es) = bot.es {
-                    es[j] = amp_s[i];
-                }
-                if let Some(ref mut ep) = bot.ep {
-                    ep[j] = amp_p[i];
+                if let Some(amps) = bot.amplitudes_mut() {
+                    amps.es[j] = amp_s[i];
+                    amps.ep[j] = amp_p[i];
                 }
             }
 

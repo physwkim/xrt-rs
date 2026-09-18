@@ -147,11 +147,9 @@ impl<S: Surface> GratingOpticalElement<S> {
                 beam.jpp[i] *= eff;
                 beam.jsp[i] *= eff;
 
-                if let Some(ref mut es) = beam.es {
-                    es[i] *= eff.sqrt();
-                }
-                if let Some(ref mut ep) = beam.ep {
-                    ep[i] *= eff.sqrt();
+                if let Some(amps) = beam.amplitudes_mut() {
+                    amps.es[i] *= eff.sqrt();
+                    amps.ep[i] *= eff.sqrt();
                 }
             }
         }

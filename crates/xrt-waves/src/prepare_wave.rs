@@ -86,8 +86,8 @@ pub fn beam_to_diffraction_rays(
             // Obliquity factor: dot(normal, beam_direction)
             let nl = n[0] * beam.a[i] + n[1] * beam.b[i] + n[2] * beam.c[i];
 
-            let (es, ep) = match (&beam.es, &beam.ep) {
-                (Some(es_arr), Some(ep_arr)) => (es_arr[i], ep_arr[i]),
+            let (es, ep) = match beam.amplitudes() {
+                Some(amps) => (amps.es[i], amps.ep[i]),
                 _ => (
                     num_complex::Complex64::new(1.0, 0.0),
                     num_complex::Complex64::new(0.0, 0.0),
@@ -152,8 +152,8 @@ mod tests {
         beam.b[0] = 1.0;
         beam.c[0] = 0.0;
         beam.e[0] = 10000.0;
-        if let Some(ref mut es) = beam.es {
-            es[0] = Complex64::new(1.0, 0.0);
+        if let Some(amps) = beam.amplitudes_mut() {
+            amps.es[0] = Complex64::new(1.0, 0.0);
         }
 
         let normals = vec![[0.0, 0.0, 1.0]; 3];

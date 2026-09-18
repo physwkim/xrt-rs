@@ -223,11 +223,9 @@ pub fn apply_material_amplitude(
         beam.jpp[i] *= rp_abs2;
         beam.jsp[i] *= rs[idx] * rp[idx].conj();
 
-        if let Some(ref mut es) = beam.es {
-            es[i] *= rs[idx];
-        }
-        if let Some(ref mut ep) = beam.ep {
-            ep[i] *= rp[idx];
+        if let Some(amps) = beam.amplitudes_mut() {
+            amps.es[i] *= rs[idx];
+            amps.ep[i] *= rp[idx];
         }
     }
 }

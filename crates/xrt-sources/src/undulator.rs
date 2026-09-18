@@ -363,11 +363,9 @@ impl Undulator {
                     bot.jsp[j] = a_s[k] * a_p[k].conj() / ssp;
                 }
 
-                if let Some(ref mut es) = bot.es {
-                    es[j] = a_s[k];
-                }
-                if let Some(ref mut ep) = bot.ep {
-                    ep[j] = a_p[k];
+                if let Some(amps) = bot.amplitudes_mut() {
+                    amps.es[j] = a_s[k];
+                    amps.ep[j] = a_p[k];
                 }
             }
 

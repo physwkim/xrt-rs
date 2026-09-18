@@ -73,11 +73,9 @@ fn fill_beam(beam: &mut Beam, jss: f64, jpp: f64, jsp: Complex64, es_val: f64, e
     beam.jss.fill(jss);
     beam.jpp.fill(jpp);
     beam.jsp.fill(jsp);
-    if let Some(ref mut es) = beam.es {
-        es.fill(Complex64::new(es_val, 0.0));
-    }
-    if let Some(ref mut ep) = beam.ep {
-        ep.fill(Complex64::new(ep_val, 0.0));
+    if let Some(amps) = beam.amplitudes_mut() {
+        amps.es.fill(Complex64::new(es_val, 0.0));
+        amps.ep.fill(Complex64::new(ep_val, 0.0));
     }
 }
 
@@ -85,15 +83,12 @@ fn fill_beam_unpolarized(beam: &mut Beam, sq2inv: f64) {
     beam.jss.fill(0.5);
     beam.jpp.fill(0.5);
     beam.jsp.fill(Complex64::new(0.0, 0.0));
-    if let Some(ref mut es) = beam.es {
-        es.fill(Complex64::new(sq2inv, 0.0));
-    }
-    if let Some(ref mut ep) = beam.ep {
+    if let Some(amps) = beam.amplitudes_mut() {
+        amps.es.fill(Complex64::new(sq2inv, 0.0));
         // Random phase for unpolarized light
         let mut rng = rand::thread_rng();
-        let n = ep.len();
-        for i in 0..n {
-            ep[i] = Complex64::new(rng.r#gen::<f64>() * sq2inv, 0.0);
+        for i in 0..amps.ep.len() {
+            amps.ep[i] = Complex64::new(rng.r#gen::<f64>() * sq2inv, 0.0);
         }
     }
 }

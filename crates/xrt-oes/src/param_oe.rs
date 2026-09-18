@@ -70,26 +70,15 @@ impl<P: ParametricSurface> ParametricOpticalElement<P> {
         crate::reflect::apply_results(beam, &good, &results);
 
         // Store parametric coordinates
-        if beam.s.is_none() {
-            let n = beam.nrays();
-            beam.s = Some(ndarray::Array1::zeros(n));
-            beam.phi = Some(ndarray::Array1::zeros(n));
-            beam.r = Some(ndarray::Array1::zeros(n));
-        }
+        let parametric = beam.ensure_parametric();
         for (&i, result) in good.iter().zip(results.iter()) {
             if result.state == RayState::Good {
                 // For parametric surfaces, intersection returns (s, phi, r) in (x, y, z)
                 // of the RayResult after parametric conversion
                 let (s, phi, r) = self.surface.xyz_to_param(result.x, result.y, result.z);
-                if let Some(ref mut s_arr) = beam.s {
-                    s_arr[i] = s;
-                }
-                if let Some(ref mut phi_arr) = beam.phi {
-                    phi_arr[i] = phi;
-                }
-                if let Some(ref mut r_arr) = beam.r {
-                    r_arr[i] = r;
-                }
+                parametric.s[i] = s;
+                parametric.phi[i] = phi;
+                parametric.r[i] = r;
             }
         }
 
@@ -270,8 +259,9 @@ mod tests {
 
         let _results = oe.reflect(&mut beam);
         // After reflection, parametric coords should be allocated
-        assert!(beam.s.is_some());
-        assert!(beam.phi.is_some());
-        assert!(beam.r.is_some());
+        let parametric = beam.parametric().expect("reflect allocates them");
+        assert_eq!(parametric.s.len(), beam.nrays());
+        assert_eq!(parametric.phi.len(), beam.nrays());
+        assert_eq!(parametric.r.len(), beam.nrays());
     }
 }

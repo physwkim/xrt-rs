@@ -38,10 +38,147 @@ impl RayState {
     }
 }
 
+/// Field amplitudes of every ray, allocated together.
+///
+/// Python creates `Es` and `Ep` in one step under `withAmplitudes`
+/// (`sources_beams.py`) and gates `Ep` on `Es` when concatenating, so one
+/// without the other is not a state the original can reach. Grouping them
+/// makes that combination unrepresentable here.
+#[derive(Debug, Clone)]
+pub struct Amplitudes {
+    pub es: Array1<Complex64>,
+    pub ep: Array1<Complex64>,
+}
+
+/// Elevation of every ray above the optical surface, allocated together.
+#[derive(Debug, Clone)]
+pub struct Elevation {
+    pub d: Array1<f64>,
+    pub x: Array1<f64>,
+    pub y: Array1<f64>,
+    pub z: Array1<f64>,
+}
+
+/// Parametric surface coordinates of every ray, allocated together.
+#[derive(Debug, Clone)]
+pub struct Parametric {
+    pub s: Array1<f64>,
+    pub phi: Array1<f64>,
+    pub r: Array1<f64>,
+}
+
+/// Rays `indices` of `arr`, in the given order.
+fn pick_arr<T: Copy>(arr: &Array1<T>, indices: &[usize]) -> Array1<T> {
+    Array1::from_iter(indices.iter().map(|&i| arr[i]))
+}
+
+/// `a` followed by `b`.
+fn concat_arr<T: Clone>(a: &Array1<T>, b: &Array1<T>) -> Array1<T> {
+    Array1::from_iter(a.iter().chain(b.iter()).cloned())
+}
+
+/// Concatenate two optional arrays, keeping the field only if both carry it.
+fn concat_opt<T: Clone>(a: Option<&Array1<T>>, b: Option<&Array1<T>>) -> Option<Array1<T>> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(concat_arr(a, b)),
+        _ => None,
+    }
+}
+
+impl Amplitudes {
+    fn zeros(nrays: usize) -> Self {
+        Self {
+            es: Array1::from_elem(nrays, Complex64::new(0.0, 0.0)),
+            ep: Array1::from_elem(nrays, Complex64::new(0.0, 0.0)),
+        }
+    }
+
+    fn pick(&self, indices: &[usize]) -> Self {
+        Self {
+            es: pick_arr(&self.es, indices),
+            ep: pick_arr(&self.ep, indices),
+        }
+    }
+
+    fn concat(a: Option<&Self>, b: Option<&Self>) -> Option<Self> {
+        let (a, b) = (a?, b?);
+        Some(Self {
+            es: concat_arr(&a.es, &b.es),
+            ep: concat_arr(&a.ep, &b.ep),
+        })
+    }
+}
+
+impl Elevation {
+    fn zeros(nrays: usize) -> Self {
+        Self {
+            d: Array1::zeros(nrays),
+            x: Array1::zeros(nrays),
+            y: Array1::zeros(nrays),
+            z: Array1::zeros(nrays),
+        }
+    }
+
+    fn pick(&self, indices: &[usize]) -> Self {
+        Self {
+            d: pick_arr(&self.d, indices),
+            x: pick_arr(&self.x, indices),
+            y: pick_arr(&self.y, indices),
+            z: pick_arr(&self.z, indices),
+        }
+    }
+
+    fn concat(a: Option<&Self>, b: Option<&Self>) -> Option<Self> {
+        let (a, b) = (a?, b?);
+        Some(Self {
+            d: concat_arr(&a.d, &b.d),
+            x: concat_arr(&a.x, &b.x),
+            y: concat_arr(&a.y, &b.y),
+            z: concat_arr(&a.z, &b.z),
+        })
+    }
+}
+
+impl Parametric {
+    fn zeros(nrays: usize) -> Self {
+        Self {
+            s: Array1::zeros(nrays),
+            phi: Array1::zeros(nrays),
+            r: Array1::zeros(nrays),
+        }
+    }
+
+    fn pick(&self, indices: &[usize]) -> Self {
+        Self {
+            s: pick_arr(&self.s, indices),
+            phi: pick_arr(&self.phi, indices),
+            r: pick_arr(&self.r, indices),
+        }
+    }
+
+    fn concat(a: Option<&Self>, b: Option<&Self>) -> Option<Self> {
+        let (a, b) = (a?, b?);
+        Some(Self {
+            s: concat_arr(&a.s, &b.s),
+            phi: concat_arr(&a.phi, &b.phi),
+            r: concat_arr(&a.r, &b.r),
+        })
+    }
+}
+
 /// SoA container for a bundle of rays.
 ///
 /// Field layout mirrors Python XRT's `Beam` class for numpy zero-copy
 /// compatibility via PyO3 and cache-friendly SIMD access.
+///
+/// # Invariant
+///
+/// Every optional per-ray field that is present has length [`Beam::nrays()`],
+/// and concatenation keeps a field present only when both operands carry it.
+/// The optional fields are therefore private: they are allocated exclusively
+/// by the `ensure_*` methods, which take the length from `nrays()`, and
+/// [`Beam::concatenate`] drops any field the other beam lacks rather than
+/// leaving a short array behind.
 #[derive(Debug, Clone)]
 pub struct Beam {
     // ── Position ────────────────────────────────────────────────────────
@@ -65,8 +202,7 @@ pub struct Beam {
     pub jsp: Array1<Complex64>,
 
     // ── Optional field amplitudes ──────────────────────────────────────
-    pub es: Option<Array1<Complex64>>,
-    pub ep: Option<Array1<Complex64>>,
+    amplitudes: Option<Amplitudes>,
 
     // ── Source parameters (scalars) ────────────────────────────────────
     pub source_sigma_x: f64,
@@ -78,20 +214,15 @@ pub struct Beam {
     pub filament_dgamma: f64,
 
     // ── Optional per-ray fields ────────────────────────────────────────
-    pub theta: Option<Array1<f64>>,
-    pub order: Option<Array1<i32>>,
-    pub n_refl: Option<Array1<i32>>,
+    theta: Option<Array1<f64>>,
+    order: Option<Array1<i32>>,
+    n_refl: Option<Array1<i32>>,
 
     // ── Elevation tracking ─────────────────────────────────────────────
-    pub elevation_d: Option<Array1<f64>>,
-    pub elevation_x: Option<Array1<f64>>,
-    pub elevation_y: Option<Array1<f64>>,
-    pub elevation_z: Option<Array1<f64>>,
+    elevation: Option<Elevation>,
 
     // ── Parametric surface coordinates ─────────────────────────────────
-    pub s: Option<Array1<f64>>,
-    pub phi: Option<Array1<f64>>,
-    pub r: Option<Array1<f64>>,
+    parametric: Option<Parametric>,
 }
 
 /// Summary statistics for good rays in a beam.
@@ -167,8 +298,7 @@ impl Beam {
             jss: Array1::ones(nrays),
             jpp: Array1::zeros(nrays),
             jsp: Array1::from_elem(nrays, Complex64::new(0.0, 0.0)),
-            es: None,
-            ep: None,
+            amplitudes: None,
             source_sigma_x: 0.0,
             source_sigma_z: 0.0,
             filament_dx: 0.0,
@@ -179,21 +309,15 @@ impl Beam {
             theta: None,
             order: None,
             n_refl: None,
-            elevation_d: None,
-            elevation_x: None,
-            elevation_y: None,
-            elevation_z: None,
-            s: None,
-            phi: None,
-            r: None,
+            elevation: None,
+            parametric: None,
         }
     }
 
     /// Create a new beam with field amplitudes allocated.
     pub fn with_amplitudes(nrays: usize) -> Self {
         let mut beam = Self::new(nrays);
-        beam.es = Some(Array1::from_elem(nrays, Complex64::new(0.0, 0.0)));
-        beam.ep = Some(Array1::from_elem(nrays, Complex64::new(0.0, 0.0)));
+        beam.ensure_amplitudes();
         beam
     }
 
@@ -212,8 +336,7 @@ impl Beam {
             jss: Array1::zeros(0),
             jpp: Array1::zeros(0),
             jsp: Array1::from_elem(0, Complex64::new(0.0, 0.0)),
-            es: None,
-            ep: None,
+            amplitudes: None,
             source_sigma_x: 0.0,
             source_sigma_z: 0.0,
             filament_dx: 0.0,
@@ -224,19 +347,98 @@ impl Beam {
             theta: None,
             order: None,
             n_refl: None,
-            elevation_d: None,
-            elevation_x: None,
-            elevation_y: None,
-            elevation_z: None,
-            s: None,
-            phi: None,
-            r: None,
+            elevation: None,
+            parametric: None,
         }
     }
 
     /// Number of rays in this beam.
     pub fn nrays(&self) -> usize {
         self.x.len()
+    }
+
+    /// Field amplitudes, if this beam carries them.
+    pub fn amplitudes(&self) -> Option<&Amplitudes> {
+        self.amplitudes.as_ref()
+    }
+
+    /// Field amplitudes for in-place modification, if this beam carries them.
+    pub fn amplitudes_mut(&mut self) -> Option<&mut Amplitudes> {
+        self.amplitudes.as_mut()
+    }
+
+    /// Allocate the field amplitudes if absent, and return them.
+    pub fn ensure_amplitudes(&mut self) -> &mut Amplitudes {
+        let nrays = self.nrays();
+        self.amplitudes
+            .get_or_insert_with(|| Amplitudes::zeros(nrays))
+    }
+
+    /// Elevation above the optical surface, if this beam carries it.
+    pub fn elevation(&self) -> Option<&Elevation> {
+        self.elevation.as_ref()
+    }
+
+    /// Elevation for in-place modification, if this beam carries it.
+    pub fn elevation_mut(&mut self) -> Option<&mut Elevation> {
+        self.elevation.as_mut()
+    }
+
+    /// Allocate the elevation arrays if absent, and return them.
+    pub fn ensure_elevation(&mut self) -> &mut Elevation {
+        let nrays = self.nrays();
+        self.elevation
+            .get_or_insert_with(|| Elevation::zeros(nrays))
+    }
+
+    /// Parametric surface coordinates, if this beam carries them.
+    pub fn parametric(&self) -> Option<&Parametric> {
+        self.parametric.as_ref()
+    }
+
+    /// Parametric coordinates for in-place modification, if present.
+    pub fn parametric_mut(&mut self) -> Option<&mut Parametric> {
+        self.parametric.as_mut()
+    }
+
+    /// Allocate the parametric coordinates if absent, and return them.
+    pub fn ensure_parametric(&mut self) -> &mut Parametric {
+        let nrays = self.nrays();
+        self.parametric
+            .get_or_insert_with(|| Parametric::zeros(nrays))
+    }
+
+    /// Incidence angle of every ray, if this beam carries it.
+    pub fn theta(&self) -> Option<&Array1<f64>> {
+        self.theta.as_ref()
+    }
+
+    /// Allocate the incidence angles if absent, and return them.
+    pub fn ensure_theta(&mut self) -> &mut Array1<f64> {
+        let nrays = self.nrays();
+        self.theta.get_or_insert_with(|| Array1::zeros(nrays))
+    }
+
+    /// Diffraction order of every ray, if this beam carries it.
+    pub fn order(&self) -> Option<&Array1<i32>> {
+        self.order.as_ref()
+    }
+
+    /// Allocate the diffraction orders if absent, and return them.
+    pub fn ensure_order(&mut self) -> &mut Array1<i32> {
+        let nrays = self.nrays();
+        self.order.get_or_insert_with(|| Array1::zeros(nrays))
+    }
+
+    /// Reflection count of every ray, if this beam carries it.
+    pub fn n_refl(&self) -> Option<&Array1<i32>> {
+        self.n_refl.as_ref()
+    }
+
+    /// Allocate the reflection counts if absent, and return them.
+    pub fn ensure_n_refl(&mut self) -> &mut Array1<i32> {
+        let nrays = self.nrays();
+        self.n_refl.get_or_insert_with(|| Array1::zeros(nrays))
     }
 
     /// Set all ray states to a given value.
@@ -246,22 +448,7 @@ impl Beam {
 
     /// Filter beam to only include rays at the given indices.
     pub fn filter_by_index(&self, indices: &[usize]) -> Self {
-        let pick = |arr: &Array1<f64>| -> Array1<f64> {
-            Array1::from_iter(indices.iter().map(|&i| arr[i]))
-        };
-        let pick_i32 = |arr: &Array1<i32>| -> Array1<i32> {
-            Array1::from_iter(indices.iter().map(|&i| arr[i]))
-        };
-        let pick_c64 = |arr: &Array1<Complex64>| -> Array1<Complex64> {
-            Array1::from_iter(indices.iter().map(|&i| arr[i]))
-        };
-        let pick_opt =
-            |arr: &Option<Array1<f64>>| -> Option<Array1<f64>> { arr.as_ref().map(&pick) };
-        let pick_opt_i32 =
-            |arr: &Option<Array1<i32>>| -> Option<Array1<i32>> { arr.as_ref().map(&pick_i32) };
-        let pick_opt_c64 = |arr: &Option<Array1<Complex64>>| -> Option<Array1<Complex64>> {
-            arr.as_ref().map(&pick_c64)
-        };
+        let pick = |arr: &Array1<f64>| pick_arr(arr, indices);
 
         Self {
             x: pick(&self.x),
@@ -270,14 +457,13 @@ impl Beam {
             a: pick(&self.a),
             b: pick(&self.b),
             c: pick(&self.c),
-            state: pick_i32(&self.state),
+            state: pick_arr(&self.state, indices),
             e: pick(&self.e),
             path: pick(&self.path),
             jss: pick(&self.jss),
             jpp: pick(&self.jpp),
-            jsp: pick_c64(&self.jsp),
-            es: pick_opt_c64(&self.es),
-            ep: pick_opt_c64(&self.ep),
+            jsp: pick_arr(&self.jsp, indices),
+            amplitudes: self.amplitudes.as_ref().map(|amp| amp.pick(indices)),
             source_sigma_x: self.source_sigma_x,
             source_sigma_z: self.source_sigma_z,
             filament_dx: self.filament_dx,
@@ -285,16 +471,11 @@ impl Beam {
             filament_dtheta: self.filament_dtheta,
             filament_dpsi: self.filament_dpsi,
             filament_dgamma: self.filament_dgamma,
-            theta: pick_opt(&self.theta),
-            order: pick_opt_i32(&self.order),
-            n_refl: pick_opt_i32(&self.n_refl),
-            elevation_d: pick_opt(&self.elevation_d),
-            elevation_x: pick_opt(&self.elevation_x),
-            elevation_y: pick_opt(&self.elevation_y),
-            elevation_z: pick_opt(&self.elevation_z),
-            s: pick_opt(&self.s),
-            phi: pick_opt(&self.phi),
-            r: pick_opt(&self.r),
+            theta: self.theta.as_ref().map(&pick),
+            order: self.order.as_ref().map(|arr| pick_arr(arr, indices)),
+            n_refl: self.n_refl.as_ref().map(|arr| pick_arr(arr, indices)),
+            elevation: self.elevation.as_ref().map(|el| el.pick(indices)),
+            parametric: self.parametric.as_ref().map(|par| par.pick(indices)),
         }
     }
 
@@ -460,47 +641,38 @@ impl Beam {
     }
 
     /// Concatenate another beam onto this one.
+    ///
+    /// An optional field survives only when both beams carry it, matching
+    /// Python's `hasattr(self, X) and hasattr(beam, X)` gate. Python leaves
+    /// its own stale array in place when only `self` has the field, which is
+    /// what later makes its `filter_by_index` raise `IndexError`; dropping the
+    /// field keeps `present ⟹ len == nrays()` true here.
     pub fn concatenate(&mut self, other: &Beam) {
-        use ndarray::Axis;
-        use ndarray::concatenate;
-
-        macro_rules! concat_arr {
+        macro_rules! concat_mandatory {
             ($field:ident) => {
-                self.$field = concatenate![Axis(0), self.$field, other.$field];
-            };
-        }
-        macro_rules! concat_opt {
-            ($field:ident) => {
-                if let (Some(a), Some(b)) = (&self.$field, &other.$field) {
-                    self.$field = Some(concatenate![Axis(0), a.view(), b.view()]);
-                }
+                self.$field = concat_arr(&self.$field, &other.$field);
             };
         }
 
-        concat_arr!(x);
-        concat_arr!(y);
-        concat_arr!(z);
-        concat_arr!(a);
-        concat_arr!(b);
-        concat_arr!(c);
-        concat_arr!(state);
-        concat_arr!(e);
-        concat_arr!(path);
-        concat_arr!(jss);
-        concat_arr!(jpp);
-        concat_arr!(jsp);
-        concat_opt!(es);
-        concat_opt!(ep);
-        concat_opt!(theta);
-        concat_opt!(order);
-        concat_opt!(n_refl);
-        concat_opt!(elevation_d);
-        concat_opt!(elevation_x);
-        concat_opt!(elevation_y);
-        concat_opt!(elevation_z);
-        concat_opt!(s);
-        concat_opt!(phi);
-        concat_opt!(r);
+        concat_mandatory!(x);
+        concat_mandatory!(y);
+        concat_mandatory!(z);
+        concat_mandatory!(a);
+        concat_mandatory!(b);
+        concat_mandatory!(c);
+        concat_mandatory!(state);
+        concat_mandatory!(e);
+        concat_mandatory!(path);
+        concat_mandatory!(jss);
+        concat_mandatory!(jpp);
+        concat_mandatory!(jsp);
+
+        self.amplitudes = Amplitudes::concat(self.amplitudes.as_ref(), other.amplitudes.as_ref());
+        self.elevation = Elevation::concat(self.elevation.as_ref(), other.elevation.as_ref());
+        self.parametric = Parametric::concat(self.parametric.as_ref(), other.parametric.as_ref());
+        self.theta = concat_opt(self.theta.as_ref(), other.theta.as_ref());
+        self.order = concat_opt(self.order.as_ref(), other.order.as_ref());
+        self.n_refl = concat_opt(self.n_refl.as_ref(), other.n_refl.as_ref());
     }
 }
 
@@ -517,15 +689,112 @@ mod tests {
         assert_eq!(beam.e[0], DEFAULT_ENERGY);
         assert_eq!(beam.jss[0], 1.0);
         assert_eq!(beam.jpp[0], 0.0);
-        assert!(beam.es.is_none());
+        assert!(beam.amplitudes().is_none());
     }
 
     #[test]
     fn test_with_amplitudes() {
         let beam = Beam::with_amplitudes(50);
-        assert!(beam.es.is_some());
-        assert!(beam.ep.is_some());
-        assert_eq!(beam.es.as_ref().unwrap().len(), 50);
+        let amp = beam.amplitudes().expect("amplitudes were requested");
+        assert_eq!(amp.es.len(), 50);
+        assert_eq!(amp.ep.len(), 50);
+    }
+
+    /// Every optional field that is present is as long as the beam.
+    fn assert_optional_lengths(beam: &Beam) {
+        let n = beam.nrays();
+        if let Some(amp) = beam.amplitudes() {
+            assert_eq!(amp.es.len(), n, "es");
+            assert_eq!(amp.ep.len(), n, "ep");
+        }
+        if let Some(el) = beam.elevation() {
+            assert_eq!(el.d.len(), n, "elevation_d");
+            assert_eq!(el.x.len(), n, "elevation_x");
+            assert_eq!(el.y.len(), n, "elevation_y");
+            assert_eq!(el.z.len(), n, "elevation_z");
+        }
+        if let Some(par) = beam.parametric() {
+            assert_eq!(par.s.len(), n, "s");
+            assert_eq!(par.phi.len(), n, "phi");
+            assert_eq!(par.r.len(), n, "r");
+        }
+        if let Some(theta) = beam.theta() {
+            assert_eq!(theta.len(), n, "theta");
+        }
+        if let Some(order) = beam.order() {
+            assert_eq!(order.len(), n, "order");
+        }
+        if let Some(n_refl) = beam.n_refl() {
+            assert_eq!(n_refl.len(), n, "n_refl");
+        }
+    }
+
+    #[test]
+    fn amplitudes_survive_concatenation_only_when_both_beams_carry_them() {
+        // present ∥ present
+        let mut both = Beam::with_amplitudes(3);
+        both.concatenate(&Beam::with_amplitudes(2));
+        assert_eq!(both.nrays(), 5);
+        assert_eq!(both.amplitudes().expect("both carried them").es.len(), 5);
+        assert_optional_lengths(&both);
+
+        // present ∥ absent
+        let mut left = Beam::with_amplitudes(3);
+        left.concatenate(&Beam::new(2));
+        assert_eq!(left.nrays(), 5);
+        assert!(left.amplitudes().is_none());
+        assert_optional_lengths(&left);
+
+        // absent ∥ present
+        let mut right = Beam::new(3);
+        right.concatenate(&Beam::with_amplitudes(2));
+        assert_eq!(right.nrays(), 5);
+        assert!(right.amplitudes().is_none());
+        assert_optional_lengths(&right);
+    }
+
+    #[test]
+    fn parametric_survives_concatenation_only_when_both_beams_carry_it() {
+        let mut parametric = Beam::new(3);
+        parametric.ensure_parametric();
+        assert_eq!(parametric.parametric().expect("just allocated").s.len(), 3);
+
+        let mut mixed = parametric.clone();
+        mixed.concatenate(&Beam::new(2));
+        assert!(mixed.parametric().is_none());
+        assert_optional_lengths(&mixed);
+
+        let mut other = Beam::new(2);
+        other.ensure_parametric();
+        parametric.concatenate(&other);
+        assert_eq!(parametric.parametric().expect("both carried it").r.len(), 5);
+        assert_optional_lengths(&parametric);
+    }
+
+    #[test]
+    fn a_dropped_field_can_be_reallocated_at_the_new_length() {
+        let mut beam = Beam::with_amplitudes(3);
+        beam.concatenate(&Beam::new(2));
+        assert!(beam.amplitudes().is_none());
+        assert_eq!(beam.ensure_amplitudes().es.len(), 5);
+        assert_optional_lengths(&beam);
+    }
+
+    #[test]
+    fn filtering_shortens_every_present_optional_field() {
+        let mut beam = Beam::with_amplitudes(5);
+        beam.ensure_parametric();
+        beam.ensure_elevation();
+        beam.ensure_theta();
+        beam.ensure_order();
+        beam.ensure_n_refl();
+        beam.set_state(RayState::Good);
+        beam.state[1] = RayState::Dead as i32;
+        beam.state[3] = RayState::Out as i32;
+
+        let good = beam.filter_good();
+        assert_eq!(good.nrays(), 3);
+        assert_optional_lengths(&good);
     }
 
     #[test]
