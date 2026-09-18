@@ -1,16 +1,64 @@
+[package]
+name = "xrt-rs"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.98"
+license = "MIT"
+repository = "https://github.com/physwkim/xrt-rs"
+readme = "README.md"
+description = "Ray tracing and wave propagation in the x-ray regime: synchrotron sources, optical elements, materials and diffraction"
+keywords = ["x-ray", "synchrotron", "raytracing", "optics", "physics"]
+categories = ["science", "simulation"]
+
+[features]
+# The GPU kernels pull in wgpu, a dependency tree a CPU-only consumer never
+# needs; build_i_map_auto and kirchhoff_auto stay on their f64 CPU paths when
+# the feature is off.
+gpu = ["dep:wgpu", "dep:bytemuck", "dep:pollster"]
+
+[dependencies]
+ndarray = { workspace = true }
+num-complex = { workspace = true }
+num-traits = { workspace = true }
+rayon = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+npyz = { workspace = true }
+zip = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+wgpu = { workspace = true, optional = true }
+bytemuck = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }
+
+[dev-dependencies]
+approx = { workspace = true }
+proptest = { workspace = true }
+criterion = { workspace = true }
+serde_json = { workspace = true }
+
+[[bench]]
+name = "transforms"
+harness = false
+
+[[bench]]
+name = "crystal"
+harness = false
+
+[[bench]]
+name = "intersection"
+harness = false
+
+[[bench]]
+name = "sources"
+harness = false
+
+[[bench]]
+name = "diffraction"
+harness = false
+
 [workspace]
-members = [
-    "crates/xrt-core",
-    "crates/xrt-math",
-    "crates/xrt-materials",
-    "crates/xrt-oes",
-    "crates/xrt-sources",
-    "crates/xrt-waves",
-    "crates/xrt-pytte",
-    "crates/xrt-gpu",
-    "crates/xrt-python",
-    "examples",
-]
+members = ["crates/xrt-python"]
 resolver = "3"
 
 [workspace.package]
@@ -18,6 +66,7 @@ version = "0.2.0"
 edition = "2024"
 rust-version = "1.98"
 license = "MIT"
+repository = "https://github.com/physwkim/xrt-rs"
 
 [workspace.dependencies]
 # Core numeric
@@ -58,12 +107,5 @@ approx = "0.5"
 proptest = "1"
 criterion = { version = "0.5", features = ["html_reports"] }
 
-# Internal crates
-xrt-core = { path = "crates/xrt-core" }
-xrt-math = { path = "crates/xrt-math" }
-xrt-materials = { path = "crates/xrt-materials" }
-xrt-oes = { path = "crates/xrt-oes" }
-xrt-sources = { path = "crates/xrt-sources" }
-xrt-waves = { path = "crates/xrt-waves" }
-xrt-pytte = { path = "crates/xrt-pytte" }
-xrt-gpu = { path = "crates/xrt-gpu" }
+# The library itself, for the members that wrap it.
+xrt-rs = { path = ".", version = "0.2.0" }

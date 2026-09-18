@@ -34,20 +34,26 @@ A unified X-ray optics simulation engine in Rust, combining the capabilities of 
 - ~2x faster than XRT Python for bending magnet source generation
 - 0 `unsafe`, 0 clippy warnings
 
-## Crate Structure
+## Module Structure
+
+One published crate, `xrt-rs`, with a module per subsystem:
 
 ```
-xrt-rs/
-├── xrt-core        Physical constants, beam, transforms, optical path
-├── xrt-math        Root finding, interpolation
-├── xrt-materials   Elements, scattering (f0/f1/f2), materials, crystals, multilayers
-├── xrt-oes         42 surface types, 5 OE wrappers, beamline pipeline
-├── xrt-sources     Geometric, BM, wiggler, undulator (optional GPU)
-├── xrt-waves       Kirchhoff diffraction (CPU), Fresnel propagation
-├── xrt-gpu         wgpu/WGSL shaders for diffraction + undulator
-├── xrt-pytte       Takagi-Taupin ODE solver
-└── xrt-python      PyO3 bindings (10 functions)
+xrt_rs::
+├── core        Physical constants, beam, transforms, optical path
+├── math        Root finding, interpolation
+├── materials   Elements, scattering (f0/f1/f2), materials, crystals, multilayers
+├── oes         42 surface types, 5 OE wrappers, beamline pipeline
+├── sources     Geometric, BM, wiggler, undulator
+├── waves       Kirchhoff diffraction (CPU), Fresnel propagation
+├── pytte       Takagi-Taupin ODE solver
+└── gpu         wgpu/WGSL shaders for diffraction + undulator ("gpu" feature)
+
+crates/xrt-python   PyO3 bindings, published to PyPI as the xrt-rs wheel
 ```
+
+The `gpu` feature is off by default; without it the auto-dispatching entry
+points run their f64 CPU paths.
 
 ## GPU Phase Reduction
 
@@ -113,12 +119,12 @@ pytest validation/ -v
 ## Examples
 
 ```rust
-use xrt_sources::geometric::GeometricSource;
-use xrt_oes::beamline::{Beamline, OeParamsBuilder};
-use xrt_oes::material_oe::MaterialOpticalElement;
-use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_materials::material::{Material, MaterialKind};
-use xrt_materials::data::ScatteringTable;
+use xrt_rs::sources::geometric::GeometricSource;
+use xrt_rs::oes::beamline::{Beamline, OeParamsBuilder};
+use xrt_rs::oes::material_oe::MaterialOpticalElement;
+use xrt_rs::oes::surfaces::flat::FlatSurface;
+use xrt_rs::materials::material::{Material, MaterialKind};
+use xrt_rs::materials::data::ScatteringTable;
 
 // Create source
 let mut beam = GeometricSource { nrays: 10000, ..Default::default() }.shine();

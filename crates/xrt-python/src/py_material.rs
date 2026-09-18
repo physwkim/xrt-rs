@@ -2,8 +2,8 @@
 
 use pyo3::prelude::*;
 
-use xrt_materials::data::ScatteringTable;
-use xrt_materials::material::{Material, MaterialKind};
+use xrt_rs::materials::data::ScatteringTable;
+use xrt_rs::materials::material::{Material, MaterialKind};
 
 #[pyclass(name = "Material")]
 pub struct PyMaterial {

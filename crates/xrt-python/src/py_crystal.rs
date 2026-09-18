@@ -7,14 +7,14 @@
 
 use pyo3::prelude::*;
 
-use xrt_core::consts::CH;
-use xrt_materials::crystal::{CrystalBase, CrystalGeometry};
-use xrt_materials::crystal_variants::CrystalSi;
-use xrt_materials::data::ScatteringTable;
-use xrt_oes::crystal_oe::CrystalOpticalElement;
-use xrt_oes::oe::OeParams;
-use xrt_oes::reflect::DeflectionMode;
-use xrt_oes::surfaces::flat::FlatSurface;
+use xrt_rs::core::consts::CH;
+use xrt_rs::materials::crystal::{CrystalBase, CrystalGeometry};
+use xrt_rs::materials::crystal_variants::CrystalSi;
+use xrt_rs::materials::data::ScatteringTable;
+use xrt_rs::oes::crystal_oe::CrystalOpticalElement;
+use xrt_rs::oes::oe::OeParams;
+use xrt_rs::oes::reflect::DeflectionMode;
+use xrt_rs::oes::surfaces::flat::FlatSurface;
 
 use crate::py_beam::PyBeam;
 

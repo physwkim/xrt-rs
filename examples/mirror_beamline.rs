@@ -4,14 +4,14 @@
 //!
 //! Run: cargo run --example mirror_beamline
 
-use xrt_materials::data::ScatteringTable;
-use xrt_materials::material::{Material, MaterialKind};
-use xrt_oes::beamline::{Beamline, OeParamsBuilder};
-use xrt_oes::material_oe::MaterialOpticalElement;
-use xrt_oes::screen::Screen;
-use xrt_oes::surfaces::toroid::ToroidSurface;
-use xrt_sources::distributions::{EnergyDist, SpatialDist};
-use xrt_sources::geometric::GeometricSource;
+use xrt_rs::materials::data::ScatteringTable;
+use xrt_rs::materials::material::{Material, MaterialKind};
+use xrt_rs::oes::beamline::{Beamline, OeParamsBuilder};
+use xrt_rs::oes::material_oe::MaterialOpticalElement;
+use xrt_rs::oes::screen::Screen;
+use xrt_rs::oes::surfaces::toroid::ToroidSurface;
+use xrt_rs::sources::distributions::{EnergyDist, SpatialDist};
+use xrt_rs::sources::geometric::GeometricSource;
 
 fn main() {
     println!("=== XRT-RS: Two-Mirror Beamline ===\n");

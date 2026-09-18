@@ -3,7 +3,7 @@
 use numpy::PyArray1;
 use pyo3::prelude::*;
 
-use xrt_core::beam::Beam;
+use xrt_rs::core::beam::Beam;
 
 #[pyclass(name = "Beam")]
 pub struct PyBeam {

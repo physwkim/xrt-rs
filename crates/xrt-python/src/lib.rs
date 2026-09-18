@@ -53,14 +53,14 @@ use pyo3::types::PyDict;
 use ndarray::Array1;
 use num_complex::Complex64;
 
-use xrt_math::rootfind::RootFindConfig;
-use xrt_oes::intersection::find_intersection_surface;
-use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_oes::surfaces::fzp::FzpSurface;
-use xrt_oes::surfaces::grating::{BlazedGrating, LaminarGrating};
-use xrt_oes::surfaces::lens::ParaboloidLensSurface;
-use xrt_oes::surfaces::spherical::SphericalSurface;
-use xrt_oes::surfaces::toroid::ToroidSurface;
+use xrt_rs::math::rootfind::RootFindConfig;
+use xrt_rs::oes::intersection::find_intersection_surface;
+use xrt_rs::oes::surfaces::flat::FlatSurface;
+use xrt_rs::oes::surfaces::fzp::FzpSurface;
+use xrt_rs::oes::surfaces::grating::{BlazedGrating, LaminarGrating};
+use xrt_rs::oes::surfaces::lens::ParaboloidLensSurface;
+use xrt_rs::oes::surfaces::spherical::SphericalSurface;
+use xrt_rs::oes::surfaces::toroid::ToroidSurface;
 
 /// Find ray-surface intersection for a batch of rays.
 ///
@@ -227,10 +227,10 @@ fn find_intersection_parametric_rs(
     y: Vec<f64>,
     z: Vec<f64>,
 ) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
-    use xrt_oes::surface::ParametricSurface;
-    use xrt_oes::surfaces::elliptical::EllipticalSurface;
-    use xrt_oes::surfaces::hyperbolic::HyperbolicSurface;
-    use xrt_oes::surfaces::parabolical::ParabolicalSurface;
+    use xrt_rs::oes::surface::ParametricSurface;
+    use xrt_rs::oes::surfaces::elliptical::EllipticalSurface;
+    use xrt_rs::oes::surfaces::hyperbolic::HyperbolicSurface;
+    use xrt_rs::oes::surfaces::parabolical::ParabolicalSurface;
 
     let n = x.len();
     check_equal_lengths(&[("x", n), ("y", y.len()), ("z", z.len())])?;
@@ -337,7 +337,7 @@ fn diffraction_integral_rs(
     pix_y: Vec<f64>,
     pix_z: Vec<f64>,
 ) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>)> {
-    use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
+    use xrt_rs::waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
 
     let n_rays = ray_x.len();
     check_equal_lengths(&[
@@ -418,7 +418,7 @@ fn tt_solve_rs(
     xi_re: f64,
     xi_im: f64,
 ) -> PyResult<(Vec<f64>, Vec<f64>)> {
-    use xrt_pytte::solver::{BraggCoeffs, SolverConfig, solve_bragg_parallel};
+    use xrt_rs::pytte::solver::{BraggCoeffs, SolverConfig, solve_bragg_parallel};
 
     let n = cb_re.len();
     check_equal_lengths(&[
@@ -463,7 +463,7 @@ fn bending_magnet_shine_rs(
     theta_max: f64,
     psi_max: f64,
 ) -> PyResult<PyObject> {
-    use xrt_sources::bending_magnet::BendingMagnet;
+    use xrt_rs::sources::bending_magnet::BendingMagnet;
 
     let mut bm = BendingMagnet::new(
         electron_energy_gev,
@@ -527,9 +527,9 @@ fn multilayer_amplitude_rs(
     energies: Vec<f64>,
     sin_theta: Vec<f64>,
 ) -> PyResult<(Vec<f64>, Vec<f64>)> {
-    use xrt_materials::data::ScatteringTable;
-    use xrt_materials::material::{Material, MaterialKind};
-    use xrt_materials::multilayer::{Multilayer, MultilayerGeom};
+    use xrt_rs::materials::data::ScatteringTable;
+    use xrt_rs::materials::material::{Material, MaterialKind};
+    use xrt_rs::materials::multilayer::{Multilayer, MultilayerGeom};
 
     let table = ScatteringTable::ChantlerTotal;
     let t_mat = Material::new(&[t_elem], None, t_rho, MaterialKind::Mirror, None, table)
@@ -577,8 +577,8 @@ fn geometric_source_shine(
     dxprime: f64,
     dzprime: f64,
 ) -> PyResult<PyObject> {
-    use xrt_sources::distributions::{EnergyDist, SpatialDist};
-    use xrt_sources::geometric::GeometricSource;
+    use xrt_rs::sources::distributions::{EnergyDist, SpatialDist};
+    use xrt_rs::sources::geometric::GeometricSource;
 
     let source = GeometricSource {
         nrays,
@@ -625,7 +625,7 @@ fn wiggler_shine_rs(
     theta_max: f64,
     psi_max: f64,
 ) -> PyResult<PyObject> {
-    use xrt_sources::wiggler::Wiggler;
+    use xrt_rs::sources::wiggler::Wiggler;
 
     let mut w = Wiggler::new(
         electron_energy_gev,
@@ -681,7 +681,7 @@ fn undulator_shine_rs(
     theta_max: f64,
     psi_max: f64,
 ) -> PyResult<PyObject> {
-    use xrt_sources::undulator::Undulator;
+    use xrt_rs::sources::undulator::Undulator;
 
     let mut u = Undulator::new(
         electron_energy_gev,
@@ -726,7 +726,10 @@ fn version() -> &'static str {
 
 /// Python module definition.
 #[pymodule]
-fn xrt_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
+// The Python module keeps the name xrt_rs; the Rust function cannot, because
+// the macro-expanded name would then shadow the xrt_rs library crate.
+#[pyo3(name = "xrt_rs")]
+fn xrt_python(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // ── Existing low-level functions ────────────────────────────────────
     m.add_function(wrap_pyfunction!(find_intersection_rs, m)?)?;
     m.add_function(wrap_pyfunction!(find_intersection_parametric_rs, m)?)?;

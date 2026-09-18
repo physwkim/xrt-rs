@@ -3,18 +3,18 @@
 //! Python cannot use Rust generics, so we wrap all surface types into enums
 //! that implement the Surface/ParametricSurface traits via match dispatch.
 
-use xrt_oes::surface::{ParametricSurface, Surface};
-use xrt_oes::surfaces::bent_flat::BentFlatSurface;
-use xrt_oes::surfaces::cylindrical::CylindricalSurface;
-use xrt_oes::surfaces::elliptical::EllipticalSurface;
-use xrt_oes::surfaces::flat::FlatSurface;
-use xrt_oes::surfaces::grating::{BlazedGrating, LaminarGrating};
-use xrt_oes::surfaces::lens::ParaboloidLensSurface;
-use xrt_oes::surfaces::parabolical::ParabolicalSurface;
-use xrt_oes::surfaces::spherical::SphericalSurface;
-use xrt_oes::surfaces::toroid::ToroidSurface;
-use xrt_oes::surfaces::vfm::VfmSurface;
-use xrt_oes::surfaces::vls_grating::VlsGrating;
+use xrt_rs::oes::surface::{ParametricSurface, Surface};
+use xrt_rs::oes::surfaces::bent_flat::BentFlatSurface;
+use xrt_rs::oes::surfaces::cylindrical::CylindricalSurface;
+use xrt_rs::oes::surfaces::elliptical::EllipticalSurface;
+use xrt_rs::oes::surfaces::flat::FlatSurface;
+use xrt_rs::oes::surfaces::grating::{BlazedGrating, LaminarGrating};
+use xrt_rs::oes::surfaces::lens::ParaboloidLensSurface;
+use xrt_rs::oes::surfaces::parabolical::ParabolicalSurface;
+use xrt_rs::oes::surfaces::spherical::SphericalSurface;
+use xrt_rs::oes::surfaces::toroid::ToroidSurface;
+use xrt_rs::oes::surfaces::vfm::VfmSurface;
+use xrt_rs::oes::surfaces::vls_grating::VlsGrating;
 
 /// Enum wrapping all Surface-trait types for Python dispatch.
 ///
