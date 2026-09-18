@@ -3,7 +3,7 @@
 use ndarray::Array1;
 use proptest::prelude::*;
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{rotate_xyz, RotationParams};
+use xrt_core::transforms::{RotationParams, rotate_xyz};
 
 proptest! {
     /// Rotation preserves vector magnitude.
@@ -110,5 +110,45 @@ proptest! {
 
         let good = beam.filter_good();
         prop_assert_eq!(good.nrays(), n - n_kill);
+    }
+
+    /// An optional field is present after concatenation exactly when both
+    /// beams carried it, and every present field is `nrays()` long.
+    #[test]
+    fn concatenation_keeps_optional_fields_ray_length(
+        n1 in 1..100_usize,
+        n2 in 1..100_usize,
+        amps1 in any::<bool>(),
+        amps2 in any::<bool>(),
+        par1 in any::<bool>(),
+        par2 in any::<bool>(),
+    ) {
+        let make = |n: usize, amps: bool, par: bool| {
+            let mut beam = Beam::new(n);
+            if amps {
+                beam.ensure_amplitudes();
+            }
+            if par {
+                beam.ensure_parametric();
+            }
+            beam
+        };
+
+        let mut beam = make(n1, amps1, par1);
+        beam.concatenate(&make(n2, amps2, par2));
+        let nrays = beam.nrays();
+
+        prop_assert_eq!(nrays, n1 + n2);
+        prop_assert_eq!(beam.amplitudes().is_some(), amps1 && amps2);
+        prop_assert_eq!(beam.parametric().is_some(), par1 && par2);
+        if let Some(amps) = beam.amplitudes() {
+            prop_assert_eq!(amps.es.len(), nrays);
+            prop_assert_eq!(amps.ep.len(), nrays);
+        }
+        if let Some(par) = beam.parametric() {
+            prop_assert_eq!(par.s.len(), nrays);
+            prop_assert_eq!(par.phi.len(), nrays);
+            prop_assert_eq!(par.r.len(), nrays);
+        }
     }
 }

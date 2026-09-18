@@ -3,7 +3,7 @@
 //! Tests scattering factors (f0, f1/f2), refractive index, and absorption
 //! against Python XRT reference values in JSON fixtures.
 
-use ndarray::{array, Array1};
+use ndarray::{Array1, array};
 
 use xrt_materials::data::ScatteringTable;
 use xrt_materials::elements::Element;

@@ -8,7 +8,7 @@
 use ndarray::Array1;
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{rotate_beam, RotationParams};
+use xrt_core::transforms::{RotationParams, rotate_beam};
 use xrt_materials::crystal::{CrystalBase, StructureFactor};
 
 use crate::oe::OeParams;
@@ -247,8 +247,8 @@ mod tests {
             beam.e[i] = 10000.0;
             beam.jss[i] = 1.0;
             beam.jpp[i] = 0.0;
-            if let Some(ref mut es) = beam.es {
-                es[i] = Complex64::new(1.0, 0.0);
+            if let Some(amps) = beam.amplitudes_mut() {
+                amps.es[i] = Complex64::new(1.0, 0.0);
             }
         }
 

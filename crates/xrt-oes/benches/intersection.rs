@@ -1,10 +1,10 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 use xrt_core::beam::{Beam, RayState};
 use xrt_math::rootfind::RootFindConfig;
 use xrt_oes::aperture::Aperture;
 use xrt_oes::intersection::find_intersection_surface;
-use xrt_oes::reflect::{reflect_local, DeflectionMode};
+use xrt_oes::reflect::{DeflectionMode, reflect_local};
 use xrt_oes::surfaces::flat::FlatSurface;
 use xrt_oes::surfaces::spherical::SphericalSurface;
 use xrt_oes::surfaces::toroid::ToroidSurface;

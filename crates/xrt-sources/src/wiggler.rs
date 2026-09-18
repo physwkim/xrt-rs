@@ -15,7 +15,8 @@ use rand_distr::{Distribution, Normal, Uniform};
 use xrt_core::beam::{Beam, RayState};
 use xrt_core::consts::{E2W, FINE_STR, K2B, PI, SIE0, SIM0};
 
-use crate::bending_magnet::{bessel_k_approx, SynchrotronParams};
+use crate::bending_magnet::{SynchrotronParams, bessel_k_approx};
+use crate::rejection::RejectionBudget;
 
 /// Wiggler source.
 ///
@@ -60,7 +61,7 @@ impl Wiggler {
         psi_max: f64,
     ) -> Self {
         let params = SynchrotronParams::new(electron_energy_gev, beam_current);
-        let b_max = k_param * K2B / (period_mm * 0.1); // K2B converts K to B for period in cm
+        let b_max = k_param * K2B / period_mm; // K2B = 2π·m₀c²·1e-3/e₀ [T·mm]
 
         Self {
             params,
@@ -75,6 +76,24 @@ impl Wiggler {
             psi_max,
             i_max: 0.0,
         }
+    }
+
+    /// Half-width of the theta window that `shine` samples [rad].
+    ///
+    /// `theta_max` is the requested angular acceptance, but wiggler emission
+    /// exists only within |theta| < K/gamma: `build_i_map` sets the intensity
+    /// to zero outside, since w_cr is scaled by sqrt(1 - (theta*gamma/K)^2).
+    /// Sampling the whole acceptance therefore rejects nearly every ray.
+    /// Python xrt reduces the range the same way in its `xPrimeMax` property
+    /// (sources/sybase.py:374-385, enabled for the Wiggler at
+    /// sources/synchr.py:97), with K = 0 falling back to 2/gamma.
+    pub fn theta_max_sampling(&self) -> f64 {
+        let k0 = if self.k_param != 0.0 {
+            self.k_param.abs()
+        } else {
+            2.0
+        };
+        self.theta_max.min(k0 / self.params.gamma)
     }
 
     /// Electron trajectory amplitude X0 [mm].
@@ -160,19 +179,21 @@ impl Wiggler {
 
         let mut collected_beams: Vec<Beam> = Vec::new();
         let mut total_length = 0;
+        let mut budget = RejectionBudget::new();
 
-        let theta_min = -self.theta_max;
+        let theta_max = self.theta_max_sampling();
+        let theta_min = -theta_max;
         let psi_min = -self.psi_max;
 
         while total_length < self.nrays {
             let e_dist = Uniform::new(self.e_min, self.e_max);
-            let theta_dist = Uniform::new(theta_min, self.theta_max);
+            let theta_dist = Uniform::new(theta_min, theta_max);
             let psi_dist = Uniform::new(psi_min, self.psi_max);
 
             let energies: Vec<f64> = (0..mc_rays).map(|_| e_dist.sample(&mut rng)).collect();
             let thetas: Vec<f64> = (0..mc_rays).map(|_| theta_dist.sample(&mut rng)).collect();
             let psis: Vec<f64> = (0..mc_rays).map(|_| psi_dist.sample(&mut rng)).collect();
-            let disc: Vec<f64> = (0..mc_rays).map(|_| rng.gen::<f64>()).collect();
+            let disc: Vec<f64> = (0..mc_rays).map(|_| rng.r#gen::<f64>()).collect();
 
             let (intensity, amp_s, amp_p) = self.build_i_map(&energies, &thetas, &psis);
 
@@ -183,6 +204,12 @@ impl Wiggler {
             }
 
             if self.i_max <= 0.0 {
+                budget.note_empty_batch("Wiggler", || {
+                    format!(
+                        "K={}, B={:.4} T, E={}..{} eV, |theta|<={:.3e} rad, |psi|<={:.3e} rad",
+                        self.k_param, self.b_max, self.e_min, self.e_max, theta_max, self.psi_max
+                    )
+                });
                 continue;
             }
 
@@ -192,8 +219,15 @@ impl Wiggler {
 
             let npassed = passed.len();
             if npassed == 0 {
+                budget.note_empty_batch("Wiggler", || {
+                    format!(
+                        "K={}, B={:.4} T, E={}..{} eV, |theta|<={:.3e} rad, |psi|<={:.3e} rad",
+                        self.k_param, self.b_max, self.e_min, self.e_max, theta_max, self.psi_max
+                    )
+                });
                 continue;
             }
+            budget.note_progress();
 
             let mut bot = Beam::with_amplitudes(npassed);
             bot.set_state(RayState::Good);
@@ -213,15 +247,15 @@ impl Wiggler {
                 let x0 = self.trajectory_amplitude();
                 bot.x[j] = x0 * (PI * 2.0 * bot.y[j] / self.period).sin();
 
-                if self.params.dx > 0.0 {
-                    if let Ok(d) = Normal::new(0.0, self.params.dx) {
-                        bot.x[j] += d.sample(&mut rng);
-                    }
+                if self.params.dx > 0.0
+                    && let Ok(d) = Normal::new(0.0, self.params.dx)
+                {
+                    bot.x[j] += d.sample(&mut rng);
                 }
-                if self.params.dz > 0.0 {
-                    if let Ok(d) = Normal::new(0.0, self.params.dz) {
-                        bot.z[j] = d.sample(&mut rng);
-                    }
+                if self.params.dz > 0.0
+                    && let Ok(d) = Normal::new(0.0, self.params.dz)
+                {
+                    bot.z[j] = d.sample(&mut rng);
                 }
 
                 let is_val = (amp_s[i] * amp_s[i].conj()).re;
@@ -233,11 +267,9 @@ impl Wiggler {
                     bot.jsp[j] = amp_s[i] * amp_p[i].conj() / ssp;
                 }
 
-                if let Some(ref mut es) = bot.es {
-                    es[j] = amp_s[i];
-                }
-                if let Some(ref mut ep) = bot.ep {
-                    ep[j] = amp_p[i];
+                if let Some(amps) = bot.amplitudes_mut() {
+                    amps.es[j] = amp_s[i];
+                    amps.ep[j] = amp_p[i];
                 }
             }
 
@@ -349,17 +381,58 @@ mod tests {
     }
 
     #[test]
+    fn b_max_uses_the_period_in_mm() {
+        let w = Wiggler::new(3.0, 0.3, 10.0, 80.0, 20, 100, 5000.0, 15000.0, 0.002, 0.002);
+        // K = 0.934·B[T]·period[cm] → B = 10/(0.934·8) = 1.339 T
+        let b_expected = 10.0 / (0.934 * 8.0);
+        assert!(
+            (w.b_max - b_expected).abs() / b_expected < 1e-3,
+            "b_max = {} T, expected ≈ {b_expected} T",
+            w.b_max
+        );
+    }
+
+    #[test]
+    fn theta_sampling_window_is_the_narrower_of_acceptance_and_k_over_gamma() {
+        let narrow = Wiggler::new(3.0, 0.3, 0.01, 80.0, 10, 1000, 4.0, 20.0, 1e-3, 1e-3);
+        // K/γ = 1.70e-6, far inside the 1e-3 acceptance
+        assert!((narrow.theta_max_sampling() - 0.01 / narrow.params.gamma).abs() < 1e-18);
+
+        let wide = Wiggler::new(3.0, 0.3, 10.0, 80.0, 10, 100, 5000.0, 15000.0, 1e-3, 1e-3);
+        // K/γ = 1.70e-3, so the requested acceptance stands
+        assert_eq!(wide.theta_max_sampling(), 1e-3);
+    }
+
+    #[test]
+    #[should_panic(expected = "made no progress")]
+    fn a_source_that_cannot_emit_stops_instead_of_spinning() {
+        // 5-15 keV asked of a K=0.01, 80 mm, 3 GeV wiggler, whose critical
+        // energy is 8 eV: no sample can ever pass the discriminator, so the
+        // loop must give up and say why rather than run forever.
+        let mut wig = Wiggler::new(3.0, 0.3, 0.01, 80.0, 10, 50, 5000.0, 15000.0, 1e-3, 1e-3);
+        let _ = wig.shine();
+    }
+
+    #[test]
     fn wiggler_small_k_produces_rays() {
-        // Very small K → wiggler behaves more like bending magnet
+        // K=0.01 over an 80 mm period at 3 GeV is B = 1.34 mT, whose critical
+        // photon energy is 8.0 eV — a keV window emits nothing at all, so the
+        // energy range has to sit at the critical energy for rays to exist.
         let mut wig = Wiggler::new(
             3.0, 0.3, 0.01, // very small K
-            80.0, 10, 1000, 5000.0, 15000.0, 1e-3, 1e-3,
+            80.0, 10, 1000, 4.0, 20.0, 1e-3, 1e-3,
         );
         let beam = wig.shine();
         assert_eq!(beam.nrays(), 1000);
         // All energies in range
         for &e in beam.e.iter() {
-            assert!((5000.0..=15000.0).contains(&e), "energy {e} out of range");
+            assert!((4.0..=20.0).contains(&e), "energy {e} out of range");
+        }
+        // Emission is confined to |θ| < K/γ, so every ray must be inside it
+        let theta_max = 0.01 / wig.params.gamma;
+        for i in 0..beam.nrays() {
+            let theta = (beam.a[i] / beam.b[i]).atan();
+            assert!(theta.abs() <= theta_max, "θ = {theta} outside K/γ");
         }
         // Direction vectors normalized
         for i in 0..beam.nrays() {

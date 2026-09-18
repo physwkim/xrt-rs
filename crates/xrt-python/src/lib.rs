@@ -337,7 +337,7 @@ fn diffraction_integral_rs(
     pix_y: Vec<f64>,
     pix_z: Vec<f64>,
 ) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>)> {
-    use xrt_waves::diffraction::{diffraction_integral, DiffractionRay, PixelPoint};
+    use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
 
     let n_rays = ray_x.len();
     check_equal_lengths(&[
@@ -418,7 +418,7 @@ fn tt_solve_rs(
     xi_re: f64,
     xi_im: f64,
 ) -> PyResult<(Vec<f64>, Vec<f64>)> {
-    use xrt_pytte::solver::{solve_bragg_parallel, BraggCoeffs, SolverConfig};
+    use xrt_pytte::solver::{BraggCoeffs, SolverConfig, solve_bragg_parallel};
 
     let n = cb_re.len();
     check_equal_lengths(&[

@@ -1,7 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use num_complex::Complex64;
 
-use xrt_waves::diffraction::{diffraction_integral, DiffractionRay, PixelPoint};
+use xrt_waves::diffraction::{DiffractionRay, PixelPoint, diffraction_integral};
 
 fn make_rays(n: usize) -> Vec<DiffractionRay> {
     (0..n)

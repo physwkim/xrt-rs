@@ -6,7 +6,7 @@
 use ndarray::Array1;
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{rotate_beam, RotationParams};
+use xrt_core::transforms::{RotationParams, rotate_beam};
 use xrt_materials::material::Material;
 
 use crate::oe::OeParams;
@@ -95,24 +95,24 @@ impl<S: Surface> GratingOpticalElement<S> {
             .map(|(&i, _)| i)
             .collect();
 
-        if let Some(ref material) = self.material {
-            if !good_after.is_empty() {
-                let n = good_after.len();
-                let mut bidn_arr = Array1::<f64>::zeros(n);
-                let mut energy_arr = Array1::<f64>::zeros(n);
-                for (j, &i) in good_after.iter().enumerate() {
-                    let ri = good.iter().position(|&g| g == i).unwrap_or(0);
-                    bidn_arr[j] = results[ri].beam_in_dot_normal;
-                    energy_arr[j] = beam.e[i];
-                }
-                if let Ok(amp) = material.get_amplitude(&energy_arr, &bidn_arr, true) {
-                    reflect::apply_material_amplitude(
-                        beam,
-                        &good_after,
-                        amp.rs.as_slice().unwrap(),
-                        amp.rp.as_slice().unwrap(),
-                    );
-                }
+        if let Some(ref material) = self.material
+            && !good_after.is_empty()
+        {
+            let n = good_after.len();
+            let mut bidn_arr = Array1::<f64>::zeros(n);
+            let mut energy_arr = Array1::<f64>::zeros(n);
+            for (j, &i) in good_after.iter().enumerate() {
+                let ri = good.iter().position(|&g| g == i).unwrap_or(0);
+                bidn_arr[j] = results[ri].beam_in_dot_normal;
+                energy_arr[j] = beam.e[i];
+            }
+            if let Ok(amp) = material.get_amplitude(&energy_arr, &bidn_arr, true) {
+                reflect::apply_material_amplitude(
+                    beam,
+                    &good_after,
+                    amp.rs.as_slice().unwrap(),
+                    amp.rp.as_slice().unwrap(),
+                );
             }
         }
 
@@ -147,11 +147,9 @@ impl<S: Surface> GratingOpticalElement<S> {
                 beam.jpp[i] *= eff;
                 beam.jsp[i] *= eff;
 
-                if let Some(ref mut es) = beam.es {
-                    es[i] *= eff.sqrt();
-                }
-                if let Some(ref mut ep) = beam.ep {
-                    ep[i] *= eff.sqrt();
+                if let Some(amps) = beam.amplitudes_mut() {
+                    amps.es[i] *= eff.sqrt();
+                    amps.ep[i] *= eff.sqrt();
                 }
             }
         }

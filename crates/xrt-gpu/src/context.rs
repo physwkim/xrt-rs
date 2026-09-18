@@ -1,6 +1,6 @@
 //! GPU context: wgpu device and queue initialization.
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 /// GPU context holding the wgpu device and queue.
 pub struct GpuContext {
@@ -13,8 +13,21 @@ impl GpuContext {
     /// Initialize a GPU context, requesting the best available adapter.
     ///
     /// Returns None if no suitable GPU is found.
+    ///
+    /// Enumerating the adapters and creating the device costs 200-400 ms, so
+    /// anything that asks per batch rather than per run spends all its time
+    /// here: use [`GpuContext::shared`] unless a private device is wanted.
     pub fn new() -> Option<Self> {
         pollster::block_on(Self::new_async())
+    }
+
+    /// The process-wide context, initialized at most once.
+    ///
+    /// Also answers whether a GPU exists at all, which is what the `*_auto`
+    /// entry points need, without paying for a device to find out twice.
+    pub fn shared() -> Option<&'static Self> {
+        static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
+        SHARED.get_or_init(Self::new).as_ref()
     }
 
     async fn new_async() -> Option<Self> {

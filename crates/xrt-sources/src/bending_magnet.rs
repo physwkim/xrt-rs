@@ -12,6 +12,8 @@ use rand_distr::{Distribution, Normal, Uniform};
 use xrt_core::beam::{Beam, RayState};
 use xrt_core::consts::{C, E0, E2W, FINE_STR, M0, M0C2, PI, SIE0, SIM0};
 
+use crate::rejection::RejectionBudget;
+
 /// Synchrotron source parameters common to BM/Wiggler/Undulator.
 #[derive(Debug, Clone)]
 pub struct SynchrotronParams {
@@ -103,11 +105,11 @@ impl BendingMagnet {
         }
     }
 
-    /// Create from bending radius instead of field.
+    /// Create from bending radius [m] instead of field.
     pub fn from_rho(
         electron_energy_gev: f64,
         beam_current: f64,
-        rho: f64,
+        rho_m: f64,
         nrays: usize,
         e_min: f64,
         e_max: f64,
@@ -115,12 +117,13 @@ impl BendingMagnet {
         psi_max: f64,
     ) -> Self {
         let params = SynchrotronParams::new(electron_energy_gev, beam_current);
-        let b_field = M0 * C * C * params.gamma / (rho * E0 * 1e6);
+        // B = m0 c² γ / (ρ e) in CGS, with ρ in metres → T
+        let b_field = M0 * C * C * params.gamma / (rho_m * E0 * 1e6);
 
         Self {
             params,
             b_field,
-            rho,
+            rho: rho_m,
             nrays,
             e_min,
             e_max,
@@ -202,6 +205,7 @@ impl BendingMagnet {
 
         let mut collected_beams: Vec<Beam> = Vec::new();
         let mut total_length = 0;
+        let mut budget = RejectionBudget::new();
 
         while total_length < self.nrays {
             // Generate random samples
@@ -212,7 +216,7 @@ impl BendingMagnet {
             let energies: Vec<f64> = (0..mc_rays).map(|_| e_dist.sample(&mut rng)).collect();
             let thetas: Vec<f64> = (0..mc_rays).map(|_| theta_dist.sample(&mut rng)).collect();
             let psis: Vec<f64> = (0..mc_rays).map(|_| psi_dist.sample(&mut rng)).collect();
-            let disc: Vec<f64> = (0..mc_rays).map(|_| rng.gen::<f64>()).collect();
+            let disc: Vec<f64> = (0..mc_rays).map(|_| rng.r#gen::<f64>()).collect();
 
             let (intensity, amp_s, amp_p) = self.build_i_map(&energies, &thetas, &psis);
 
@@ -224,6 +228,18 @@ impl BendingMagnet {
             }
 
             if self.i_max <= 0.0 {
+                budget.note_empty_batch("BendingMagnet", || {
+                    format!(
+                        "B={:.4} T, E={}..{} eV, theta={:.3e}..{:.3e} rad, psi={:.3e}..{:.3e} rad",
+                        self.b_field,
+                        self.e_min,
+                        self.e_max,
+                        self.theta_min,
+                        self.theta_max,
+                        self.psi_min,
+                        self.psi_max
+                    )
+                });
                 continue;
             }
 
@@ -234,8 +250,21 @@ impl BendingMagnet {
 
             let npassed = passed.len();
             if npassed == 0 {
+                budget.note_empty_batch("BendingMagnet", || {
+                    format!(
+                        "B={:.4} T, E={}..{} eV, theta={:.3e}..{:.3e} rad, psi={:.3e}..{:.3e} rad",
+                        self.b_field,
+                        self.e_min,
+                        self.e_max,
+                        self.theta_min,
+                        self.theta_max,
+                        self.psi_min,
+                        self.psi_max
+                    )
+                });
                 continue;
             }
+            budget.note_progress();
 
             let mut bot = Beam::with_amplitudes(npassed);
             bot.set_state(RayState::Good);
@@ -246,17 +275,17 @@ impl BendingMagnet {
                 bot.c[j] = psis[i].tan();
 
                 // Position sampling
-                if self.params.dx > 0.0 {
-                    if let Ok(d) = Normal::new(self.rho * 1e3, self.params.dx) {
-                        let r1 = d.sample(&mut rng);
-                        bot.x[j] = -r1 * thetas[i].cos() + self.rho * 1e3;
-                        bot.y[j] = r1 * thetas[i].sin();
-                    }
+                if self.params.dx > 0.0
+                    && let Ok(d) = Normal::new(self.rho * 1e3, self.params.dx)
+                {
+                    let r1 = d.sample(&mut rng);
+                    bot.x[j] = -r1 * thetas[i].cos() + self.rho * 1e3;
+                    bot.y[j] = r1 * thetas[i].sin();
                 }
-                if self.params.dz > 0.0 {
-                    if let Ok(d) = Normal::new(0.0, self.params.dz) {
-                        bot.z[j] = d.sample(&mut rng);
-                    }
+                if self.params.dz > 0.0
+                    && let Ok(d) = Normal::new(0.0, self.params.dz)
+                {
+                    bot.z[j] = d.sample(&mut rng);
                 }
 
                 // Polarization from synchrotron radiation
@@ -269,11 +298,9 @@ impl BendingMagnet {
                     bot.jsp[j] = amp_s[i] * amp_p[i].conj() / ssp;
                 }
 
-                if let Some(ref mut es) = bot.es {
-                    es[j] = amp_s[i];
-                }
-                if let Some(ref mut ep) = bot.ep {
-                    ep[j] = amp_p[i];
+                if let Some(amps) = bot.amplitudes_mut() {
+                    amps.es[j] = amp_s[i];
+                    amps.ep[j] = amp_p[i];
                 }
             }
 
@@ -436,8 +463,13 @@ mod tests {
     #[test]
     fn bending_magnet_from_rho() {
         // from_rho should create a valid BM from bending radius
-        let rho = 5729.58; // mm, corresponds to B ≈ 1.747T for 3GeV
-        let mut bm = BendingMagnet::from_rho(3.0, 0.3, rho, 1000, 5000.0, 15000.0, 1e-3, 1e-3);
+        let rho_m = 5.729_58; // m, corresponds to B ≈ 1.747 T for 3 GeV
+        let mut bm = BendingMagnet::from_rho(3.0, 0.3, rho_m, 1000, 5000.0, 15000.0, 1e-3, 1e-3);
+        assert!(
+            (bm.b_field - 1.747).abs() < 1e-3,
+            "B = {} T, expected 1.747 T",
+            bm.b_field
+        );
         let beam = bm.shine();
         assert_eq!(beam.nrays(), 1000);
         // Check direction normalization

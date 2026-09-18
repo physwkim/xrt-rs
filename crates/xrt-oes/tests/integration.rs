@@ -228,7 +228,7 @@ fn end_to_end_source_mirror_screen() {
 fn grating_deflection_changes_direction() {
     use xrt_core::beam::{Beam, RayState};
     use xrt_oes::aperture::Aperture;
-    use xrt_oes::reflect::{reflect_local, DeflectionMode};
+    use xrt_oes::reflect::{DeflectionMode, reflect_local};
 
     let grating = BlazedGrating::new(600.0, 0.02, 0.5);
     let mut beam = Beam::new(1);
@@ -261,7 +261,7 @@ fn grating_deflection_changes_direction() {
     if !results.is_empty() && results[0].state == RayState::Good {
         // After grating, direction should differ from specular
         let _specular_c = angle.sin(); // specular would reflect c symmetrically
-                                       // Grating adds diffraction angle — direction should be different
+        // Grating adds diffraction angle — direction should be different
         assert!(
             results[0].a.is_finite() && results[0].b.is_finite() && results[0].c.is_finite(),
             "grating deflection produced non-finite direction"
@@ -274,7 +274,7 @@ fn grating_deflection_changes_direction() {
 fn refraction_bends_ray() {
     use xrt_core::beam::{Beam, RayState};
     use xrt_oes::aperture::Aperture;
-    use xrt_oes::reflect::{reflect_local, DeflectionMode};
+    use xrt_oes::reflect::{DeflectionMode, reflect_local};
 
     let surface = FlatSurface;
     let mut beam = Beam::new(1);

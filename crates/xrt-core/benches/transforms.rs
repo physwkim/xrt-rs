@@ -1,7 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use ndarray::Array1;
 use xrt_core::beam::Beam;
-use xrt_core::transforms::{rotate_beam, rotate_xyz, RotationParams};
+use xrt_core::transforms::{RotationParams, rotate_beam, rotate_xyz};
 
 fn bench_rotate_beam(c: &mut Criterion) {
     let mut group = c.benchmark_group("rotate_beam");

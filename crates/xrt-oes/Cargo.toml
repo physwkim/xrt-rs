@@ -2,6 +2,7 @@
 name = "xrt-oes"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 description = "Optical elements: surface intersection, reflection, Fresnel/Snell"
 

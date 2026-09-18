@@ -1,0 +1,22 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+# Match the module the bindings expose, so `pip install xrt-rs` and
+# `import xrt_rs` name the same thing. maturin would otherwise take the crate
+# name, xrt-python.
+name = "xrt-rs"
+description = "PyO3 bindings for xrt-rs"
+# A [project] table stops maturin reading these from Cargo.toml, so both have
+# to be restated here or the wheel loses them.
+license = "MIT"
+dynamic = ["version"]
+# py_beam returns ndarrays through rust-numpy, which imports the numpy module
+# the first time one is built.
+dependencies = ["numpy"]
+# No requires-python: the crate does not use pyo3's abi3, so every wheel is
+# tagged for the interpreter that built it and carries the bound already.
+
+[tool.maturin]
+module-name = "xrt_rs"

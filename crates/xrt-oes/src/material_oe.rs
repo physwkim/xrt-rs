@@ -8,7 +8,7 @@
 use ndarray::Array1;
 
 use xrt_core::beam::{Beam, RayState};
-use xrt_core::transforms::{rotate_beam, RotationParams};
+use xrt_core::transforms::{RotationParams, rotate_beam};
 use xrt_materials::material::Material;
 
 use crate::oe::OeParams;

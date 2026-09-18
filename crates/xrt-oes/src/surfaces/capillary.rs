@@ -82,11 +82,7 @@ impl ParametricSurface for EllipsoidCapillary {
     fn local_r(&self, s: f64, _phi: f64) -> f64 {
         let ss = self.ctd + s;
         let arg = 1.0 - ss * ss / (self.a * self.a);
-        if arg > 0.0 {
-            self.b * arg.sqrt()
-        } else {
-            0.0
-        }
+        if arg > 0.0 { self.b * arg.sqrt() } else { 0.0 }
     }
 
     fn local_n(&self, s: f64, phi: f64) -> [f64; 3] {
@@ -136,11 +132,7 @@ impl ParametricSurface for HyperboloidCapillary {
     fn local_r(&self, s: f64, _phi: f64) -> f64 {
         let ss = self.ctd + s;
         let arg = ss * ss / (self.a * self.a) - 1.0;
-        if arg > 0.0 {
-            self.b * arg.sqrt()
-        } else {
-            0.0
-        }
+        if arg > 0.0 { self.b * arg.sqrt() } else { 0.0 }
     }
 
     fn local_n(&self, s: f64, phi: f64) -> [f64; 3] {

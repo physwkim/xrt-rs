@@ -2,6 +2,7 @@
 name = "xrt-gpu"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 description = "GPU compute shaders (wgpu/WGSL) for ray tracing kernels"
 

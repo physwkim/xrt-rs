@@ -6,11 +6,11 @@ use ndarray::Array1;
 use num_complex::Complex64;
 
 use xrt_core::error::XrtError;
-use xrt_math::f0::{f0_array, f0_scalar, F0Coeffs};
+use xrt_math::f0::{F0Coeffs, f0_array, f0_scalar};
 use xrt_math::interp::interp_linear;
 
 use crate::data::{
-    element_z, read_atomic_mass, read_f0_coeffs, read_f1f2_table, ScatteringTable, ELEMENTS_LIST,
+    ELEMENTS_LIST, ScatteringTable, element_z, read_atomic_mass, read_f0_coeffs, read_f1f2_table,
 };
 
 /// A chemical element with tabulated scattering factors.

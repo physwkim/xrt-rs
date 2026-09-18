@@ -7,8 +7,8 @@ use num_complex::Complex64;
 use xrt_pytte::crystal::TtCrystal;
 use xrt_pytte::deformation::{IsotropicPlate, NoDeformation};
 use xrt_pytte::quantity::{arcsec_to_rad, ev_to_angstrom, rad_to_arcsec};
-use xrt_pytte::scan::{compute_bragg_coeffs, ScanMode};
-use xrt_pytte::solver::{solve_bragg_riccati, tt_solve, BraggCoeffs, SolverConfig};
+use xrt_pytte::scan::{ScanMode, compute_bragg_coeffs};
+use xrt_pytte::solver::{BraggCoeffs, SolverConfig, solve_bragg_riccati, tt_solve};
 
 fn si111() -> TtCrystal {
     TtCrystal::new(

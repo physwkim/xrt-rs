@@ -325,13 +325,9 @@ impl CrystalBase {
         let h2 = hh * hh;
 
         // b = k0s / kHs (asymmetry ratio)
-        let b_arr = ndarray::Zip::from(&k0s).and(&k_hs).map_collect(|&k0, &kh| {
-            if kh.abs() < 1e-300 {
-                -1.0
-            } else {
-                k0 / kh
-            }
-        });
+        let b_arr = ndarray::Zip::from(&k0s)
+            .and(&k_hs)
+            .map_collect(|&k0, &kh| if kh.abs() < 1e-300 { -1.0 } else { k0 / kh });
 
         // k0H = |beamInDotHNormal| * HH * k
         let k0h = ndarray::Zip::from(beam_in_hn)

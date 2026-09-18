@@ -40,11 +40,7 @@ impl ParametricSurface for ParabolicalSurface {
     fn local_r(&self, s: f64, _phi: f64) -> f64 {
         let s_shifted = s + self.y0;
         let arg = self.p_param * s_shifted + self.p_param * self.p_param;
-        if arg > 0.0 {
-            2.0 * arg.sqrt()
-        } else {
-            0.0
-        }
+        if arg > 0.0 { 2.0 * arg.sqrt() } else { 0.0 }
     }
 
     fn local_n(&self, s: f64, phi: f64) -> [f64; 3] {
