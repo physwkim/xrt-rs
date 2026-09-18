@@ -240,7 +240,7 @@ impl Undulator {
     ) -> (Vec<f64>, Vec<Complex64>, Vec<Complex64>) {
         #[cfg(feature = "gpu")]
         {
-            if let Some(ref ctx) = xrt_gpu::context::GpuContext::new() {
+            if let Some(ctx) = xrt_gpu::context::GpuContext::shared() {
                 return self.build_i_map_gpu(ctx, energies, thetas, psis);
             }
         }

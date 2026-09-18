@@ -17,8 +17,8 @@ use crate::kirchhoff::{self, GpuPixel, GpuRay};
 ///
 /// Returns (Es, Ep) per pixel, same as `kirchhoff_gpu`.
 pub fn kirchhoff_auto(rays: &[GpuRay], pixels: &[GpuPixel]) -> Vec<(Complex64, Complex64)> {
-    if let Some(ctx) = GpuContext::new() {
-        return kirchhoff::kirchhoff_gpu(&ctx, rays, pixels);
+    if let Some(ctx) = GpuContext::shared() {
+        return kirchhoff::kirchhoff_gpu(ctx, rays, pixels);
     }
 
     // CPU fallback: f64 precision

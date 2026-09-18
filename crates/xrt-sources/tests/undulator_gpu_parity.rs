@@ -7,7 +7,7 @@ use xrt_sources::undulator::Undulator;
 
 #[test]
 fn the_shader_reproduces_the_cpu_spectrum_at_every_odd_harmonic() {
-    if xrt_gpu::context::GpuContext::new().is_none() {
+    if xrt_gpu::context::GpuContext::shared().is_none() {
         eprintln!("no GPU adapter available; skipping");
         return;
     }
