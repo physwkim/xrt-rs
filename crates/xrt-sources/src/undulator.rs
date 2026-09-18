@@ -145,20 +145,24 @@ impl Undulator {
                 let t = (j as f64 + 0.5) * dt;
                 let phi_t = PI2 * t;
 
-                // Electron velocity (normalized to c). The vertical field B_y
-                // bends the electron horizontally and B_x vertically, so K_y
-                // drives x and K_x drives z, with the phase on the K_x term
-                // as in Python's betax/betay (sources/synchr.py:48-51).
-                // β_x = K_y/γ × sin(2πt)
-                // β_z = K_x/γ × sin(2πt + φ)
+                // Electron velocity (normalized to c) and position, both
+                // transcribed from Python's betax/betay/trajx/trajy
+                // (sources/synchr.py:48-51) with the time origin a quarter
+                // period earlier, which is why cos and sin are exchanged:
+                //   β_x =  K_y/γ × sin(2πt)          x = -A_x × cos(2πt)
+                //   β_z = -K_x/γ × sin(2πt + φ)      z = +A_z × cos(2πt + φ)
+                // The vertical field B_y bends the electron horizontally and
+                // B_x vertically, hence the crossed K, and the minus sign on
+                // the K_x term is what fixes the sense of rotation — with it,
+                // φ = +90° turns (β_x, β_z)·γ through (0,-1), (1,0), (0,1) as
+                // Python's does, so a helical undulator keeps its handedness.
                 let beta_x = self.ky / gamma * phi_t.sin();
-                let beta_z = self.kx / gamma * (phi_t + phase_rad).sin();
+                let beta_z = -self.kx / gamma * (phi_t + phase_rad).sin();
 
-                // Electron position (normalized)
-                // x = K_y λ_u/(2πγ) × (1 - cos(2πt))
-                // z = K_x λ_u/(2πγ) × (1 - cos(2πt + φ))
-                let x_e = self.ky * lambda_u / (PI2 * gamma) * (1.0 - phi_t.cos());
-                let z_e = self.kx * lambda_u / (PI2 * gamma) * (1.0 - (phi_t + phase_rad).cos());
+                let amp_x = self.ky * lambda_u / (PI2 * gamma);
+                let amp_z = self.kx * lambda_u / (PI2 * gamma);
+                let x_e = -amp_x * phi_t.cos();
+                let z_e = amp_z * (phi_t + phase_rad).cos();
 
                 // Longitudinal position
                 let y_e = lambda_u * t;
@@ -510,6 +514,35 @@ mod tests {
         assert!(
             s < 1e-6 * p,
             "|amp_s| = {s} should vanish on axis, |amp_p| = {p}"
+        );
+    }
+
+    #[test]
+    fn a_helical_undulator_keeps_its_sense_of_rotation() {
+        // Python's trajectory carries a minus sign on the K_x term
+        // (sources/synchr.py:49,51), which fixes the sense in which the
+        // electron circles for a given phase: at phase = +90 degrees
+        // (beta_x, beta_z) * gamma runs (0,-1), (1,0), (0,1), (-1,0). Dropping
+        // that sign reverses the circulation, which shows up as the sign of
+        // Im(Es * conj(Ep)) - the handedness of the emitted light.
+        let helical = |phase: f64| {
+            Undulator::new(3.0, 0.3, 1.0, 1.0, 30.0, 50, 100, 100.0, 1e6, 1e-3, 1e-3)
+                .with_phase(phase)
+        };
+        let e1 = helical(0.0).fundamental_energy();
+
+        let (_, amp_s, amp_p) = helical(90.0).build_i_map(&[e1], &[0.0], &[0.0]);
+        let right = amp_s[0] * amp_p[0].conj();
+        let (_, amp_s, amp_p) = helical(-90.0).build_i_map(&[e1], &[0.0], &[0.0]);
+        let left = amp_s[0] * amp_p[0].conj();
+
+        assert!(right.im > 0.0, "Im(jsp) at +90 deg = {}", right.im);
+        assert!(left.im < 0.0, "Im(jsp) at -90 deg = {}", left.im);
+        assert!(
+            (right.im + left.im).abs() < 1e-9 * right.im.abs(),
+            "the two phases must mirror each other: {} vs {}",
+            right.im,
+            left.im
         );
     }
 
