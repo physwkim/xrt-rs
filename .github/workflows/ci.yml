@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      # xrt-python is a pyo3 extension-module cdylib, and Windows resolves the
+      # interpreter's symbols at link time, so Python has to be present for the
+      # workspace to compile at all.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: fmt
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo fmt --all --check
+
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # A CI runner has no GPU adapter, so the wgpu kernels are compiled but
+      # never dispatched; this is what keeps the WGSL and the feature wiring
+      # from rotting.
+      - name: clippy (gpu feature)
+        run: cargo clippy --workspace --all-targets --features gpu -- -D warnings
+
+      - name: test
+        run: cargo test --workspace
