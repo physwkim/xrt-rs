@@ -12,6 +12,8 @@
 //!
 //! Ported from sources_synchr.py Undulator class.
 
+use std::f64::consts::PI;
+
 use num_complex::Complex64;
 use rand::Rng;
 use rand_distr::{Distribution, Normal, Uniform};
@@ -124,6 +126,12 @@ impl Undulator {
         let lambda_u = self.period * 1e-3; // mm → m
         let phase_rad = self.phase_deg.to_radians();
 
+        // How far the electron falls behind light in one unit of path, and the
+        // amplitude of the K²-driven longitudinal wiggle, both from Python's
+        // trajectory (sources/synchr.py:23,50-51).
+        let q = (1.0 + 0.5 * self.k_squared()) / (2.0 * gamma2); // 1 - β̄
+        let wiggle_amp = lambda_u / (8.0 * PI2 * gamma2);
+
         let amp2flux = FINE_STR * self.params.beam_current / SIE0 * (self.n_periods as f64);
 
         // Number of integration steps per period
@@ -136,6 +144,18 @@ impl Undulator {
             let psi = psis[i];
 
             let omega = e * E2W; // angular frequency [rad/s]
+
+            // Observation direction and the wavenumber along the electron's
+            // own path, as Python builds them (sources/synchr.py:807-815).
+            let off_axis = theta * theta + psi * psi;
+            let dirz = (1.0 - off_axis).sqrt();
+            let wc = omega / (SIC * (1.0 - q));
+
+            // Slippage per unit path, 1 - dirz·β̄, written as the sum of its
+            // two small parts: the difference itself is ~1e-8 of either term,
+            // so forming it by subtraction would cost every digit the f32
+            // shader has (and eight of the f64 ones here).
+            let slip = off_axis / (1.0 + dirz) + q * dirz;
 
             // Integrate radiation amplitude over one period
             let mut ax_sum = Complex64::new(0.0, 0.0);
@@ -164,19 +184,21 @@ impl Undulator {
                 let x_e = -amp_x * phi_t.cos();
                 let z_e = amp_z * (phi_t + phase_rad).cos();
 
-                // Longitudinal position
-                let y_e = lambda_u * t;
+                // The wiggle K² imposes on the longitudinal position at twice
+                // the undulator frequency (Python's trajz,
+                // sources/synchr.py:50-51 — the sign of its sin2z terms flips
+                // with the quarter-period shift above). This is the term that
+                // puts the harmonics on axis.
+                let s = lambda_u * t;
+                let wiggle = wiggle_amp
+                    * (self.ky * self.ky * (2.0 * phi_t).sin()
+                        + self.kx * self.kx * (2.0 * phi_t + 2.0 * phase_rad).sin());
 
-                // Retarded phase: ω/c × (y_e - x_e×sinθ - z_e×sinψ)
-                // Simplified for small angles: phase ≈ ω × (t/c - n·r/c)
-                let path = y_e - x_e * theta - z_e * psi;
-                let phase_term = omega / SIC * path;
-
-                // Correction for average velocity
-                let avg_correction =
-                    omega / SIC * lambda_u * t * (1.0 + self.k_squared() / 2.0) / (2.0 * gamma2);
-
-                let total_phase = phase_term - avg_correction;
+                // Retarded phase ω(t′ - n̂·r/c) = Python's phz - phxy
+                // (sources/synchr.py:851-852) with s - dirz·(β̄s + wiggle)
+                // expanded as s·slip - dirz·wiggle. It advances 2π per period
+                // exactly at the fundamental.
+                let total_phase = wc * (s * slip - dirz * wiggle - x_e * theta - z_e * psi);
                 let exp_phase = Complex64::new(total_phase.cos(), total_phase.sin());
 
                 // Radiation amplitude ∝ (β_⊥ - n̂_⊥) × exp(iφ)
@@ -184,14 +206,14 @@ impl Undulator {
                 az_sum += (beta_z - psi) * exp_phase * dt;
             }
 
-            // N-period resonance enhancement
-            // For the fundamental and harmonics, the single-period amplitude
-            // gets multiplied by N (coherent enhancement)
-            let n_per = self.n_periods as f64;
+            // The N periods are identical apart from the phase the electron
+            // slips in one of them, so the device amplitude is the
+            // single-period integral times that geometric sum: N at every
+            // harmonic, and near zero between them.
+            let resonance = period_sum(self.n_periods, wc * lambda_u * slip);
 
-            // Single-period result scaled by N
-            let ax = ax_sum * n_per * gamma2;
-            let az = az_sum * n_per * gamma2;
+            let ax = ax_sum * resonance * gamma2;
+            let az = az_sum * resonance * gamma2;
 
             let is_val = (ax * ax.conj()).re;
             let ip_val = (az * az.conj()).re;
@@ -402,6 +424,33 @@ impl Undulator {
     }
 }
 
+/// sin(x)/x, from its series where the quotient is ill-conditioned.
+fn sinc(x: f64) -> f64 {
+    if x.abs() < 0.1 {
+        let x2 = x * x;
+        return 1.0 - x2 / 6.0 * (1.0 - x2 / 20.0 * (1.0 - x2 / 42.0));
+    }
+    x.sin() / x
+}
+
+/// Σ_{n<N} exp(inΔφ) = exp(i(N-1)Δφ/2) × sin(NΔφ/2)/sin(Δφ/2), the N-period
+/// resonance function.
+///
+/// Δφ/2 is folded onto ±π/2 around the nearest multiple of π first: the (-1)^m
+/// the fold puts into each of the three factors cancels between them, leaving
+/// the identity exact, while the sines stay far from the rounding noise of an
+/// argument tens of radians wide. The ratio is then taken as N·sinc/sinc rather
+/// than sin/sin, because at every harmonic both sines vanish together and their
+/// quotient is where a shader's absolute-only sin() accuracy turns into percent
+/// errors - the same reason the WGSL kernel carries the same two functions.
+fn period_sum(n_periods: usize, d_phase: f64) -> Complex64 {
+    let n = n_periods as f64;
+    let half = 0.5 * d_phase;
+    let d = half - PI * (half / PI).round();
+    let arg = (n - 1.0) * d;
+    Complex64::new(arg.cos(), arg.sin()) * (n * sinc(n * d) / sinc(d))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -525,6 +574,14 @@ mod tests {
         // (beta_x, beta_z) * gamma runs (0,-1), (1,0), (0,1), (-1,0). Dropping
         // that sign reverses the circulation, which shows up as the sign of
         // Im(Es * conj(Ep)) - the handedness of the emitted light.
+        //
+        // On axis a helical undulator has neither a longitudinal wiggle nor a
+        // longitudinal acceleration, so the fundamental integrates in closed
+        // form: with Python's exp(+i*ucos) convention (sources/synchr.py:1901)
+        // Es * conj(Ep) = -i*pi^2*K^2 at +90 degrees, i.e. negative imaginary
+        // part. The two paths of the integrand, velocity (here) and
+        // acceleration (Python's Bsr/Bpr), differ by a factor of i common to
+        // both components, which cancels in the product.
         let helical = |phase: f64| {
             Undulator::new(3.0, 0.3, 1.0, 1.0, 30.0, 50, 100, 100.0, 1e6, 1e-3, 1e-3)
                 .with_phase(phase)
@@ -536,14 +593,120 @@ mod tests {
         let (_, amp_s, amp_p) = helical(-90.0).build_i_map(&[e1], &[0.0], &[0.0]);
         let left = amp_s[0] * amp_p[0].conj();
 
-        assert!(right.im > 0.0, "Im(jsp) at +90 deg = {}", right.im);
-        assert!(left.im < 0.0, "Im(jsp) at -90 deg = {}", left.im);
+        assert!(right.im < 0.0, "Im(jsp) at +90 deg = {}", right.im);
+        assert!(left.im > 0.0, "Im(jsp) at -90 deg = {}", left.im);
         assert!(
             (right.im + left.im).abs() < 1e-9 * right.im.abs(),
             "the two phases must mirror each other: {} vs {}",
             right.im,
             left.im
         );
+
+        // The closed form also fixes the magnitude: K²N²γ²/4 times the flux
+        // normalisation. It pins the whole assembly - the resonance factor
+        // being N on resonance, the γ² scaling and amp2flux - not just a sign.
+        let u = helical(90.0);
+        let k = u.ky; // = kx here, the single K of a helical undulator
+        let n = u.n_periods as f64;
+        let amp2flux = FINE_STR * u.params.beam_current / SIE0 * n;
+        let expected = 0.25 * k * k * n * n * u.params.gamma2 * amp2flux / e1;
+        assert!(
+            (right.im.abs() - expected).abs() < 1e-6 * expected,
+            "|Im(jsp)| = {} should be {expected}",
+            right.im.abs()
+        );
+    }
+
+    #[test]
+    fn the_spectrum_peaks_at_the_fundamental_and_its_odd_harmonics() {
+        let u = Undulator::new(3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 100.0, 1e7, 1e-3, 1e-3);
+        let e1 = u.fundamental_energy();
+        let on_axis = |e: f64| u.build_i_map(&[e], &[0.0], &[0.0]).0[0];
+        let n = u.n_periods as f64;
+
+        // Nothing but a correct retarded phase can put the line at E₁: a
+        // 20% scan must find its maximum there.
+        let peak = on_axis(e1);
+        for j in 0..=200 {
+            let r = 0.9 + 0.2 * j as f64 / 200.0;
+            let i = on_axis(r * e1);
+            assert!(i <= peak, "I({r:.4}·E₁) = {i} exceeds I(E₁) = {peak}");
+        }
+
+        // The N-period sum vanishes a bandwidth 1/N away, on both sides.
+        for r in [1.0 - 1.0 / n, 1.0 + 1.0 / n] {
+            let i = on_axis(r * e1);
+            assert!(
+                i < 1e-6 * peak,
+                "I({r:.3}·E₁)/I(E₁) = {} should be a zero of the resonance",
+                i / peak
+            );
+        }
+
+        // The longitudinal wiggle radiates the odd harmonics on axis and
+        // cancels the even ones there.
+        for m in [3.0, 5.0] {
+            let i = on_axis(m * e1);
+            assert!(
+                i > 1e-3 * peak,
+                "I({m}·E₁)/I(E₁) = {} should be an odd harmonic",
+                i / peak
+            );
+        }
+        for m in [2.0, 4.0] {
+            let i = on_axis(m * e1);
+            assert!(
+                i < 1e-6 * peak,
+                "I({m}·E₁)/I(E₁) = {} should be suppressed on axis",
+                i / peak
+            );
+        }
+    }
+
+    #[test]
+    fn the_line_red_shifts_off_axis_by_the_undulator_equation() {
+        // The (θ² + ψ²)/2 part of the slippage is what moves the line to
+        // E₁/(1 + γ²θ²/(1 + K²/2)) away from the axis.
+        let u = Undulator::new(3.0, 0.3, 0.0, 2.0, 30.0, 50, 100, 100.0, 1e7, 1e-3, 1e-3);
+        let e1 = u.fundamental_energy();
+        let gamma = u.params.gamma;
+
+        for f in [0.5, 1.0] {
+            let theta = f / gamma;
+            let expected = 1.0 / (1.0 + f * f / (1.0 + 0.5 * u.k_squared()));
+            let mut peak = (0.0, 0.0f64);
+            for j in 0..=400 {
+                let r = 0.6 + 0.5 * j as f64 / 400.0;
+                let i = u.build_i_map(&[r * e1], &[theta], &[0.0]).0[0];
+                if i > peak.1 {
+                    peak = (r, i);
+                }
+            }
+            assert!(
+                (peak.0 - expected).abs() < 0.5 / u.n_periods as f64,
+                "at θ = {f}/γ the line sits at {} E₁, expected {expected}",
+                peak.0
+            );
+        }
+    }
+
+    #[test]
+    fn the_period_sum_is_the_sum_of_the_period_phasors() {
+        for n in [1usize, 2, 7, 50] {
+            for d_phase in [0.0, 0.37, -1.1, PI2, PI2 + 0.2, 6.0 * PI2 - 1e-13] {
+                let brute: Complex64 = (0..n)
+                    .map(|k| {
+                        let a = k as f64 * d_phase;
+                        Complex64::new(a.cos(), a.sin())
+                    })
+                    .sum();
+                let got = period_sum(n, d_phase);
+                assert!(
+                    (got - brute).norm() < 1e-9 * n as f64,
+                    "period_sum({n}, {d_phase}) = {got} vs {brute}"
+                );
+            }
+        }
     }
 
     #[test]
