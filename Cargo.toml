@@ -58,12 +58,13 @@ approx = "0.5"
 proptest = "1"
 criterion = { version = "0.5", features = ["html_reports"] }
 
-# Internal crates
-xrt-core = { path = "crates/xrt-core" }
-xrt-math = { path = "crates/xrt-math" }
-xrt-materials = { path = "crates/xrt-materials" }
-xrt-oes = { path = "crates/xrt-oes" }
-xrt-sources = { path = "crates/xrt-sources" }
-xrt-waves = { path = "crates/xrt-waves" }
-xrt-pytte = { path = "crates/xrt-pytte" }
-xrt-gpu = { path = "crates/xrt-gpu" }
+# Internal crates. The version is what a published crate depends on; cargo
+# drops the path when packaging and refuses to publish without it.
+xrt-core = { path = "crates/xrt-core", version = "0.2.0" }
+xrt-math = { path = "crates/xrt-math", version = "0.2.0" }
+xrt-materials = { path = "crates/xrt-materials", version = "0.2.0" }
+xrt-oes = { path = "crates/xrt-oes", version = "0.2.0" }
+xrt-sources = { path = "crates/xrt-sources", version = "0.2.0" }
+xrt-waves = { path = "crates/xrt-waves", version = "0.2.0" }
+xrt-pytte = { path = "crates/xrt-pytte", version = "0.2.0" }
+xrt-gpu = { path = "crates/xrt-gpu", version = "0.2.0" }
