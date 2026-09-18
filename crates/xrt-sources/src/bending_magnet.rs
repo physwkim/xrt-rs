@@ -105,11 +105,11 @@ impl BendingMagnet {
         }
     }
 
-    /// Create from bending radius instead of field.
+    /// Create from bending radius [m] instead of field.
     pub fn from_rho(
         electron_energy_gev: f64,
         beam_current: f64,
-        rho: f64,
+        rho_m: f64,
         nrays: usize,
         e_min: f64,
         e_max: f64,
@@ -117,12 +117,13 @@ impl BendingMagnet {
         psi_max: f64,
     ) -> Self {
         let params = SynchrotronParams::new(electron_energy_gev, beam_current);
-        let b_field = M0 * C * C * params.gamma / (rho * E0 * 1e6);
+        // B = m0 c² γ / (ρ e) in CGS, with ρ in metres → T
+        let b_field = M0 * C * C * params.gamma / (rho_m * E0 * 1e6);
 
         Self {
             params,
             b_field,
-            rho,
+            rho: rho_m,
             nrays,
             e_min,
             e_max,
@@ -462,8 +463,13 @@ mod tests {
     #[test]
     fn bending_magnet_from_rho() {
         // from_rho should create a valid BM from bending radius
-        let rho = 5729.58; // mm, corresponds to B ≈ 1.747T for 3GeV
-        let mut bm = BendingMagnet::from_rho(3.0, 0.3, rho, 1000, 5000.0, 15000.0, 1e-3, 1e-3);
+        let rho_m = 5.729_58; // m, corresponds to B ≈ 1.747 T for 3 GeV
+        let mut bm = BendingMagnet::from_rho(3.0, 0.3, rho_m, 1000, 5000.0, 15000.0, 1e-3, 1e-3);
+        assert!(
+            (bm.b_field - 1.747).abs() < 1e-3,
+            "B = {} T, expected 1.747 T",
+            bm.b_field
+        );
         let beam = bm.shine();
         assert_eq!(beam.nrays(), 1000);
         // Check direction normalization
