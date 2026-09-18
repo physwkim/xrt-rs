@@ -24,6 +24,14 @@ use xrt_core::consts::{E2W, FINE_STR, PI2, SIC, SIE0, SIHPLANCK};
 use crate::bending_magnet::SynchrotronParams;
 use crate::rejection::RejectionBudget;
 
+/// Shortest intensity map `build_i_map_auto` sends to the GPU.
+///
+/// A warm dispatch of this kernel costs about 6 ms whatever its size, and the
+/// f64 CPU loop does some 600 points in that time, so below this the GPU is
+/// both slower and less accurate. `Undulator::shine` samples 1.2·nrays per
+/// rejection batch, which is how it used to spend its time in dispatches.
+pub const GPU_MIN_POINTS: usize = 1024;
+
 /// Undulator source parameters.
 #[derive(Debug, Clone)]
 pub struct Undulator {
@@ -228,10 +236,11 @@ impl Undulator {
         (intensity, amp_s, amp_p)
     }
 
-    /// Build intensity map, preferring GPU when the `gpu` feature is enabled.
+    /// Build intensity map, preferring GPU for maps large enough to pay for a
+    /// dispatch when the `gpu` feature is enabled.
     ///
-    /// Falls back to CPU (`build_i_map`) if no GPU is available or the
-    /// feature is not compiled in.
+    /// Falls back to CPU (`build_i_map`) if no GPU is available, the feature is
+    /// not compiled in, or the map is shorter than [`GPU_MIN_POINTS`].
     pub fn build_i_map_auto(
         &self,
         energies: &[f64],
@@ -240,7 +249,9 @@ impl Undulator {
     ) -> (Vec<f64>, Vec<Complex64>, Vec<Complex64>) {
         #[cfg(feature = "gpu")]
         {
-            if let Some(ctx) = xrt_gpu::context::GpuContext::shared() {
+            if energies.len() >= GPU_MIN_POINTS
+                && let Some(ctx) = xrt_gpu::context::GpuContext::shared()
+            {
                 return self.build_i_map_gpu(ctx, energies, thetas, psis);
             }
         }
