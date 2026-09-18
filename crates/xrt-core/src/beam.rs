@@ -173,12 +173,11 @@ impl Parametric {
 ///
 /// # Invariant
 ///
-/// Every optional per-ray field that is present has length [`Beam::nrays()`],
-/// and concatenation keeps a field present only when both operands carry it.
-/// The optional fields are therefore private: they are allocated exclusively
-/// by the `ensure_*` methods, which take the length from `nrays()`, and
-/// [`Beam::concatenate`] drops any field the other beam lacks rather than
-/// leaving a short array behind.
+/// Every per-ray array has length [`Beam::nrays()`], and an optional field is
+/// either absent or that long. The optional fields are therefore private: they
+/// are allocated exclusively by the `ensure_*` methods, which take the length
+/// from `nrays()`, and [`Beam::concatenate`] drops any field the other beam
+/// lacks rather than leaving a short array behind.
 #[derive(Debug, Clone)]
 pub struct Beam {
     // ── Position ────────────────────────────────────────────────────────
@@ -319,37 +318,6 @@ impl Beam {
         let mut beam = Self::new(nrays);
         beam.ensure_amplitudes();
         beam
-    }
-
-    /// Create a minimal beam with only position arrays (xyz).
-    pub fn xyz_only(nrays: usize) -> Self {
-        Self {
-            x: Array1::zeros(nrays),
-            y: Array1::zeros(nrays),
-            z: Array1::zeros(nrays),
-            a: Array1::zeros(0),
-            b: Array1::zeros(0),
-            c: Array1::zeros(0),
-            state: Array1::zeros(0),
-            e: Array1::zeros(0),
-            path: Array1::zeros(0),
-            jss: Array1::zeros(0),
-            jpp: Array1::zeros(0),
-            jsp: Array1::from_elem(0, Complex64::new(0.0, 0.0)),
-            amplitudes: None,
-            source_sigma_x: 0.0,
-            source_sigma_z: 0.0,
-            filament_dx: 0.0,
-            filament_dz: 0.0,
-            filament_dtheta: 0.0,
-            filament_dpsi: 0.0,
-            filament_dgamma: 0.0,
-            theta: None,
-            order: None,
-            n_refl: None,
-            elevation: None,
-            parametric: None,
-        }
     }
 
     /// Number of rays in this beam.
