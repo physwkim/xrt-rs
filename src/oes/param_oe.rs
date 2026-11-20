@@ -264,4 +264,114 @@ mod tests {
         assert_eq!(parametric.phi.len(), beam.nrays());
         assert_eq!(parametric.r.len(), beam.nrays());
     }
+
+    const P: f64 = 10_000.0;
+    const Q: f64 = 300.0;
+    const THETA: f64 = 0.003;
+
+    /// n×n rays leaving (x0, 0, z0) within ±`half_angle` in x' and z'.
+    fn fan(n: usize, half_angle: f64, x0: f64, z0: f64) -> Beam {
+        let mut beam = Beam::new(n * n);
+        let step = |k: usize| half_angle * (2.0 * k as f64 / (n - 1) as f64 - 1.0);
+        for i in 0..n {
+            for j in 0..n {
+                let k = i * n + j;
+                let (xp, zp) = (step(i), step(j));
+                let norm = (1.0 + xp * xp + zp * zp).sqrt();
+                beam.x[k] = x0;
+                beam.z[k] = z0;
+                beam.a[k] = xp / norm;
+                beam.b[k] = 1.0 / norm;
+                beam.c[k] = zp / norm;
+                beam.state[k] = RayState::Good as i32;
+            }
+        }
+        beam
+    }
+
+    /// Collimated n×n grid within ±`half` in x and z, going along +y.
+    fn grid(n: usize, half: f64) -> Beam {
+        let mut beam = Beam::new(n * n);
+        let step = |k: usize| half * (2.0 * k as f64 / (n - 1) as f64 - 1.0);
+        for i in 0..n {
+            for j in 0..n {
+                let k = i * n + j;
+                beam.x[k] = step(i);
+                beam.z[k] = step(j);
+                beam.state[k] = RayState::Good as i32;
+            }
+        }
+        beam
+    }
+
+    /// A 200 mm long mirror at y = P. The length matters: past the conic's
+    /// ends r(s) continues as |·|, so an unbounded search finds no sign change.
+    fn mirror_at_p<S: ParametricSurface>(surface: S) -> ParametricOpticalElement<S> {
+        let mut params = OeParamsBuilder::new()
+            .center(0.0, P, 0.0)
+            .pitch(THETA)
+            .build();
+        params.aperture.phys_y = [-100.0, 100.0];
+        ParametricOpticalElement::new(surface, params)
+    }
+
+    /// Largest distance from (x, z) of the good rays' lines at plane y = `y`.
+    /// Lines run both ways, so a virtual focus behind the mirror counts too.
+    fn max_miss_at_plane(beam: &Beam, y: f64, x: f64, z: f64) -> f64 {
+        let mut miss = 0.0_f64;
+        for i in 0..beam.nrays() {
+            assert_eq!(beam.state[i], RayState::Good as i32, "ray {i} lost");
+            let t = (y - beam.y[i]) / beam.b[i];
+            let d = (beam.x[i] + t * beam.a[i] - x).hypot(beam.z[i] + t * beam.c[i] - z);
+            assert!(d.is_finite(), "ray {i} has a non-finite path");
+            miss = miss.max(d);
+        }
+        miss
+    }
+
+    #[test]
+    fn ellipse_images_source_onto_second_focus() {
+        let mut beam = fan(11, 1e-5, 0.0, 0.0);
+        mirror_at_p(EllipticalSurface::from_pq(P, Q, THETA)).reflect(&mut beam);
+        let (sin2, cos2) = (2.0 * THETA).sin_cos();
+        let miss = max_miss_at_plane(&beam, P + Q * cos2, 0.0, Q * sin2);
+        assert!(miss < 1e-6, "focus miss {miss} mm");
+    }
+
+    #[test]
+    fn hyperbola_images_source_onto_virtual_focus() {
+        use crate::oes::surfaces::hyperbolic::HyperbolicSurface;
+        let mut beam = fan(11, 1e-5, 0.0, 0.0);
+        mirror_at_p(HyperbolicSurface::from_pq(P, Q, THETA)).reflect(&mut beam);
+        let (sin2, cos2) = (2.0 * THETA).sin_cos();
+        let miss = max_miss_at_plane(&beam, P - Q * cos2, 0.0, -Q * sin2);
+        assert!(miss < 1e-6, "virtual focus miss {miss} mm");
+    }
+
+    #[test]
+    fn paraboloid_from_p_collimates_point_source() {
+        use crate::oes::surfaces::parabolical::ParabolicalSurface;
+        let mut beam = fan(11, 1e-5, 0.0, 0.0);
+        mirror_at_p(ParabolicalSurface::from_p(P, THETA)).reflect(&mut beam);
+        let sin2 = (2.0 * THETA).sin();
+        for i in 0..beam.nrays() {
+            assert_eq!(beam.state[i], RayState::Good as i32, "ray {i} lost");
+            assert!(beam.a[i].abs() < 1e-10, "ray {i}: a = {}", beam.a[i]);
+            assert!(
+                (beam.c[i] - sin2).abs() < 1e-10,
+                "ray {i}: c = {}",
+                beam.c[i]
+            );
+        }
+    }
+
+    #[test]
+    fn paraboloid_from_q_focuses_parallel_beam() {
+        use crate::oes::surfaces::parabolical::ParabolicalSurface;
+        let mut beam = grid(11, 0.05);
+        mirror_at_p(ParabolicalSurface::from_q(Q, THETA)).reflect(&mut beam);
+        let (sin2, cos2) = (2.0 * THETA).sin_cos();
+        let miss = max_miss_at_plane(&beam, P + Q * cos2, 0.0, Q * sin2);
+        assert!(miss < 1e-6, "focus miss {miss} mm");
+    }
 }

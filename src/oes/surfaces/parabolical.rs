@@ -1,109 +1,90 @@
-//! Paraboloidal parametric surface (paraboloid of revolution).
+//! Parabolical parametric mirror: paraboloid of revolution about its axis.
 //!
-//! Parametric form: r(s) = 2√(p·s + p²) where p is the parameter.
-//! s is the arc parameter along the meridional direction.
-//! φ is the azimuthal angle.
-//! Supports γ rotation (pitch angle offset).
+//! r(s) = 2·sqrt(P·s + P²), s measured along the axis from the focus, φ = 0
+//! pointing up. The mirror is open: only the lower half (|φ| > π/2) reflects.
+//! A paraboloid has one finite focus, so it is built from either `p`
+//! (collimator) or `q` (focuser), never both.
 //!
-//! Ported from oes.py:1740-1900.
+//! Ported from xrt `ParabolicalMirrorParam` (backends/raycing/oes/parametric.py).
+
+use std::f64::consts::FRAC_PI_2;
 
 use crate::oes::surface::ParametricSurface;
+use crate::oes::surfaces::conic_frame::{ConicFrame, OPEN_SIDE_R};
 
-/// Paraboloid of revolution defined by p (focal parameter) and q (image distance).
 #[derive(Debug, Clone, Copy)]
 pub struct ParabolicalSurface {
-    /// Focal parameter p [mm]
-    pub p_param: f64,
-    /// Center offset along the meridional axis
-    pub y0: f64,
+    /// Parabola parameter P [mm]: positive for a collimator, negative for a focuser
+    pub param: f64,
+    /// Focus and axis tilt in mirror-local coordinates
+    pub frame: ConicFrame,
 }
 
 impl ParabolicalSurface {
-    /// Create from p (source distance) and q (image distance) at grazing angle θ.
-    ///
-    /// For a paraboloid: focal parameter p = q·sin²(θ) / 2
-    pub fn from_pq(p_dist: f64, q_dist: f64, theta: f64) -> Self {
-        // For collimating: p_param = p·sin²(θ)/2
-        // For focusing: p_param = q·sin²(θ)/2
-        let p_param = q_dist * theta.sin().powi(2) / 2.0;
-        let y0 = (p_dist - q_dist) / 2.0;
-        Self { p_param, y0 }
+    /// Collimator: source focus at distance `p` upstream, grazing angle `theta` [rad].
+    pub fn from_p(p: f64, theta: f64) -> Self {
+        let theta = theta.abs();
+        let (sin_t, cos_t) = theta.sin_cos();
+        Self {
+            param: p * sin_t * sin_t,
+            frame: ConicFrame::new(-p * cos_t, p * sin_t, -theta),
+        }
     }
 
-    /// Create directly from focal parameter.
-    pub fn new(p_param: f64, y0: f64) -> Self {
-        Self { p_param, y0 }
+    /// Focuser: image focus at distance `q` downstream, grazing angle `theta` [rad].
+    pub fn from_q(q: f64, theta: f64) -> Self {
+        let theta = theta.abs();
+        let (sin_t, cos_t) = theta.sin_cos();
+        Self {
+            param: -q * sin_t * sin_t,
+            frame: ConicFrame::new(q * cos_t, q * sin_t, theta),
+        }
+    }
+
+    /// Paraboloid with its axis along local y and the focus at y = `y0`.
+    pub fn new(param: f64, y0: f64) -> Self {
+        Self {
+            param,
+            frame: ConicFrame::on_axis(y0),
+        }
     }
 }
 
 impl ParametricSurface for ParabolicalSurface {
-    fn local_r(&self, s: f64, _phi: f64) -> f64 {
-        let s_shifted = s + self.y0;
-        let arg = self.p_param * s_shifted + self.p_param * self.p_param;
-        if arg > 0.0 { 2.0 * arg.sqrt() } else { 0.0 }
+    fn local_r(&self, s: f64, phi: f64) -> f64 {
+        if phi.abs() <= FRAC_PI_2 {
+            return OPEN_SIDE_R;
+        }
+        2.0 * (self.param * s + self.param * self.param).max(0.0).sqrt()
     }
 
     fn local_n(&self, s: f64, phi: f64) -> [f64; 3] {
-        let s_shifted = s + self.y0;
-        let arg = self.p_param * s_shifted + self.p_param * self.p_param;
-
-        if arg <= 0.0 {
-            return [0.0, 0.0, 1.0];
-        }
-
-        let r = 2.0 * arg.sqrt();
-        // dr/ds = p / sqrt(p·s + p²) = p / (r/2) = 2p/r
-        let dr_ds = 2.0 * self.p_param / r;
-
+        let nr = self.param / (self.param * s + self.param * self.param).sqrt();
+        let norm = nr.hypot(1.0);
         let (sin_phi, cos_phi) = phi.sin_cos();
-
-        // Tangent vectors
-        let ts = [dr_ds * sin_phi, 1.0, dr_ds * cos_phi];
-        let tp = [r * cos_phi, 0.0, -r * sin_phi];
-
-        // Normal = cross(tangent_s, tangent_phi)
-        let nx = ts[1] * tp[2] - ts[2] * tp[1];
-        let ny = ts[2] * tp[0] - ts[0] * tp[2];
-        let nz = ts[0] * tp[1] - ts[1] * tp[0];
-
-        let norm = (nx * nx + ny * ny + nz * nz).sqrt();
-        if norm > 1e-300 {
-            let sign = if nx * sin_phi + nz * cos_phi > 0.0 {
-                1.0
-            } else {
-                -1.0
-            };
-            [sign * nx / norm, sign * ny / norm, sign * nz / norm]
-        } else {
-            [0.0, 0.0, 1.0]
-        }
+        self.frame
+            .vector_to_local(-sin_phi / norm, nr / norm, -cos_phi / norm)
     }
 
     fn xyz_to_param(&self, x: f64, y: f64, z: f64) -> (f64, f64, f64) {
-        let r = (x * x + z * z).sqrt();
-        let phi = x.atan2(z);
-        let s = y;
-        (s, phi, r)
+        self.frame.xyz_to_param(x, y, z)
     }
 
     fn param_to_xyz(&self, s: f64, phi: f64, r: f64) -> (f64, f64, f64) {
-        let x = r * phi.sin();
-        let y = s;
-        let z = r * phi.cos();
-        (x, y, z)
+        self.frame.param_to_xyz(s, phi, r)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::f64::consts::PI;
 
     #[test]
-    fn parabolical_r_at_center() {
+    fn parabolical_r_at_focus_plane() {
         let s = ParabolicalSurface::new(10.0, 0.0);
-        // At s=0: r = 2*sqrt(0 + p²) = 2*p = 20
-        let r = s.local_r(0.0, 0.0);
-        assert!((r - 20.0).abs() < 1e-10, "r = {r}, expected 20.0");
+        // s = 0: r = 2·sqrt(P²) = 2P
+        assert!((s.local_r(0.0, PI) - 20.0).abs() < 1e-10);
     }
 
     #[test]
@@ -112,7 +93,7 @@ mod tests {
         let s = ParabolicalSurface::new(p, 0.0);
         let sv = 10.0;
         let expected = 2.0 * (p * sv + p * p).sqrt();
-        let got = s.local_r(sv, 0.0);
+        let got = s.local_r(sv, PI);
         assert!(
             (got - expected).abs() < 1e-10,
             "got {got}, expected {expected}"
@@ -120,21 +101,33 @@ mod tests {
     }
 
     #[test]
-    fn parabolical_normal_at_origin() {
+    fn upper_half_is_open() {
         let s = ParabolicalSurface::new(10.0, 0.0);
-        let n = s.local_n(0.0, 0.0);
-        // At phi=0, normal should point outward in +z direction
-        assert!(n[2].abs() > 0.0);
+        assert_eq!(s.local_r(0.0, 0.0), OPEN_SIDE_R);
+    }
+
+    #[test]
+    fn pole_lies_on_surface_with_upward_normal() {
+        for s in [
+            ParabolicalSurface::from_p(10_000.0, 0.003),
+            ParabolicalSurface::from_q(300.0, 0.003),
+        ] {
+            let (sv, phi, r) = s.xyz_to_param(0.0, 0.0, 0.0);
+            assert!(phi.abs() > FRAC_PI_2, "pole on the open side, phi = {phi}");
+            assert!((s.local_r(sv, phi) - r).abs() < 1e-9 * r);
+            let n = s.local_n(sv, phi);
+            assert!(n[0].abs() < 1e-12 && n[1].abs() < 1e-9 && (n[2] - 1.0).abs() < 1e-12);
+        }
     }
 
     #[test]
     fn param_xyz_roundtrip() {
-        let s = ParabolicalSurface::new(10.0, 0.0);
+        let s = ParabolicalSurface::from_q(300.0, 0.003);
         let (x, y, z) = (3.0, 5.0, 7.0);
         let (sv, phi, r) = s.xyz_to_param(x, y, z);
         let (x2, y2, z2) = s.param_to_xyz(sv, phi, r);
-        assert!((x2 - x).abs() < 1e-10);
-        assert!((y2 - y).abs() < 1e-10);
-        assert!((z2 - z).abs() < 1e-10);
+        assert!((x2 - x).abs() < 1e-9);
+        assert!((y2 - y).abs() < 1e-9);
+        assert!((z2 - z).abs() < 1e-9);
     }
 }

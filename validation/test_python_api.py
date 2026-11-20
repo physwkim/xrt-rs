@@ -221,7 +221,7 @@ class TestParabolicalMirror:
     def test_reflect(self, bl, source_beam):
         m1 = xr.ParabolicalMirror(
             bl, "PM1", center=[0, 5000, 0], pitch=0.003,
-            p=10000.0, q=5000.0, theta=0.003,
+            p=10000.0, theta=0.003,
         )
         m1.reflect(source_beam)
         assert source_beam.nrays() == 5000

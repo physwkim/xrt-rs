@@ -4,6 +4,7 @@ pub mod bent_flat;
 pub mod bent_laue;
 pub mod capillary;
 pub mod conic;
+pub mod conic_frame;
 pub mod conic_mirror;
 pub mod conical;
 pub mod cylinder_lens;

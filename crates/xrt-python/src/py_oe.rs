@@ -508,12 +508,13 @@ pub struct PyParabolicalMirror {
 
 #[pymethods]
 impl PyParabolicalMirror {
-    /// Create a ParabolicalMirror from conjugate distances p, q and grazing angle theta.
+    /// Create a ParabolicalMirror from one focal distance, p (collimator) or
+    /// q (focuser), and grazing angle theta.
     #[new]
     #[pyo3(signature = (
         _bl, name, *,
         center=vec![0.0, 0.0, 0.0], pitch=0.0, roll=0.0, yaw=0.0,
-        p=10000.0, q=5000.0, theta=0.003
+        p=None, q=None, theta=0.003
     ))]
     fn new(
         _bl: &Bound<'_, PyAny>,
@@ -522,12 +523,21 @@ impl PyParabolicalMirror {
         pitch: f64,
         roll: f64,
         yaw: f64,
-        p: f64,
-        q: f64,
+        p: Option<f64>,
+        q: Option<f64>,
         theta: f64,
     ) -> PyResult<Self> {
         let c = parse_center(&center)?;
-        let surface = ParametricSurfaceEnum::Parabolical(ParabolicalSurface::from_pq(p, q, theta));
+        let parabola = match (p, q) {
+            (Some(p), None) => ParabolicalSurface::from_p(p, theta),
+            (None, Some(q)) => ParabolicalSurface::from_q(q, theta),
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "ParabolicalMirror takes exactly one of p or q",
+                ));
+            }
+        };
+        let surface = ParametricSurfaceEnum::Parabolical(parabola);
         let params = make_params(c, pitch, roll, yaw, DeflectionMode::Reflect);
         let oe = OeInner::Parametric(ParametricOpticalElement::new(surface, params));
         Ok(Self {

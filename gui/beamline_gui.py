@@ -83,7 +83,7 @@ OE_TYPES = {
     },
     "ParabolicalMirror": {
         "class": xr.ParabolicalMirror,
-        "params": {"p": 10000.0, "q": 5000.0, "theta": 0.003},
+        "params": {"p": 10000.0, "theta": 0.003},
     },
     "BlazedGrating": {
         "class": xr.BlazedGrating,
