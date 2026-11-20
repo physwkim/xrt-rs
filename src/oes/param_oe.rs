@@ -315,18 +315,27 @@ mod tests {
         ParametricOpticalElement::new(surface, params)
     }
 
+    /// (x, z) where ray `i`'s line crosses plane y = `y`, either way along
+    /// the line, so a virtual focus behind the mirror counts too.
+    fn cross_plane(beam: &Beam, i: usize, y: f64) -> (f64, f64) {
+        assert_eq!(beam.state[i], RayState::Good as i32, "ray {i} lost");
+        let t = (y - beam.y[i]) / beam.b[i];
+        let (x, z) = (beam.x[i] + t * beam.a[i], beam.z[i] + t * beam.c[i]);
+        assert!(
+            x.is_finite() && z.is_finite(),
+            "ray {i} has a non-finite path"
+        );
+        (x, z)
+    }
+
     /// Largest distance from (x, z) of the good rays' lines at plane y = `y`.
-    /// Lines run both ways, so a virtual focus behind the mirror counts too.
     fn max_miss_at_plane(beam: &Beam, y: f64, x: f64, z: f64) -> f64 {
-        let mut miss = 0.0_f64;
-        for i in 0..beam.nrays() {
-            assert_eq!(beam.state[i], RayState::Good as i32, "ray {i} lost");
-            let t = (y - beam.y[i]) / beam.b[i];
-            let d = (beam.x[i] + t * beam.a[i] - x).hypot(beam.z[i] + t * beam.c[i] - z);
-            assert!(d.is_finite(), "ray {i} has a non-finite path");
-            miss = miss.max(d);
-        }
-        miss
+        (0..beam.nrays())
+            .map(|i| {
+                let (xi, zi) = cross_plane(beam, i, y);
+                (xi - x).hypot(zi - z)
+            })
+            .fold(0.0, f64::max)
     }
 
     #[test]
@@ -373,5 +382,64 @@ mod tests {
         let (sin2, cos2) = (2.0 * THETA).sin_cos();
         let miss = max_miss_at_plane(&beam, P + Q * cos2, 0.0, Q * sin2);
         assert!(miss < 1e-6, "focus miss {miss} mm");
+    }
+
+    /// Reflects `beam` off `surface` as a cylinder at P and checks that every
+    /// ray meets z = `z` at plane y = `y` while its x' is untouched.
+    fn assert_cylinder_focuses_z<S: ParametricSurface>(mut beam: Beam, surface: S, y: f64, z: f64) {
+        let a_in = beam.a.clone();
+        mirror_at_p(surface).reflect(&mut beam);
+        for i in 0..beam.nrays() {
+            let (_, zi) = cross_plane(&beam, i, y);
+            assert!((zi - z).abs() < 1e-6, "ray {i}: z miss {} mm", zi - z);
+            assert!((beam.a[i] - a_in[i]).abs() < 1e-12, "ray {i}: x' changed");
+        }
+    }
+
+    #[test]
+    fn elliptical_cylinder_focuses_vertically_only() {
+        let (sin2, cos2) = (2.0 * THETA).sin_cos();
+        let surface = EllipticalSurface::from_pq(P, Q, THETA).cylindrical();
+        assert_cylinder_focuses_z(fan(11, 1e-5, 0.0, 0.0), surface, P + Q * cos2, Q * sin2);
+    }
+
+    #[test]
+    fn hyperbolic_cylinder_focuses_vertically_only() {
+        use crate::oes::surfaces::hyperbolic::HyperbolicSurface;
+        let (sin2, cos2) = (2.0 * THETA).sin_cos();
+        let surface = HyperbolicSurface::from_pq(P, Q, THETA).cylindrical();
+        assert_cylinder_focuses_z(fan(11, 1e-5, 0.0, 0.0), surface, P - Q * cos2, -Q * sin2);
+    }
+
+    #[test]
+    fn parabolic_cylinder_focuses_vertically_only() {
+        use crate::oes::surfaces::parabolical::ParabolicalSurface;
+        let (sin2, cos2) = (2.0 * THETA).sin_cos();
+        let surface = ParabolicalSurface::from_q(Q, THETA).cylindrical();
+        assert_cylinder_focuses_z(grid(11, 0.05), surface, P + Q * cos2, Q * sin2);
+    }
+
+    #[test]
+    fn rolled_elliptical_cylinder_focuses_horizontally() {
+        let mut beam = fan(11, 1e-5, 0.0, 0.0);
+        let c_in = beam.c.clone();
+        let mut params = OeParamsBuilder::new()
+            .center(0.0, P, 0.0)
+            .pitch(THETA)
+            .roll(std::f64::consts::FRAC_PI_2)
+            .build();
+        params.aperture.phys_y = [-100.0, 100.0];
+        let surface = EllipticalSurface::from_pq(P, Q, THETA).cylindrical();
+        ParametricOpticalElement::new(surface, params).reflect(&mut beam);
+        let (sin2, cos2) = (2.0 * THETA).sin_cos();
+        for i in 0..beam.nrays() {
+            let (x, _) = cross_plane(&beam, i, P + Q * cos2);
+            assert!(
+                (x - Q * sin2).abs() < 1e-6,
+                "ray {i}: x miss {} mm",
+                x - Q * sin2
+            );
+            assert!((beam.c[i] - c_in[i]).abs() < 1e-12, "ray {i}: z' changed");
+        }
     }
 }

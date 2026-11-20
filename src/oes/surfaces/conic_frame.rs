@@ -10,6 +10,26 @@ use crate::core::transforms::rotate_x;
 /// r returned on the half of an open mirror that does not reflect.
 pub const OPEN_SIDE_R: f64 = 1e20;
 
+/// How the meridional profile r0(s) is swept about the conic axis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Figure {
+    /// Surface of revolution about the axis.
+    #[default]
+    Revolution,
+    /// The profile extruded along local x: curved in the meridional plane only.
+    Cylinder,
+}
+
+impl Figure {
+    /// r at azimuth φ of the point whose profile radius is `r0`.
+    pub fn r(self, r0: f64, phi: f64) -> f64 {
+        match self {
+            Figure::Revolution => r0,
+            Figure::Cylinder => r0 / phi.cos().abs(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ConicFrame {
     /// Conic origin (ellipse/hyperbola center, parabola focus), local y [mm]

@@ -9,7 +9,7 @@
 use std::f64::consts::FRAC_PI_2;
 
 use crate::oes::surface::ParametricSurface;
-use crate::oes::surfaces::conic_frame::{ConicFrame, OPEN_SIDE_R};
+use crate::oes::surfaces::conic_frame::{ConicFrame, Figure, OPEN_SIDE_R};
 
 #[derive(Debug, Clone, Copy)]
 pub struct EllipticalSurface {
@@ -19,6 +19,8 @@ pub struct EllipticalSurface {
     pub b: f64,
     /// Ellipse center and major-axis tilt in mirror-local coordinates
     pub frame: ConicFrame,
+    /// Revolution about the axis, or a cylinder (upstream `isCylindrical`)
+    pub figure: Figure,
 }
 
 impl EllipticalSurface {
@@ -31,6 +33,7 @@ impl EllipticalSurface {
             a: (p + q) * 0.5,
             b: (p * q).sqrt() * sin_t,
             frame: ConicFrame::new((q - p) * cos_t * 0.5, (p + q) * sin_t * 0.5, gamma),
+            figure: Figure::Revolution,
         }
     }
 
@@ -40,6 +43,15 @@ impl EllipticalSurface {
             a,
             b,
             frame: ConicFrame::on_axis(y0),
+            figure: Figure::Revolution,
+        }
+    }
+
+    /// The same profile as a cylinder, curved in the meridional plane only.
+    pub fn cylindrical(self) -> Self {
+        Self {
+            figure: Figure::Cylinder,
+            ..self
         }
     }
 }
@@ -49,7 +61,8 @@ impl ParametricSurface for EllipticalSurface {
         if phi.abs() <= FRAC_PI_2 {
             return OPEN_SIDE_R;
         }
-        self.b * (1.0 - s * s / (self.a * self.a)).abs().sqrt()
+        let r0 = self.b * (1.0 - s * s / (self.a * self.a)).abs().sqrt();
+        self.figure.r(r0, phi)
     }
 
     fn local_n(&self, s: f64, phi: f64) -> [f64; 3] {
@@ -59,8 +72,11 @@ impl ParametricSurface for EllipticalSurface {
         let nr = -self.b / self.a * s / a2s2.sqrt();
         let norm = nr.hypot(1.0);
         let (sin_phi, cos_phi) = phi.sin_cos();
-        self.frame
-            .vector_to_local(-sin_phi / norm, nr / norm, -cos_phi / norm)
+        let (a, c) = match self.figure {
+            Figure::Revolution => (-sin_phi, -cos_phi),
+            Figure::Cylinder => (0.0, 1.0),
+        };
+        self.frame.vector_to_local(a / norm, nr / norm, c / norm)
     }
 
     fn xyz_to_param(&self, x: f64, y: f64, z: f64) -> (f64, f64, f64) {
@@ -105,6 +121,15 @@ mod tests {
     fn elliptical_r_at_end() {
         let e = EllipticalSurface::new(100.0, 50.0, 0.0);
         assert!(e.local_r(100.0, PI).abs() < 1e-10);
+    }
+
+    #[test]
+    fn cylinder_r_is_profile_height() {
+        let e = EllipticalSurface::new(100.0, 50.0, 0.0).cylindrical();
+        let (s, phi) = (30.0, PI - 0.3);
+        let r0 = 50.0 * (1.0 - 0.09_f64).sqrt();
+        assert!((e.local_r(s, phi) * phi.cos().abs() - r0).abs() < 1e-10);
+        assert_eq!(e.local_n(s, phi)[0], 0.0);
     }
 
     #[test]

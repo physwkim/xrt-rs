@@ -461,7 +461,7 @@ impl PyEllipticalMirror {
     #[pyo3(signature = (
         _bl, name, *,
         center=vec![0.0, 0.0, 0.0], pitch=0.0, roll=0.0, yaw=0.0,
-        p=10000.0, q=5000.0, theta=0.003
+        p=10000.0, q=5000.0, theta=0.003, is_cylindrical=false
     ))]
     fn new(
         _bl: &Bound<'_, PyAny>,
@@ -473,9 +473,14 @@ impl PyEllipticalMirror {
         p: f64,
         q: f64,
         theta: f64,
+        is_cylindrical: bool,
     ) -> PyResult<Self> {
         let c = parse_center(&center)?;
-        let surface = ParametricSurfaceEnum::Elliptical(EllipticalSurface::from_pq(p, q, theta));
+        let mut ellipse = EllipticalSurface::from_pq(p, q, theta);
+        if is_cylindrical {
+            ellipse = ellipse.cylindrical();
+        }
+        let surface = ParametricSurfaceEnum::Elliptical(ellipse);
         let params = make_params(c, pitch, roll, yaw, DeflectionMode::Reflect);
         let oe = OeInner::Parametric(ParametricOpticalElement::new(surface, params));
         Ok(Self {
@@ -514,7 +519,7 @@ impl PyParabolicalMirror {
     #[pyo3(signature = (
         _bl, name, *,
         center=vec![0.0, 0.0, 0.0], pitch=0.0, roll=0.0, yaw=0.0,
-        p=None, q=None, theta=0.003
+        p=None, q=None, theta=0.003, is_cylindrical=false
     ))]
     fn new(
         _bl: &Bound<'_, PyAny>,
@@ -526,9 +531,10 @@ impl PyParabolicalMirror {
         p: Option<f64>,
         q: Option<f64>,
         theta: f64,
+        is_cylindrical: bool,
     ) -> PyResult<Self> {
         let c = parse_center(&center)?;
-        let parabola = match (p, q) {
+        let mut parabola = match (p, q) {
             (Some(p), None) => ParabolicalSurface::from_p(p, theta),
             (None, Some(q)) => ParabolicalSurface::from_q(q, theta),
             _ => {
@@ -537,6 +543,9 @@ impl PyParabolicalMirror {
                 ));
             }
         };
+        if is_cylindrical {
+            parabola = parabola.cylindrical();
+        }
         let surface = ParametricSurfaceEnum::Parabolical(parabola);
         let params = make_params(c, pitch, roll, yaw, DeflectionMode::Reflect);
         let oe = OeInner::Parametric(ParametricOpticalElement::new(surface, params));
