@@ -50,7 +50,7 @@ impl Element {
         };
 
         let f0_coeffs = read_f0_coeffs(z)?;
-        let (e_table, f1_table, f2_table) = read_f1f2_table(&name, table, None)?;
+        let (e_table, f1_table, f2_table) = read_f1f2_table(&name, table)?;
         let mass = read_atomic_mass(z)?;
 
         Ok(Self {
