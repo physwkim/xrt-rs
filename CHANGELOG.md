@@ -2,6 +2,13 @@
 
 All notable changes to xrt-rs are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- The f1/f2 tables (`Chantler.npz`, `Henke.npz`, `BrCo.npz`) are embedded with
+  `include_bytes!`; a binary no longer needs the source tree's `data/` at run
+  time. **Breaking:** `read_f1f2_table` loses its `data_dir` parameter.
+
 ## [0.2.0] — 2026-03-31
 
 ### Fixed

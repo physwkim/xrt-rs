@@ -2,11 +2,10 @@
 //!
 //! - `f0_xop.dat`: f0 Gaussian sum coefficients (include_str! embedded)
 //! - `AtomicData.dat`: atomic masses and other properties (include_str! embedded)
-//! - `Chantler.npz`, `Henke.npz`, `BrCo.npz`: f1/f2 scattering factors (runtime NPZ loading)
+//! - `Chantler.npz`, `Henke.npz`, `BrCo.npz`: f1/f2 scattering factors (include_bytes! embedded NPZ)
 
 use std::collections::HashMap;
 use std::io::{Cursor, Read as IoRead};
-use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use crate::core::error::XrtError;
@@ -15,6 +14,9 @@ use crate::math::f0::F0Coeffs;
 // Embed the text data files at compile time
 const F0_XOP_DATA: &str = include_str!("../../data/f0_xop.dat");
 const ATOMIC_DATA: &str = include_str!("../../data/AtomicData.dat");
+const CHANTLER_NPZ: &[u8] = include_bytes!("../../data/Chantler.npz");
+const HENKE_NPZ: &[u8] = include_bytes!("../../data/Henke.npz");
+const BRCO_NPZ: &[u8] = include_bytes!("../../data/BrCo.npz");
 
 /// The periodic table, index 0 = "none" (placeholder).
 pub const ELEMENTS_LIST: &[&str] = &[
@@ -46,6 +48,15 @@ impl ScatteringTable {
             ScatteringTable::Chantler | ScatteringTable::ChantlerTotal => "Chantler.npz",
             ScatteringTable::Henke => "Henke.npz",
             ScatteringTable::BrCo => "BrCo.npz",
+        }
+    }
+
+    /// The embedded NPZ archive for this table.
+    fn npz_bytes(&self) -> &'static [u8] {
+        match self {
+            ScatteringTable::Chantler | ScatteringTable::ChantlerTotal => CHANTLER_NPZ,
+            ScatteringTable::Henke => HENKE_NPZ,
+            ScatteringTable::BrCo => BRCO_NPZ,
         }
     }
 
@@ -172,66 +183,46 @@ pub fn read_atomic_mass(z: usize) -> Result<f64, XrtError> {
 
 // ── NPZ f1/f2 loading ──────────────────────────────────────────────────────
 
-/// Default data directory (relative to the crate root at compile time).
-fn default_data_dir() -> PathBuf {
-    // Try the crate's data directory
-    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    crate_dir.join("data")
-}
-
-/// Read f1/f2 scattering factor tables from an NPZ file.
+/// Read f1/f2 scattering factor tables from the embedded NPZ archives.
 ///
 /// Returns (E, f1, f2) as Vec<f64>.
 pub fn read_f1f2_table(
     element_name: &str,
     table: ScatteringTable,
-    data_dir: Option<&Path>,
 ) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>), XrtError> {
-    let dir = data_dir
-        .map(|p| p.to_path_buf())
-        .unwrap_or_else(default_data_dir);
-    let npz_path = dir.join(table.filename());
+    let npz_path = table.filename();
+    let bytes = table.npz_bytes();
 
-    let file = std::fs::File::open(&npz_path)
-        .map_err(|e| XrtError::DataParse(format!("cannot open {}: {}", npz_path.display(), e)))?;
-
-    let mut archive = zip::ZipArchive::new(file).map_err(|e| {
-        XrtError::DataParse(format!("cannot read NPZ {}: {}", npz_path.display(), e))
-    })?;
+    let mut archive = zip::ZipArchive::new(Cursor::new(bytes))
+        .map_err(|e| XrtError::DataParse(format!("cannot read NPZ {npz_path}: {e}")))?;
 
     let e_key = format!("{element_name}_E.npy");
     let f1_key = format!("{element_name}_f1.npy");
     let f2_suffix = table.f2_key_suffix();
     let f2_key = format!("{element_name}{f2_suffix}.npy");
 
-    let e_arr = read_npy_f32_from_zip(&mut archive, &e_key, &npz_path)?;
-    let f1_arr = read_npy_f32_from_zip(&mut archive, &f1_key, &npz_path)?;
-    let f2_arr = read_npy_f32_from_zip(&mut archive, &f2_key, &npz_path)?;
+    let e_arr = read_npy_f32_from_zip(&mut archive, &e_key, npz_path)?;
+    let f1_arr = read_npy_f32_from_zip(&mut archive, &f1_key, npz_path)?;
+    let f2_arr = read_npy_f32_from_zip(&mut archive, &f2_key, npz_path)?;
 
     Ok((e_arr, f1_arr, f2_arr))
 }
 
 /// Read a single f32 NPY array from within a ZIP archive, converting to f64.
 fn read_npy_f32_from_zip(
-    archive: &mut zip::ZipArchive<std::fs::File>,
+    archive: &mut zip::ZipArchive<Cursor<&'static [u8]>>,
     name: &str,
-    npz_path: &Path,
+    npz_path: &str,
 ) -> Result<Vec<f64>, XrtError> {
-    let mut entry = archive.by_name(name).map_err(|_| {
-        XrtError::DataParse(format!(
-            "key '{}' not found in {}",
-            name,
-            npz_path.display()
-        ))
-    })?;
+    let mut entry = archive
+        .by_name(name)
+        .map_err(|_| XrtError::DataParse(format!("key '{}' not found in {}", name, npz_path)))?;
 
     let mut buf = Vec::new();
     entry.read_to_end(&mut buf).map_err(|e| {
         XrtError::DataParse(format!(
             "failed to read '{}' from {}: {}",
-            name,
-            npz_path.display(),
-            e
+            name, npz_path, e
         ))
     })?;
 
@@ -295,7 +286,7 @@ mod tests {
 
     #[test]
     fn read_f1f2_chantler_si() {
-        let (e, f1, f2) = read_f1f2_table("Si", ScatteringTable::ChantlerTotal, None).unwrap();
+        let (e, f1, f2) = read_f1f2_table("Si", ScatteringTable::ChantlerTotal).unwrap();
         assert!(!e.is_empty());
         assert_eq!(e.len(), f1.len());
         assert_eq!(e.len(), f2.len());
